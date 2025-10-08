@@ -2,3 +2,21 @@
 /shelf/
 /.idea/workspace.xml
 .idea
+.claude
+
+# Python
+venv/
+*.pyc
+__pycache__/
+
+# Django
+*.log
+media/
+staticfiles/
+
+# Environment variables
+.env
+
+# Database
+*.sqlite3
+db.sqlite3
