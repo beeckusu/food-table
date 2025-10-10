@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.postgres.fields import JSONField
 from django.contrib.postgres.search import SearchVectorField
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 
 
@@ -47,6 +48,9 @@ class Encyclopedia(models.Model):
     version = models.IntegerField(default=1)
     metadata = models.JSONField(default=dict, blank=True)
     search_vector = SearchVectorField(null=True, blank=True)
+
+    # GenericRelation for images (from FT-7)
+    images = GenericRelation('Image')
 
     class Meta:
         ordering = ['name']
