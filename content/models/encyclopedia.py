@@ -1,9 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.postgres.fields import JSONField
-from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.search import SearchVectorField, SearchVector
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Encyclopedia(models.Model):
@@ -135,3 +137,19 @@ class Encyclopedia(models.Model):
         if self.parent is not None:
             self._check_cycle()
         super().save(*args, **kwargs)
+
+
+@receiver(post_save, sender=Encyclopedia)
+def update_search_vector(sender, instance, **kwargs):
+    """
+    Signal handler to automatically update search_vector field when Encyclopedia is saved.
+    Updates the search vector with combined name and description content.
+    """
+    # Avoid infinite recursion by checking if we're already updating
+    if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
+        return
+
+    # Update search_vector with name and description
+    Encyclopedia.objects.filter(pk=instance.pk).update(
+        search_vector=SearchVector('name', weight='A') + SearchVector('description', weight='B')
+    )

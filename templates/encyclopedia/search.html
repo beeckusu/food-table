@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results - Encyclopedia{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Search Encyclopedia</h1>
+
+        {% if query %}
+            <p class="lead">
+                Search results for: <strong>"{{ query }}"</strong>
+                {% if entries %}
+                    <span class="text-muted">({{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }})</span>
+                {% endif %}
+            </p>
+        {% else %}
+            <div class="alert alert-warning">
+                <strong>Empty search query.</strong> Please enter a search term to find encyclopedia entries.
+            </div>
+            <p class="text-muted">Use the search form in the header to search for food entries by name or description.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search Results Grid -->
+{% if query %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for entry in entries %}
+    <div class="col">
+        <div class="card h-100">
+            {% if entry.images.all.0 %}
+            <img src="{{ entry.images.all.0.image.url }}" class="card-img-top" alt="{{ entry.name }}" style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <span class="text-muted">No image</span>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ entry.name }}</h5>
+                <p class="card-text">
+                    {{ entry.description|truncatewords:20 }}
+                </p>
+                {% if entry.cuisine_type %}
+                <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>
+                {% endif %}
+                {% if entry.dish_category %}
+                <span class="badge bg-info">{{ entry.dish_category }}</span>
+                {% endif %}
+                {% if entry.rank %}
+                <span class="badge bg-success">Relevance: {{ entry.rank|floatformat:2 }}</span>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'content:encyclopedia_detail' entry.slug %}" class="btn btn-primary btn-sm">View Details</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <strong>No results found.</strong> Try different search terms or browse the
+            <a href="{% url 'content:encyclopedia_list' %}" class="alert-link">full encyclopedia</a>.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page=1" aria-label="First">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;&laquo;</span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;</span>
+        </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;</span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;&raquo;</span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endif %}
+
+<!-- Back Link -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{% url 'content:encyclopedia_list' %}" class="btn btn-outline-secondary">
+            &larr; Back to Encyclopedia
+        </a>
+    </div>
+</div>
+{% endblock %}
