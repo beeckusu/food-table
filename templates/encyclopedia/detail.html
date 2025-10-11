@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ entry.name }} - Encyclopedia - Food Table{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'content:encyclopedia_list' %}">Encyclopedia</a></li>
+        {% for ancestor in ancestors reversed %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'content:encyclopedia_detail' ancestor.slug %}">{{ ancestor.name }}</a>
+        </li>
+        {% endfor %}
+        <li class="breadcrumb-item active" aria-current="page">{{ entry.name }}</li>
+    </ol>
+</nav>
+
+<!-- Entry Header -->
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-3">{{ entry.name }}</h1>
+        <div class="mb-3">
+            {% if entry.cuisine_type %}
+            <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>
+            {% endif %}
+            {% if entry.dish_category %}
+            <span class="badge bg-info">{{ entry.dish_category }}</span>
+            {% endif %}
+            {% if entry.region %}
+            <span class="badge bg-success">{{ entry.region }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Images Gallery -->
+{% if images %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3>Images</h3>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+            {% for image in images %}
+            <div class="col">
+                <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ image.caption }}" style="width: 100%; height: 200px; object-fit: cover;">
+                {% if image.caption %}
+                <p class="small text-muted mt-1">{{ image.caption }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Main Content -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Description</h3>
+                <p class="card-text">{{ entry.description }}</p>
+            </div>
+        </div>
+
+        {% if entry.history %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">History</h3>
+                <p class="card-text">{{ entry.history }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if entry.cultural_significance %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Cultural Significance</h3>
+                <p class="card-text">{{ entry.cultural_significance }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if entry.popular_examples %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Popular Examples</h3>
+                <p class="card-text">{{ entry.popular_examples }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Tags -->
+        {% if tags %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Tags</h5>
+                <div>
+                    {% for tag_obj in tags %}
+                    <span class="badge bg-primary me-1 mb-1">{{ tag_obj.tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Child Entries -->
+        {% if children %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Sub-categories</h5>
+                <ul class="list-group list-group-flush">
+                    {% for child in children %}
+                    <li class="list-group-item">
+                        <a href="{% url 'content:encyclopedia_detail' child.slug %}">{{ child.name }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Metadata -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Information</h5>
+                <p class="card-text small">
+                    <strong>Created:</strong> {{ entry.created_at|date:"M d, Y" }}<br>
+                    <strong>Updated:</strong> {{ entry.updated_at|date:"M d, Y" }}<br>
+                    {% if entry.created_by %}
+                    <strong>Author:</strong> {{ entry.created_by.username }}<br>
+                    {% endif %}
+                    <strong>Version:</strong> {{ entry.version }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Reviews (Placeholder) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">Related Reviews</h4>
+                <p class="text-muted">Reviews feature coming soon...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Recipes (Placeholder) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">Related Recipes</h4>
+                <p class="text-muted">Recipes feature coming soon...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{% url 'content:encyclopedia_list' %}" class="btn btn-secondary">Back to Encyclopedia</a>
+    </div>
+</div>
+{% endblock %}
