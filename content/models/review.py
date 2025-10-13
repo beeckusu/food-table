@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.postgres.search import SearchVectorField
+from django.contrib.contenttypes.fields import GenericRelation
 
 
 class Review(models.Model):
@@ -46,6 +47,9 @@ class Review(models.Model):
     # Extensibility and Search
     metadata = models.JSONField(default=dict, blank=True)
     search_vector = SearchVectorField(null=True, blank=True)
+
+    # GenericRelation for images
+    images = GenericRelation('Image')
 
     class Meta:
         ordering = ['-visit_date', '-entry_time']

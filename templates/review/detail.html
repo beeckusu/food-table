@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load review_tags %}
+
+{% block title %}{{ review.restaurant_name }} - Reviews - Food Table{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'content:review_list' %}">Reviews</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ review.restaurant_name }}</li>
+    </ol>
+</nav>
+
+<!-- Review Header -->
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-2">{{ review.restaurant_name }}</h1>
+        {% if review.title %}
+        <p class="lead text-muted mb-3">{{ review.title }}</p>
+        {% endif %}
+        {% if tags %}
+        <div class="mb-3">
+            {% for tag_obj in tags %}
+            <span class="badge bg-primary me-1 mb-1">{{ tag_obj.tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="mb-2">
+            <span class="me-3">
+                <strong>Visited:</strong> {{ review.visit_date|date:"F d, Y" }}
+            </span>
+            {% if review.location %}
+            <span class="me-3">
+                <strong>Location:</strong> {{ review.location }}
+            </span>
+            {% endif %}
+            <span class="me-3">
+                <strong>Party Size:</strong> {{ review.party_size }}
+            </span>
+        </div>
+        {% if review.address %}
+        <div class="mb-2">
+            <strong>Address:</strong> {{ review.address }}
+        </div>
+        {% endif %}
+        <div class="mb-3">
+            <strong>Overall Rating:</strong> {{ review.rating|rating_to_stars }}
+            <span class="text-muted">({{ review.rating|rating_to_stars_value }}/10)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Images Gallery -->
+{% if images %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3>Photos</h3>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+            {% for image in images %}
+            <div class="col">
+                <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ image.caption }}" style="width: 100%; height: 200px; object-fit: cover;">
+                {% if image.caption %}
+                <p class="small text-muted mt-1">{{ image.caption }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Main Content -->
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Dishes Section -->
+        {% if dishes %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Dishes</h3>
+                <div class="list-group list-group-flush">
+                    {% for dish in dishes %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">
+                                    <a href="{% url 'content:encyclopedia_detail' dish.encyclopedia_entry.slug %}">
+                                        {{ dish.encyclopedia_entry.name }}
+                                    </a>
+                                </h5>
+                                {% if dish.dish_rating %}
+                                <div class="mb-2">
+                                    {{ dish.dish_rating|rating_to_stars }}
+                                    <span class="text-muted small">({{ dish.dish_rating|rating_to_stars_value }}/10)</span>
+                                </div>
+                                {% endif %}
+                                {% if dish.notes %}
+                                <p class="mb-1">{{ dish.notes }}</p>
+                                {% endif %}
+                            </div>
+                            {% if dish.cost %}
+                            <div class="ms-3">
+                                <span class="badge bg-success">${{ dish.cost }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Notes Section -->
+        {% if review.notes %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Notes</h3>
+                <p class="card-text" style="white-space: pre-line;">{{ review.notes }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Metadata -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Review Information</h5>
+                <p class="card-text small">
+                    <strong>Visit Date:</strong> {{ review.visit_date|date:"M d, Y" }}<br>
+                    <strong>Entry Time:</strong> {{ review.entry_time|time:"g:i A" }}<br>
+                    <strong>Created:</strong> {{ review.created_at|date:"M d, Y" }}<br>
+                    <strong>Updated:</strong> {{ review.updated_at|date:"M d, Y" }}<br>
+                    {% if review.created_by %}
+                    <strong>Author:</strong> {{ review.created_by.username }}<br>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Reviews at Same Restaurant -->
+{% if related_reviews %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">Other Reviews at {{ review.restaurant_name }}</h4>
+                <div class="row row-cols-1 row-cols-md-3 g-3 mt-2">
+                    {% for related in related_reviews %}
+                    <div class="col">
+                        <div class="card">
+                            {% if related.images.all.0 %}
+                            <img src="{{ related.images.all.0.image.url }}" class="card-img-top" alt="{{ related.restaurant_name }}" style="height: 150px; object-fit: cover;">
+                            {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <span class="text-muted small">No image</span>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <p class="card-text small text-muted mb-2">
+                                    {{ related.visit_date|date:"M d, Y" }}
+                                </p>
+                                <div class="mb-2">
+                                    {{ related.rating|rating_to_stars }}
+                                </div>
+                                <a href="{% url 'content:review_detail' related.pk %}" class="btn btn-primary btn-sm">View Review</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{% url 'content:review_list' %}" class="btn btn-secondary">Back to Reviews</a>
+    </div>
+</div>
+{% endblock %}
