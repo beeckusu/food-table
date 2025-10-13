@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ recipe.name }} - Recipes - Food Table{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'content:recipe_list' %}">Recipes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ recipe.name }}</li>
+    </ol>
+</nav>
+
+<!-- Recipe Header -->
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-2">{{ recipe.name }}</h1>
+        {% if tags %}
+        <div class="mb-3">
+            {% for tag_obj in tags %}
+            <span class="badge bg-primary me-1 mb-1">{{ tag_obj.tag.name }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="mb-3">
+            {% if recipe.difficulty == 'easy' %}
+            <span class="badge bg-success me-2">Easy</span>
+            {% elif recipe.difficulty == 'medium' %}
+            <span class="badge bg-warning text-dark me-2">Medium</span>
+            {% elif recipe.difficulty == 'hard' %}
+            <span class="badge bg-danger me-2">Hard</span>
+            {% endif %}
+            {% if recipe.servings %}
+            <span class="badge bg-secondary me-2">{{ recipe.servings }} serving{% if recipe.servings != 1 %}s{% endif %}</span>
+            {% endif %}
+            {% if recipe.dietary_restrictions %}
+                {% for restriction in recipe.dietary_restrictions %}
+                <span class="badge bg-info text-dark me-1">{{ restriction }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {% if recipe.prep_time_minutes %}
+            <span class="me-3">
+                <strong>Prep Time:</strong> {{ recipe.prep_time_minutes }} min
+            </span>
+            {% endif %}
+            {% if recipe.cook_time_minutes %}
+            <span class="me-3">
+                <strong>Cook Time:</strong> {{ recipe.cook_time_minutes }} min
+            </span>
+            {% endif %}
+            {% if recipe.total_time_minutes %}
+            <span class="me-3">
+                <strong>Total Time:</strong> {{ recipe.total_time_minutes }} min
+            </span>
+            {% endif %}
+        </div>
+        {% if recipe.encyclopedia_entry %}
+        <div class="mb-3">
+            <strong>Related Dish:</strong>
+            <a href="{% url 'content:encyclopedia_detail' recipe.encyclopedia_entry.slug %}">
+                {{ recipe.encyclopedia_entry.name }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Images Gallery -->
+{% if images %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3>Photos</h3>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+            {% for image in images %}
+            <div class="col">
+                <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ image.caption }}" style="width: 100%; height: 200px; object-fit: cover;">
+                {% if image.caption %}
+                <p class="small text-muted mt-1">{{ image.caption }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Main Content -->
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Description Section -->
+        {% if recipe.description %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Description</h3>
+                <p class="card-text" style="white-space: pre-line;">{{ recipe.description }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Ingredients Section -->
+        {% if recipe.ingredients %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Ingredients</h3>
+                <ul class="list-group list-group-flush">
+                    {% for ingredient in recipe.ingredients %}
+                    <li class="list-group-item">
+                        {% if ingredient.quantity %}
+                        <strong>{{ ingredient.quantity }}</strong>
+                        {% endif %}
+                        {{ ingredient.item }}
+                        {% if ingredient.notes %}
+                        <span class="text-muted">({{ ingredient.notes }})</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Steps Section -->
+        {% if recipe.steps %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Instructions</h3>
+                <ol class="list-group list-group-numbered list-group-flush">
+                    {% for step in recipe.steps %}
+                    <li class="list-group-item">
+                        {{ step.instruction }}
+                        {% if step.time_minutes %}
+                        <span class="badge bg-secondary ms-2">{{ step.time_minutes }} min</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tips Section -->
+        {% if recipe.tips %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title">Tips</h3>
+                <p class="card-text" style="white-space: pre-line;">{{ recipe.tips }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Metadata -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Recipe Information</h5>
+                <p class="card-text small">
+                    <strong>Created:</strong> {{ recipe.created_at|date:"M d, Y" }}<br>
+                    <strong>Updated:</strong> {{ recipe.updated_at|date:"M d, Y" }}<br>
+                    {% if recipe.created_by %}
+                    <strong>Author:</strong> {{ recipe.created_by.username }}<br>
+                    {% endif %}
+                    <strong>Version:</strong> {{ recipe.version }}<br>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Recipes -->
+{% if related_recipes %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">Related Recipes</h4>
+                <p class="text-muted">Other recipes for {{ recipe.encyclopedia_entry.name }}</p>
+                <div class="row row-cols-1 row-cols-md-3 g-3 mt-2">
+                    {% for related in related_recipes %}
+                    <div class="col">
+                        <div class="card">
+                            {% if related.images.all.0 %}
+                            <img src="{{ related.images.all.0.image.url }}" class="card-img-top" alt="{{ related.name }}" style="height: 150px; object-fit: cover;">
+                            {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <span class="text-muted small">No image</span>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <h6 class="card-title">{{ related.name }}</h6>
+                                <div class="mb-2">
+                                    {% if related.difficulty == 'easy' %}
+                                    <span class="badge bg-success">Easy</span>
+                                    {% elif related.difficulty == 'medium' %}
+                                    <span class="badge bg-warning text-dark">Medium</span>
+                                    {% elif related.difficulty == 'hard' %}
+                                    <span class="badge bg-danger">Hard</span>
+                                    {% endif %}
+                                </div>
+                                <a href="{% url 'content:recipe_detail' related.slug %}" class="btn btn-primary btn-sm">View Recipe</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{% url 'content:recipe_list' %}" class="btn btn-secondary">Back to Recipes</a>
+    </div>
+</div>
+{% endblock %}
