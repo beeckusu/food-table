@@ -32,6 +32,10 @@ class ReviewDish(models.Model):
         blank=True,
         help_text="Optional cost/price for this dish"
     )
+    notes = models.TextField(
+        blank=True,
+        help_text="Optional notes for this specific dish"
+    )
 
     class Meta:
         unique_together = ['review', 'encyclopedia_entry']
