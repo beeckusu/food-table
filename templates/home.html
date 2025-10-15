@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load review_tags %}
+
+{% block title %}Home - Food Table{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="p-5 bg-light rounded-3">
+            <div class="container-fluid py-5">
+                <h1 class="display-5 fw-bold">Welcome to Food Table</h1>
+                <p class="col-md-8 fs-4">Your personal culinary reference and review collection</p>
+                <div class="mt-4">
+                    <form class="d-flex" method="get" action="{% url 'content:encyclopedia_search' %}" role="search">
+                        <input class="form-control form-control-lg me-2" type="search" name="q" placeholder="Search encyclopedia..." aria-label="Search" required style="max-width: 500px;">
+                        <button class="btn btn-primary btn-lg" type="submit">Search</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="row mb-5">
+    <div class="col-md-4 mb-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h5 class="card-title text-primary">Encyclopedia Entries</h5>
+                <p class="display-4">{{ stats.encyclopedia_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Reviews</h5>
+                <p class="display-4">{{ stats.review_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Recipes</h5>
+                <p class="display-4">{{ stats.recipe_count }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links Section -->
+<div class="row mb-5">
+    <div class="col-12 mb-3">
+        <h2>Quick Links</h2>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Browse Encyclopedia</h5>
+                <p class="card-text">Explore culinary terms, ingredients, and cooking techniques.</p>
+                <a href="{% url 'content:encyclopedia_list' %}" class="btn btn-primary">Browse</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">View All Reviews</h5>
+                <p class="card-text">Check out reviews of restaurants and dining experiences.</p>
+                <a href="{% url 'content:review_list' %}" class="btn btn-success">View Reviews</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Browse Recipes</h5>
+                <p class="card-text">Discover recipes and cooking instructions.</p>
+                <a href="{% url 'content:recipe_list' %}" class="btn btn-warning">Browse Recipes</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Reviews Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">Recent Reviews</h2>
+    </div>
+</div>
+
+{% if recent_reviews %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+    {% for review in recent_reviews %}
+    <div class="col">
+        <div class="card h-100">
+            {% if review.images.all.0 %}
+            <img src="{{ review.images.all.0.image.url }}" class="card-img-top" alt="{{ review.restaurant_name }}" style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <span class="text-muted">No image</span>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ review.restaurant_name }}</h5>
+                <p class="card-text text-muted mb-2">
+                    <small>{{ review.visit_date|date:"F d, Y" }}</small>
+                    {% if review.location %}
+                    <br><small>{{ review.location }}</small>
+                    {% endif %}
+                </p>
+                <div class="mb-2">
+                    {{ review.rating|rating_to_stars }}
+                </div>
+                {% if review.notes %}
+                <p class="card-text">
+                    {{ review.notes|truncatewords:15 }}
+                </p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'content:review_detail' review.pk %}" class="btn btn-primary btn-sm">View Details</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row">
+    <div class="col-12 text-center">
+        <a href="{% url 'content:review_list' %}" class="btn btn-outline-primary btn-lg">View All Reviews</a>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <h4 class="alert-heading">No reviews yet!</h4>
+    <p>Start by creating your first review in the <a href="/admin/" class="alert-link">admin panel</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

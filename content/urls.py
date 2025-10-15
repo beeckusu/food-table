@@ -4,6 +4,7 @@ from . import views
 app_name = 'content'
 
 urlpatterns = [
+    path('', views.HomeView.as_view(), name='home'),
     path('encyclopedia/', views.EncyclopediaListView.as_view(), name='encyclopedia_list'),
     path('encyclopedia/search/', views.EncyclopediaSearchView.as_view(), name='encyclopedia_search'),
     path('encyclopedia/<slug:slug>/', views.EncyclopediaDetailView.as_view(), name='encyclopedia_detail'),

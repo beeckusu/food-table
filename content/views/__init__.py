@@ -1,3 +1,4 @@
+from .home import HomeView
 from .encyclopedia_list import EncyclopediaListView
 from .encyclopedia_detail import EncyclopediaDetailView
 from .encyclopedia_search import EncyclopediaSearchView
@@ -7,6 +8,7 @@ from .recipe_list import RecipeListView
 from .recipe_detail import RecipeDetailView
 
 __all__ = [
+    'HomeView',
     'EncyclopediaListView',
     'EncyclopediaDetailView',
     'EncyclopediaSearchView',
