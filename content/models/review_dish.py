@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 from .review import Review
 from .encyclopedia import Encyclopedia
 
@@ -45,3 +47,21 @@ class ReviewDish(models.Model):
 
     def __str__(self):
         return f"{self.review} - {self.encyclopedia_entry.name}"
+
+
+@receiver(post_save, sender=ReviewDish)
+def update_review_search_on_dish_save(sender, instance, **kwargs):
+    """
+    When a ReviewDish is saved, trigger the Review's search vector update.
+    """
+    # Trigger the Review's post_save signal to update its search vector
+    instance.review.save(update_fields=['updated_at'])
+
+
+@receiver(post_delete, sender=ReviewDish)
+def update_review_search_on_dish_delete(sender, instance, **kwargs):
+    """
+    When a ReviewDish is deleted, trigger the Review's search vector update.
+    """
+    # Trigger the Review's post_save signal to update its search vector
+    instance.review.save(update_fields=['updated_at'])

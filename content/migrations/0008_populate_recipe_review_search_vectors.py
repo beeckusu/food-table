@@ -21,8 +21,12 @@ def populate_recipe_search_vector(apps, schema_editor):
 def populate_review_search_vector(apps, schema_editor):
     """
     Populate search_vector field for all existing Review entries.
+    Includes dish names and notes from related ReviewDish entries.
     """
+    from django.db import models
+
     Review = apps.get_model('content', 'Review')
+    ReviewDish = apps.get_model('content', 'ReviewDish')
 
     # Update all reviews with search vector
     for review in Review.objects.all():
@@ -36,7 +40,26 @@ def populate_review_search_vector(apps, schema_editor):
         if review.notes:
             search_vector_expr = search_vector_expr + SearchVector('notes', weight='C')
 
-        Review.objects.filter(pk=review.pk).update(search_vector=search_vector_expr)
+        # Collect dish names and notes from related ReviewDish entries
+        dish_text_parts = []
+        for review_dish in review.review_dishes.select_related('encyclopedia_entry').all():
+            # Add dish name
+            if review_dish.encyclopedia_entry:
+                dish_text_parts.append(review_dish.encyclopedia_entry.name)
+            # Add dish-specific notes
+            if review_dish.notes:
+                dish_text_parts.append(review_dish.notes)
+
+        # Combine all dish-related text
+        dish_text = ' '.join(dish_text_parts)
+
+        # If there's dish text, add it to the search vector with weight D
+        if dish_text:
+            Review.objects.filter(pk=review.pk).update(
+                search_vector=search_vector_expr + SearchVector(models.Value(dish_text), weight='D')
+            )
+        else:
+            Review.objects.filter(pk=review.pk).update(search_vector=search_vector_expr)
 
 
 def reverse_populate_search_vector(apps, schema_editor):
