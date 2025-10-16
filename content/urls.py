@@ -5,6 +5,7 @@ app_name = 'content'
 
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
+    path('search/', views.GlobalSearchView.as_view(), name='global_search'),
     path('encyclopedia/', views.EncyclopediaListView.as_view(), name='encyclopedia_list'),
     path('encyclopedia/search/', views.EncyclopediaSearchView.as_view(), name='encyclopedia_search'),
     path('encyclopedia/<slug:slug>/', views.EncyclopediaDetailView.as_view(), name='encyclopedia_detail'),

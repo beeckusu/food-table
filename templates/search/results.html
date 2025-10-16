@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load review_tags %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Search Results</h1>
+
+        {% if query %}
+            <p class="lead">
+                Search results for: <strong>"{{ query }}"</strong>
+                {% if results %}
+                    <span class="text-muted">({{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }})</span>
+                {% endif %}
+            </p>
+
+            <!-- Tab Navigation for Content Type Filtering -->
+            <ul class="nav nav-tabs mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {% if not filter_type %}active{% endif %}"
+                       href="?q={{ query }}">
+                        All
+                        {% if results %}
+                            <span class="badge bg-secondary ms-1">{{ page_obj.paginator.count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {% if filter_type == 'encyclopedia' %}active{% endif %}"
+                       href="?q={{ query }}&type=encyclopedia">
+                        Encyclopedia
+                        {% if encyclopedia_count %}
+                            <span class="badge bg-secondary ms-1">{{ encyclopedia_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {% if filter_type == 'recipe' %}active{% endif %}"
+                       href="?q={{ query }}&type=recipe">
+                        Recipes
+                        {% if recipe_count %}
+                            <span class="badge bg-secondary ms-1">{{ recipe_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {% if filter_type == 'review' %}active{% endif %}"
+                       href="?q={{ query }}&type=review">
+                        Reviews
+                        {% if review_count %}
+                            <span class="badge bg-secondary ms-1">{{ review_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+            </ul>
+        {% else %}
+            <div class="alert alert-warning">
+                <strong>Empty search query.</strong> Please enter a search term to find content.
+            </div>
+            <p class="text-muted">Use the search form in the header to search across encyclopedia entries, recipes, and reviews.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search Results Grid -->
+{% if query %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for result in results %}
+    <div class="col">
+        <div class="card h-100">
+            <!-- Content Type Badge -->
+            <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;">
+                {% if result.content_type == 'encyclopedia' %}
+                <span class="badge bg-primary">Encyclopedia</span>
+                {% elif result.content_type == 'recipe' %}
+                <span class="badge bg-success">Recipe</span>
+                {% elif result.content_type == 'review' %}
+                <span class="badge bg-info">Review</span>
+                {% endif %}
+            </div>
+
+            <!-- Image -->
+            {% if result.images.all.0 %}
+            <img src="{{ result.images.all.0.image.url }}" class="card-img-top"
+                 alt="{% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' %}{{ result.name }}{% elif result.content_type == 'review' %}{{ result.restaurant_name }}{% endif %}"
+                 style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <span class="text-muted">No image</span>
+            </div>
+            {% endif %}
+
+            <div class="card-body">
+                <!-- Title/Name -->
+                {% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' %}
+                    <h5 class="card-title">{{ result.name }}</h5>
+                {% elif result.content_type == 'review' %}
+                    <h5 class="card-title">{{ result.restaurant_name }}</h5>
+                {% endif %}
+
+                <!-- Type-specific Content -->
+                {% if result.content_type == 'encyclopedia' %}
+                    <p class="card-text">
+                        {{ result.description|truncatewords:20 }}
+                    </p>
+                    {% if result.cuisine_type %}
+                    <span class="badge bg-secondary">{{ result.cuisine_type }}</span>
+                    {% endif %}
+                    {% if result.dish_category %}
+                    <span class="badge bg-info">{{ result.dish_category }}</span>
+                    {% endif %}
+
+                {% elif result.content_type == 'recipe' %}
+                    <div class="mb-2">
+                        {% if result.difficulty == 'easy' %}
+                        <span class="badge bg-success">Easy</span>
+                        {% elif result.difficulty == 'medium' %}
+                        <span class="badge bg-warning text-dark">Medium</span>
+                        {% elif result.difficulty == 'hard' %}
+                        <span class="badge bg-danger">Hard</span>
+                        {% endif %}
+                        {% if result.servings %}
+                        <span class="badge bg-secondary">{{ result.servings }} serving{% if result.servings != 1 %}s{% endif %}</span>
+                        {% endif %}
+                    </div>
+                    <p class="card-text text-muted small mb-2">
+                        {% if result.total_time_minutes %}
+                        <i class="bi bi-clock"></i> {{ result.total_time_minutes }} min
+                        {% elif result.prep_time_minutes and result.cook_time_minutes %}
+                        <i class="bi bi-clock"></i> {{ result.prep_time_minutes|add:result.cook_time_minutes }} min
+                        {% elif result.prep_time_minutes %}
+                        <i class="bi bi-clock"></i> {{ result.prep_time_minutes }} min prep
+                        {% elif result.cook_time_minutes %}
+                        <i class="bi bi-clock"></i> {{ result.cook_time_minutes }} min cook
+                        {% endif %}
+                    </p>
+                    {% if result.description %}
+                    <p class="card-text">
+                        {{ result.description|truncatewords:20 }}
+                    </p>
+                    {% endif %}
+
+                {% elif result.content_type == 'review' %}
+                    <p class="card-text text-muted mb-2">
+                        <small>{{ result.visit_date|date:"F d, Y" }}</small>
+                        {% if result.location %}
+                        <br><small>{{ result.location }}</small>
+                        {% endif %}
+                    </p>
+                    <div class="mb-2">
+                        {{ result.rating|rating_to_stars }}
+                    </div>
+                    {% if result.notes %}
+                    <p class="card-text">
+                        {{ result.notes|truncatewords:15 }}
+                    </p>
+                    {% endif %}
+                {% endif %}
+
+                <!-- Relevance Score -->
+                {% if result.rank %}
+                <span class="badge bg-light text-dark">Relevance: {{ result.rank|floatformat:2 }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Card Footer with Link -->
+            <div class="card-footer">
+                {% if result.content_type == 'encyclopedia' %}
+                <a href="{% url 'content:encyclopedia_detail' result.slug %}" class="btn btn-primary btn-sm">View Details</a>
+                {% elif result.content_type == 'recipe' %}
+                <a href="{% url 'content:recipe_detail' result.slug %}" class="btn btn-primary btn-sm">View Recipe</a>
+                {% elif result.content_type == 'review' %}
+                <a href="{% url 'content:review_detail' result.pk %}" class="btn btn-primary btn-sm">View Review</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <strong>No results found.</strong>
+            {% if filter_type %}
+                Try searching in all content types or use different search terms.
+            {% else %}
+                Try different search terms or browse
+                <a href="{% url 'content:encyclopedia_list' %}" class="alert-link">encyclopedia</a>,
+                <a href="{% url 'content:recipe_list' %}" class="alert-link">recipes</a>, or
+                <a href="{% url 'content:review_list' %}" class="alert-link">reviews</a>.
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}{% if filter_type %}&type={{ filter_type }}{% endif %}&page=1" aria-label="First">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}{% if filter_type %}&type={{ filter_type }}{% endif %}&page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;&laquo;</span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;</span>
+        </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}{% if filter_type %}&type={{ filter_type }}{% endif %}&page={{ page_obj.next_page_number }}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}{% if filter_type %}&type={{ filter_type }}{% endif %}&page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;</span>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;&raquo;</span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endif %}
+
+<!-- Back Link -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="/" class="btn btn-outline-secondary">
+            &larr; Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -28,8 +28,8 @@
                         <a class="nav-link" href="{% url 'content:recipe_list' %}">Recipes</a>
                     </li>
                 </ul>
-                <form class="d-flex me-2" method="get" action="{% url 'content:encyclopedia_search' %}" role="search">
-                    <input class="form-control me-2" type="search" name="q" placeholder="Search encyclopedia..." aria-label="Search" required>
+                <form class="d-flex me-2" method="get" action="{% url 'content:global_search' %}" role="search">
+                    <input class="form-control me-2" type="search" name="q" placeholder="Search all content..." aria-label="Search" required>
                     <button class="btn btn-outline-light" type="submit">Search</button>
                 </form>
                 <ul class="navbar-nav">

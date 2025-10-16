@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.search import SearchVectorField, SearchVector
 from django.contrib.contenttypes.fields import GenericRelation
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Review(models.Model):
@@ -65,3 +67,28 @@ class Review(models.Model):
         if self.title:
             return f"{self.title} - {self.restaurant_name}"
         return f"{self.restaurant_name} ({self.visit_date})"
+
+
+@receiver(post_save, sender=Review)
+def update_review_search_vector(sender, instance, **kwargs):
+    """
+    Signal handler to automatically update search_vector field when Review is saved.
+    Updates the search vector with restaurant_name, title, and notes content.
+    """
+    # Avoid infinite recursion by checking if we're already updating
+    if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
+        return
+
+    # Build search vector with restaurant_name (A), title (B), and notes (C)
+    search_vector_expr = SearchVector('restaurant_name', weight='A')
+
+    # Add title if it exists
+    if instance.title:
+        search_vector_expr = search_vector_expr + SearchVector('title', weight='B')
+
+    # Add notes if they exist
+    if instance.notes:
+        search_vector_expr = search_vector_expr + SearchVector('notes', weight='C')
+
+    # Update search_vector
+    Review.objects.filter(pk=instance.pk).update(search_vector=search_vector_expr)

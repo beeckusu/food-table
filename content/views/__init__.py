@@ -6,6 +6,7 @@ from .review_list import ReviewListView
 from .review_detail import ReviewDetailView
 from .recipe_list import RecipeListView
 from .recipe_detail import RecipeDetailView
+from .global_search import GlobalSearchView
 
 __all__ = [
     'HomeView',
@@ -16,4 +17,5 @@ __all__ = [
     'ReviewDetailView',
     'RecipeListView',
     'RecipeDetailView',
+    'GlobalSearchView',
 ]

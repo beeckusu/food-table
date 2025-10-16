@@ -1,7 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.search import SearchVectorField, SearchVector
 from django.contrib.contenttypes.fields import GenericRelation
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from .encyclopedia import Encyclopedia
 
 
@@ -83,3 +85,19 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.name
+
+
+@receiver(post_save, sender=Recipe)
+def update_recipe_search_vector(sender, instance, **kwargs):
+    """
+    Signal handler to automatically update search_vector field when Recipe is saved.
+    Updates the search vector with combined name and description content.
+    """
+    # Avoid infinite recursion by checking if we're already updating
+    if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
+        return
+
+    # Update search_vector with name and description
+    Recipe.objects.filter(pk=instance.pk).update(
+        search_vector=SearchVector('name', weight='A') + SearchVector('description', weight='B')
+    )
