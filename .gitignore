@@ -20,3 +20,16 @@ staticfiles/
 # Database
 *.sqlite3
 db.sqlite3
+
+# Confluence exports (data files)
+confluence_*_export.json
+
+# Database snapshots
+db_snapshots/
+
+# Temporary import/verification scripts
+import_batch.py
+import_followups.py
+check_descendants.py
+create_snapshot.py
+verify_*.py

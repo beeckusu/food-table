@@ -136,3 +136,8 @@ MEDIA_URL = '/media/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Confluence API settings
+CONFLUENCE_EMAIL = env('CONFLUENCE_EMAIL', default=None)
+CONFLUENCE_API_TOKEN = env('CONFLUENCE_API_TOKEN', default=None)
+CONFLUENCE_SITE_URL = env('CONFLUENCE_SITE_URL', default='https://gavinlu.atlassian.net')

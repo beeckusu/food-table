@@ -20,8 +20,8 @@ class ReviewDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         review = self.object
 
-        # Add dishes with encyclopedia entries
-        context['dishes'] = review.review_dishes.select_related('encyclopedia_entry').all()
+        # Add dishes with encyclopedia entries and images
+        context['dishes'] = review.review_dishes.select_related('encyclopedia_entry').prefetch_related('images').all()
 
         # Add images
         context['images'] = review.images.all()
