@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
+from django.core.management import call_command
+from django.contrib import messages
 from content.models import Review, ReviewDish, ReviewTag, Image
 from .inlines import ImageInline
 
@@ -8,7 +10,7 @@ class ReviewDishInline(admin.TabularInline):
     """Inline for managing dishes attached to reviews"""
     model = ReviewDish
     extra = 1
-    fields = ['encyclopedia_entry', 'dish_rating', 'cost', 'notes']
+    fields = ['dish_name', 'encyclopedia_entry', 'dish_rating', 'cost', 'notes']
     autocomplete_fields = ['encyclopedia_entry']
 
 
@@ -17,6 +19,21 @@ class ReviewTagInline(admin.TabularInline):
     model = ReviewTag
     extra = 1
     fields = ['tag']
+
+
+def import_reviews_from_confluence(modeladmin, request, queryset):
+    """
+    Admin action to import restaurant reviews from Confluence export JSON.
+    Note: This action ignores the selected queryset and imports from the JSON file.
+    """
+    try:
+        # Call the management command
+        call_command('import_confluence_reviews', '--json-file', 'confluence_reviews_export.json')
+        messages.success(request, 'Successfully imported reviews from Confluence. Check the console for details.')
+    except Exception as e:
+        messages.error(request, f'Error importing reviews: {str(e)}')
+
+import_reviews_from_confluence.short_description = "Import reviews from Confluence export JSON"
 
 
 @admin.register(Review)
@@ -28,6 +45,7 @@ class ReviewAdmin(admin.ModelAdmin):
     search_fields = ['restaurant_name', 'location', 'notes']
     date_hierarchy = 'visit_date'
     readonly_fields = ['created_at', 'updated_at', 'created_by']
+    actions = ['import_reviews_from_confluence']
 
     fieldsets = (
         ('Restaurant Information', {

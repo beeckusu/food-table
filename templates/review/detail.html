@@ -84,14 +84,32 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
                                 <h5 class="mb-1">
+                                    {% if dish.encyclopedia_entry %}
                                     <a href="{% url 'content:encyclopedia_detail' dish.encyclopedia_entry.slug %}">
                                         {{ dish.encyclopedia_entry.name }}
                                     </a>
+                                    {% elif dish.dish_name %}
+                                    {{ dish.dish_name }}
+                                    <span class="badge bg-secondary ms-2">Not Linked</span>
+                                    {% else %}
+                                    <span class="text-muted">Unlinked Dish</span>
+                                    {% endif %}
                                 </h5>
                                 {% if dish.dish_rating %}
                                 <div class="mb-2">
                                     {{ dish.dish_rating|rating_to_stars }}
                                     <span class="text-muted small">({{ dish.dish_rating|rating_to_stars_value }}/10)</span>
+                                </div>
+                                {% endif %}
+                                {% if dish.images.all %}
+                                <div class="mb-2">
+                                    <div class="row row-cols-2 row-cols-md-3 g-2">
+                                        {% for image in dish.images.all %}
+                                        <div class="col">
+                                            <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ image.caption }}" style="width: 100%; height: 150px; object-fit: cover;">
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 {% endif %}
                                 {% if dish.notes %}
