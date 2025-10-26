@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load admin_tags %}
 
 {% block title %}{{ entry.name }} - Encyclopedia - Food Table{% endblock %}
 
@@ -19,7 +20,10 @@
 <!-- Entry Header -->
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-3">{{ entry.name }}</h1>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="mb-0">{{ entry.name }}</h1>
+            {% admin_edit_button entry %}
+        </div>
         <div class="mb-3">
             {% if entry.cuisine_type %}
             <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>
