@@ -1,0 +1,6 @@
+@echo off
+echo Starting FoodTable PostgreSQL database...
+docker-compose up -d db
+echo.
+echo Database started! Press any key to exit...
+pause > nul
