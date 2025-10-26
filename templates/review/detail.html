@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load review_tags %}
+{% load admin_tags %}
 
 {% block title %}{{ review.restaurant_name }} - Reviews - Food Table{% endblock %}
 
@@ -15,7 +16,10 @@
 <!-- Review Header -->
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-2">{{ review.restaurant_name }}</h1>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h1 class="mb-0">{{ review.restaurant_name }}</h1>
+            {% admin_edit_button review %}
+        </div>
         {% if review.title %}
         <p class="lead text-muted mb-3">{{ review.title }}</p>
         {% endif %}

@@ -1,0 +1,8 @@
+{% if show_button %}
+<a href="{{ admin_url }}"
+   class="btn btn-outline-secondary btn-sm"
+   target="_blank"
+   aria-label="Edit {{ object_name }} in admin">
+    <i class="bi bi-pencil-square"></i> {{ button_text }}
+</a>
+{% endif %}
