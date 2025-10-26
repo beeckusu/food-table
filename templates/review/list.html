@@ -59,7 +59,7 @@
                     </div>
                 </div>
 
-                <!-- Tags (FT-36) -->
+                <!-- Tags -->
                 <div class="col-12">
                     <label class="form-label d-block">Tags (select all that apply):</label>
                     <div class="d-flex flex-wrap gap-2">
@@ -95,6 +95,43 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Active Filters Display -->
+{% if active_filters %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted">Active filters:</span>
+            {% for filter in active_filters %}
+            <span class="badge bg-primary d-flex align-items-center gap-1">
+                <strong>{{ filter.label }}:</strong> {{ filter.value }}
+                <a href="{{ filter.remove_url }}" class="text-white text-decoration-none" title="Remove this filter">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </span>
+            {% endfor %}
+            <a href="{% url 'content:review_list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Clear All Filters
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Review Count Indicator -->
+<div class="row mb-3">
+    <div class="col-12">
+        {% if active_filters %}
+            <p class="text-muted">
+                Showing <strong>{{ paginator.count }}</strong> of <strong>{{ total_reviews }}</strong> reviews
+            </p>
+        {% else %}
+            <p class="text-muted">
+                Showing <strong>{{ total_reviews }}</strong> reviews
+            </p>
+        {% endif %}
     </div>
 </div>
 
@@ -208,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Date preset functions for FT-38
 function setDateRange(days) {
     const today = new Date();
     const dateFrom = new Date();
