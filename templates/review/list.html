@@ -11,6 +11,59 @@
     </div>
 </div>
 
+<!-- Filter Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <form method="get" id="filterForm" class="border p-3 bg-light">
+            <div class="row g-3">
+                <!-- Rating Range -->
+                <div class="col-md-3">
+                    <label for="rating_min" class="form-label">Min Rating</label>
+                    <input type="number" class="form-control" id="rating_min" name="rating_min"
+                           min="0" max="100" placeholder="0-100" value="{{ filter_params.rating_min }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="rating_max" class="form-label">Max Rating</label>
+                    <input type="number" class="form-control" id="rating_max" name="rating_max"
+                           min="0" max="100" placeholder="0-100" value="{{ filter_params.rating_max }}">
+                </div>
+
+                <!-- Restaurant Name -->
+                <div class="col-md-3">
+                    <label for="restaurant" class="form-label">Restaurant</label>
+                    <input type="text" class="form-control" id="restaurant" name="restaurant"
+                           placeholder="Search by name" value="{{ filter_params.restaurant }}">
+                </div>
+
+                <!-- Location -->
+                <div class="col-md-3">
+                    <label for="location" class="form-label">Location</label>
+                    <input type="text" class="form-control" id="location" name="location"
+                           placeholder="Search location" value="{{ filter_params.location }}">
+                </div>
+
+                <!-- Date Range -->
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">Visit Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from"
+                           value="{{ filter_params.date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">Visit Date To</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to"
+                           value="{{ filter_params.date_to }}">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{% url 'content:review_list' %}" class="btn btn-secondary">Clear Filters</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Reviews Grid -->
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% for review in reviews %}
@@ -32,12 +85,12 @@
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1" aria-label="First">
+            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page=1" aria-label="First">
                 <span aria-hidden="true">&laquo;&laquo;</span>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
                 <span aria-hidden="true">&laquo;</span>
             </a>
         </li>
@@ -58,12 +111,12 @@
 
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
                 <span aria-hidden="true">&raquo;</span>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Last">
                 <span aria-hidden="true">&raquo;&raquo;</span>
             </a>
         </li>
