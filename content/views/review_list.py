@@ -1,5 +1,6 @@
 from django.views.generic import ListView
 from django.http import QueryDict
+from datetime import datetime
 from content.models import Review
 
 
@@ -25,7 +26,6 @@ class ReviewListView(ListView):
                 - date_from: Start date for visit_date range (YYYY-MM-DD)
                 - date_to: End date for visit_date range (YYYY-MM-DD)
                 - restaurant: Restaurant name search term
-                - location: Location filter
         """
         filter_params = {}
 
@@ -44,10 +44,6 @@ class ReviewListView(ListView):
         # Restaurant name filter
         if self.request.GET.get('restaurant'):
             filter_params['restaurant'] = self.request.GET.get('restaurant')
-
-        # Location filter
-        if self.request.GET.get('location'):
-            filter_params['location'] = self.request.GET.get('location')
 
         return filter_params
 
@@ -77,21 +73,52 @@ class ReviewListView(ListView):
     def get_queryset(self):
         """
         Return all public reviews ordered by visit date (newest first).
-        Parses and stores filter parameters but does not apply them yet (infrastructure only).
+        Applies filters based on URL parameters.
         Optimizes queries with select_related and prefetch_related.
         """
         # Parse and store filter parameters
         self.filter_params = self._parse_filter_params()
 
-        # Base queryset - filters will be applied in future tickets
-        return Review.objects.filter(
+        # Base queryset
+        queryset = Review.objects.filter(
             is_private=False
         ).select_related(
             'created_by'
         ).prefetch_related(
             'images',
             'review_dishes__images'
-        ).order_by('-visit_date', '-entry_time')
+        )
+
+        if self.filter_params.get('restaurant'):
+            queryset = queryset.filter(restaurant_name__iexact=self.filter_params['restaurant'])
+
+        if self.filter_params.get('date_from'):
+            try:
+                date_from = datetime.strptime(self.filter_params['date_from'], '%Y-%m-%d').date()
+                queryset = queryset.filter(visit_date__gte=date_from)
+            except ValueError:
+                pass  # Ignore invalid date format
+
+        if self.filter_params.get('date_to'):
+            try:
+                date_to = datetime.strptime(self.filter_params['date_to'], '%Y-%m-%d').date()
+                queryset = queryset.filter(visit_date__lte=date_to)
+            except ValueError:
+                pass  # Ignore invalid date format
+
+        return queryset.order_by('-visit_date', '-entry_time')
+
+    def _get_restaurant_options(self):
+        """
+        Get distinct restaurant names for dropdown (FT-35).
+        Returns sorted list of unique restaurant names, excluding empty values.
+        """
+        restaurants = Review.objects.filter(
+            is_private=False
+        ).values_list('restaurant_name', flat=True).distinct().order_by('restaurant_name')
+
+        # Filter out None and empty strings
+        return [r for r in restaurants if r]
 
     def get_context_data(self, **kwargs):
         """
@@ -104,5 +131,8 @@ class ReviewListView(ListView):
 
         # Add filter query string for pagination links
         context['filter_query_string'] = self._build_filter_query_string(exclude_page=True)
+
+        # Add dropdown options (FT-35)
+        context['restaurant_options'] = self._get_restaurant_options()
 
         return context
