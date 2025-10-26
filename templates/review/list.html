@@ -75,6 +75,19 @@
                     </div>
                 </div>
 
+                <!-- Sort Order -->
+                <div class="col-md-6">
+                    <label for="sort" class="form-label">Sort by</label>
+                    <select class="form-select" id="sort" name="sort" onchange="document.getElementById('filterForm').submit()">
+                        <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>Date: Newest First</option>
+                        <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>Date: Oldest First</option>
+                        <option value="rating_desc" {% if filter_params.sort == 'rating_desc' %}selected{% endif %}>Rating: High to Low</option>
+                        <option value="rating_asc" {% if filter_params.sort == 'rating_asc' %}selected{% endif %}>Rating: Low to High</option>
+                        <option value="name_asc" {% if filter_params.sort == 'name_asc' %}selected{% endif %}>Restaurant: A-Z</option>
+                        <option value="name_desc" {% if filter_params.sort == 'name_desc' %}selected{% endif %}>Restaurant: Z-A</option>
+                    </select>
+                </div>
+
                 <!-- Action Buttons -->
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">Apply Filters</button>
