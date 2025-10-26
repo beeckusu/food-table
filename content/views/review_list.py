@@ -22,5 +22,6 @@ class ReviewListView(ListView):
         ).select_related(
             'created_by'
         ).prefetch_related(
-            'images'
+            'images',
+            'review_dishes__images'
         ).order_by('-visit_date', '-entry_time')

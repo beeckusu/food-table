@@ -64,6 +64,9 @@ class GlobalSearchView(ListView):
                 content_type=Value('review', output_field=CharField())
             ).filter(
                 search_vector=search_query
+            ).prefetch_related(
+                'images',
+                'review_dishes__images'
             ).order_by('-rank')
             results.extend(list(review_results))
 

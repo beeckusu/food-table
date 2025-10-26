@@ -82,9 +82,21 @@
             </div>
 
             <!-- Image -->
-            {% if result.images.all.0 %}
+            {% if result.content_type == 'review' %}
+                {% with display_image=result.get_display_image %}
+                    {% if display_image %}
+                    <img src="{{ display_image.image.url }}" class="card-img-top"
+                         alt="{{ result.restaurant_name }}"
+                         style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <span class="text-muted">No image</span>
+                    </div>
+                    {% endif %}
+                {% endwith %}
+            {% elif result.images.all.0 %}
             <img src="{{ result.images.all.0.image.url }}" class="card-img-top"
-                 alt="{% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' %}{{ result.name }}{% elif result.content_type == 'review' %}{{ result.restaurant_name }}{% endif %}"
+                 alt="{% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' %}{{ result.name }}{% endif %}"
                  style="height: 200px; object-fit: cover;">
             {% else %}
             <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
