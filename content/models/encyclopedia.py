@@ -51,7 +51,7 @@ class Encyclopedia(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     search_vector = SearchVectorField(null=True, blank=True)
 
-    # GenericRelation for images (from FT-7)
+    # GenericRelation for images
     images = GenericRelation('Image')
 
     class Meta:
