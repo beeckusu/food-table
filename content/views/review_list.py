@@ -92,6 +92,23 @@ class ReviewListView(ListView):
         if self.filter_params.get('restaurant'):
             queryset = queryset.filter(restaurant_name__iexact=self.filter_params['restaurant'])
 
+        # Apply rating range filter (FT-37)
+        if self.filter_params.get('rating_min'):
+            try:
+                rating_min = int(self.filter_params['rating_min'])
+                if 0 <= rating_min <= 100:
+                    queryset = queryset.filter(rating__gte=rating_min)
+            except (ValueError, TypeError):
+                pass  # Ignore invalid rating values
+
+        if self.filter_params.get('rating_max'):
+            try:
+                rating_max = int(self.filter_params['rating_max'])
+                if 0 <= rating_max <= 100:
+                    queryset = queryset.filter(rating__lte=rating_max)
+            except (ValueError, TypeError):
+                pass  # Ignore invalid rating values
+
         if self.filter_params.get('date_from'):
             try:
                 date_from = datetime.strptime(self.filter_params['date_from'], '%Y-%m-%d').date()
