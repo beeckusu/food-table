@@ -21,7 +21,8 @@ class HomeView(TemplateView):
             'created_by'
         ).prefetch_related(
             'images',
-            'review_dishes'
+            'review_dishes',
+            'review_dishes__images'
         ).order_by('-visit_date', '-entry_time')[:10]
 
         # Calculate stats

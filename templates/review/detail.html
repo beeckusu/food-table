@@ -167,27 +167,10 @@
         <div class="card">
             <div class="card-body">
                 <h4 class="card-title">Other Reviews at {{ review.restaurant_name }}</h4>
-                <div class="row row-cols-1 row-cols-md-3 g-3 mt-2">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
                     {% for related in related_reviews %}
                     <div class="col">
-                        <div class="card">
-                            {% if related.images.all.0 %}
-                            <img src="{{ related.images.all.0.image.url }}" class="card-img-top" alt="{{ related.restaurant_name }}" style="height: 150px; object-fit: cover;">
-                            {% else %}
-                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
-                                <span class="text-muted small">No image</span>
-                            </div>
-                            {% endif %}
-                            <div class="card-body">
-                                <p class="card-text small text-muted mb-2">
-                                    {{ related.visit_date|date:"M d, Y" }}
-                                </p>
-                                <div class="mb-2">
-                                    {{ related.rating|rating_to_stars }}
-                                </div>
-                                <a href="{% url 'content:review_detail' related.pk %}" class="btn btn-primary btn-sm">View Review</a>
-                            </div>
-                        </div>
+                        {% include 'components/review_card.html' with review=related %}
                     </div>
                     {% endfor %}
                 </div>

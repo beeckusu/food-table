@@ -95,35 +95,7 @@
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
     {% for review in recent_reviews %}
     <div class="col">
-        <div class="card h-100">
-            {% if review.images.all.0 %}
-            <img src="{{ review.images.all.0.image.url }}" class="card-img-top" alt="{{ review.restaurant_name }}" style="height: 200px; object-fit: cover;">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                <span class="text-muted">No image</span>
-            </div>
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ review.restaurant_name }}</h5>
-                <p class="card-text text-muted mb-2">
-                    <small>{{ review.visit_date|date:"F d, Y" }}</small>
-                    {% if review.location %}
-                    <br><small>{{ review.location }}</small>
-                    {% endif %}
-                </p>
-                <div class="mb-2">
-                    {{ review.rating|rating_to_stars }}
-                </div>
-                {% if review.notes %}
-                <p class="card-text">
-                    {{ review.notes|truncatewords:15 }}
-                </p>
-                {% endif %}
-            </div>
-            <div class="card-footer">
-                <a href="{% url 'content:review_detail' review.pk %}" class="btn btn-primary btn-sm">View Details</a>
-            </div>
-        </div>
+        {% include 'components/review_card.html' with review=review %}
     </div>
     {% endfor %}
 </div>

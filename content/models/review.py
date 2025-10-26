@@ -68,6 +68,34 @@ class Review(models.Model):
             return f"{self.title} - {self.restaurant_name}"
         return f"{self.restaurant_name} ({self.visit_date})"
 
+    def get_display_image(self):
+        """
+        Get the best image to display for this review.
+
+        Priority:
+        1. First review-level image (if available)
+        2. First image from highest-rated dish (if available)
+        3. None (if no images exist anywhere)
+
+        Returns:
+            Image instance or None
+        """
+        # Try review-level image first
+        review_image = self.images.first()
+        if review_image:
+            return review_image
+
+        # Fall back to highest-rated dish image
+        highest_rated_dish = self.review_dishes.filter(
+            dish_rating__isnull=False,
+            images__isnull=False
+        ).order_by('-dish_rating').first()
+
+        if highest_rated_dish:
+            return highest_rated_dish.images.first()
+
+        return None
+
 
 @receiver(post_save, sender=Review)
 def update_review_search_vector(sender, instance, **kwargs):

@@ -36,7 +36,8 @@ class ReviewDetailView(DetailView):
         ).exclude(
             id=review.id
         ).prefetch_related(
-            'images'
+            'images',
+            'review_dishes__images'
         ).order_by('-visit_date', '-entry_time')[:5]
 
         return context
