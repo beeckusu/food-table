@@ -104,7 +104,6 @@ class ReviewListView(ListView):
         if self.filter_params.get('restaurant'):
             queryset = queryset.filter(restaurant_name__iexact=self.filter_params['restaurant'])
 
-        # Apply rating range filter (FT-37)
         if self.filter_params.get('rating_min'):
             try:
                 rating_min = int(self.filter_params['rating_min'])
@@ -135,7 +134,6 @@ class ReviewListView(ListView):
             except ValueError:
                 pass  # Ignore invalid date format
 
-        # Apply tag filter with AND logic (FT-36)
         if self.filter_params.get('tags'):
             selected_tags = self.filter_params['tags']
             # Filter reviews that have ALL selected tags (AND logic)
@@ -151,7 +149,7 @@ class ReviewListView(ListView):
 
     def _get_restaurant_options(self):
         """
-        Get distinct restaurant names for dropdown (FT-35).
+        Get distinct restaurant names for dropdown.
         Returns sorted list of unique restaurant names, excluding empty values.
         """
         restaurants = Review.objects.filter(
@@ -163,7 +161,7 @@ class ReviewListView(ListView):
 
     def _get_tag_options(self):
         """
-        Get distinct tags for checkboxes (FT-36).
+        Get distinct tags for checkboxes.
         Returns sorted list of unique tags from public reviews.
         """
         tags = ReviewTag.objects.filter(
@@ -185,10 +183,10 @@ class ReviewListView(ListView):
         # Add filter query string for pagination links
         context['filter_query_string'] = self._build_filter_query_string(exclude_page=True)
 
-        # Add dropdown options (FT-35)
+        # Add dropdown options
         context['restaurant_options'] = self._get_restaurant_options()
 
-        # Add tag options (FT-36)
+        # Add tag options
         context['tag_options'] = self._get_tag_options()
 
         return context
