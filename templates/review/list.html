@@ -17,29 +17,24 @@
         <form method="get" id="filterForm" class="border p-3 bg-light">
             <div class="row g-3">
                 <!-- Rating Range -->
-                <div class="col-md-3">
-                    <label for="rating_min" class="form-label">Min Rating</label>
-                    <input type="number" class="form-control" id="rating_min" name="rating_min"
-                           min="0" max="100" placeholder="0-100" value="{{ filter_params.rating_min }}">
-                </div>
-                <div class="col-md-3">
-                    <label for="rating_max" class="form-label">Max Rating</label>
-                    <input type="number" class="form-control" id="rating_max" name="rating_max"
-                           min="0" max="100" placeholder="0-100" value="{{ filter_params.rating_max }}">
+                <div class="col-md-6">
+                    <label class="form-label">Rating Range: <span id="rating_min_value">{{ filter_params.rating_min|default:"0" }}</span> - <span id="rating_max_value">{{ filter_params.rating_max|default:"100" }}</span></label>
+                    <div id="rating-slider" style="margin: 20px 10px;"></div>
+                    <input type="hidden" id="rating_min" name="rating_min" value="{{ filter_params.rating_min|default:"0" }}">
+                    <input type="hidden" id="rating_max" name="rating_max" value="{{ filter_params.rating_max|default:"100" }}">
                 </div>
 
                 <!-- Restaurant Name -->
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label for="restaurant" class="form-label">Restaurant</label>
-                    <input type="text" class="form-control" id="restaurant" name="restaurant"
-                           placeholder="Search by name" value="{{ filter_params.restaurant }}">
-                </div>
-
-                <!-- Location -->
-                <div class="col-md-3">
-                    <label for="location" class="form-label">Location</label>
-                    <input type="text" class="form-control" id="location" name="location"
-                           placeholder="Search location" value="{{ filter_params.location }}">
+                    <select class="form-select" id="restaurant" name="restaurant">
+                        <option value="">All Restaurants</option>
+                        {% for restaurant in restaurant_options %}
+                        <option value="{{ restaurant }}" {% if filter_params.restaurant == restaurant %}selected{% endif %}>
+                            {{ restaurant }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <!-- Date Range -->
@@ -52,6 +47,16 @@
                     <label for="date_to" class="form-label">Visit Date To</label>
                     <input type="date" class="form-control" id="date_to" name="date_to"
                            value="{{ filter_params.date_to }}">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label d-block">Quick Date Ranges:</label>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(7)">Last Week</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(30)">Last Month</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(90)">Last 3 Months</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRangeThisYear()">This Year</button>
+                    </div>
                 </div>
 
                 <!-- Action Buttons -->
@@ -131,4 +136,72 @@
     </ul>
 </nav>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+<script>
+// Initialize noUiSlider for rating range
+document.addEventListener('DOMContentLoaded', function() {
+    var ratingSlider = document.getElementById('rating-slider');
+    var ratingMinInput = document.getElementById('rating_min');
+    var ratingMaxInput = document.getElementById('rating_max');
+    var ratingMinValue = document.getElementById('rating_min_value');
+    var ratingMaxValue = document.getElementById('rating_max_value');
+
+    var minVal = parseInt(ratingMinInput.value) || 0;
+    var maxVal = parseInt(ratingMaxInput.value) || 100;
+
+    noUiSlider.create(ratingSlider, {
+        start: [minVal, maxVal],
+        connect: true,
+        range: {
+            'min': 0,
+            'max': 100
+        },
+        step: 1,
+        tooltips: false
+    });
+
+    ratingSlider.noUiSlider.on('update', function(values, handle) {
+        var value = Math.round(values[handle]);
+        if (handle === 0) {
+            ratingMinInput.value = value;
+            ratingMinValue.textContent = value;
+        } else {
+            ratingMaxInput.value = value;
+            ratingMaxValue.textContent = value;
+        }
+    });
+});
+
+// Date preset functions for FT-38
+function setDateRange(days) {
+    const today = new Date();
+    const dateFrom = new Date();
+    dateFrom.setDate(today.getDate() - days);
+
+    document.getElementById('date_from').value = formatDate(dateFrom);
+    document.getElementById('date_to').value = formatDate(today);
+}
+
+function setDateRangeThisYear() {
+    const today = new Date();
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+
+    document.getElementById('date_from').value = formatDate(yearStart);
+    document.getElementById('date_to').value = formatDate(today);
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+</script>
 {% endblock %}
