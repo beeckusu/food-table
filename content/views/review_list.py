@@ -1,7 +1,8 @@
 from django.views.generic import ListView
 from django.http import QueryDict
+from django.db.models import Count
 from datetime import datetime
-from content.models import Review
+from content.models import Review, ReviewTag
 
 
 class ReviewListView(ListView):
@@ -26,6 +27,7 @@ class ReviewListView(ListView):
                 - date_from: Start date for visit_date range (YYYY-MM-DD)
                 - date_to: End date for visit_date range (YYYY-MM-DD)
                 - restaurant: Restaurant name search term
+                - tags: List of tags (multi-value parameter)
         """
         filter_params = {}
 
@@ -45,6 +47,11 @@ class ReviewListView(ListView):
         if self.request.GET.get('restaurant'):
             filter_params['restaurant'] = self.request.GET.get('restaurant')
 
+        # Tag filter (multi-value)
+        tags = self.request.GET.getlist('tags')
+        if tags:
+            filter_params['tags'] = tags
+
         return filter_params
 
     def _build_filter_query_string(self, exclude_page=True):
@@ -61,7 +68,12 @@ class ReviewListView(ListView):
 
         for key, value in self.filter_params.items():
             if value:  # Only include non-empty values
-                params[key] = value
+                if key == 'tags' and isinstance(value, list):
+                    # Handle multi-value tags parameter
+                    for tag in value:
+                        params.appendlist('tags', tag)
+                else:
+                    params[key] = value
 
         # Remove page parameter if requested
         if exclude_page and 'page' in params:
@@ -123,6 +135,18 @@ class ReviewListView(ListView):
             except ValueError:
                 pass  # Ignore invalid date format
 
+        # Apply tag filter with AND logic (FT-36)
+        if self.filter_params.get('tags'):
+            selected_tags = self.filter_params['tags']
+            # Filter reviews that have ALL selected tags (AND logic)
+            queryset = queryset.filter(
+                review_tags__tag__in=selected_tags
+            ).annotate(
+                tag_count=Count('review_tags', distinct=True)
+            ).filter(
+                tag_count=len(selected_tags)
+            )
+
         return queryset.order_by('-visit_date', '-entry_time')
 
     def _get_restaurant_options(self):
@@ -136,6 +160,18 @@ class ReviewListView(ListView):
 
         # Filter out None and empty strings
         return [r for r in restaurants if r]
+
+    def _get_tag_options(self):
+        """
+        Get distinct tags for checkboxes (FT-36).
+        Returns sorted list of unique tags from public reviews.
+        """
+        tags = ReviewTag.objects.filter(
+            review__is_private=False
+        ).values_list('tag', flat=True).distinct().order_by('tag')
+
+        # Filter out None and empty strings
+        return [t for t in tags if t]
 
     def get_context_data(self, **kwargs):
         """
@@ -151,5 +187,8 @@ class ReviewListView(ListView):
 
         # Add dropdown options (FT-35)
         context['restaurant_options'] = self._get_restaurant_options()
+
+        # Add tag options (FT-36)
+        context['tag_options'] = self._get_tag_options()
 
         return context

@@ -59,6 +59,22 @@
                     </div>
                 </div>
 
+                <!-- Tags (FT-36) -->
+                <div class="col-12">
+                    <label class="form-label d-block">Tags (select all that apply):</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for tag in tag_options %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="tags" value="{{ tag }}" id="tag_{{ forloop.counter }}"
+                                   {% if tag in filter_params.tags %}checked{% endif %}>
+                            <label class="form-check-label" for="tag_{{ forloop.counter }}">
+                                {{ tag }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
                 <!-- Action Buttons -->
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">Apply Filters</button>
