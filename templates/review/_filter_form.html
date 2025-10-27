@@ -1,0 +1,91 @@
+<form method="get" id="filterForm">
+    <!-- Rating Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-star-fill text-warning"></i> Rating Range</h6>
+        <label class="form-label small">
+            <span id="rating_min_value">{{ filter_params.rating_min|default:"0" }}</span> -
+            <span id="rating_max_value">{{ filter_params.rating_max|default:"100" }}</span>
+        </label>
+        <div id="rating-slider" style="margin: 15px 10px 10px 10px;"></div>
+        <input type="hidden" id="rating_min" name="rating_min" value="{{ filter_params.rating_min|default:"0" }}">
+        <input type="hidden" id="rating_max" name="rating_max" value="{{ filter_params.rating_max|default:"100" }}">
+    </div>
+
+    <!-- Restaurant Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-shop"></i> Restaurant</h6>
+        <select class="form-select form-select-sm" id="restaurant" name="restaurant">
+            <option value="">All Restaurants</option>
+            {% for restaurant in restaurant_options %}
+            <option value="{{ restaurant }}" {% if filter_params.restaurant == restaurant %}selected{% endif %}>
+                {{ restaurant }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Date Range Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-calendar3"></i> Visit Date</h6>
+        <div class="mb-2">
+            <label for="date_from" class="form-label small mb-1">From</label>
+            <input type="date" class="form-control form-control-sm" id="date_from" name="date_from"
+                   value="{{ filter_params.date_from }}">
+        </div>
+        <div class="mb-3">
+            <label for="date_to" class="form-label small mb-1">To</label>
+            <input type="date" class="form-control form-control-sm" id="date_to" name="date_to"
+                   value="{{ filter_params.date_to }}">
+        </div>
+        <div class="d-grid gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(7)">Last Week</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(30)">Last Month</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(90)">Last 3 Months</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRangeThisYear()">This Year</button>
+        </div>
+    </div>
+
+    <!-- Tags Section -->
+    {% if tag_options %}
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-tags-fill"></i> Tags</h6>
+        <div class="small text-muted mb-2">Select all that apply</div>
+        <div class="d-flex flex-column gap-1">
+            {% for tag in tag_options %}
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tags" value="{{ tag }}" id="tag_{{ forloop.counter }}"
+                       {% if tag in filter_params.tags %}checked{% endif %}>
+                <label class="form-check-label small" for="tag_{{ forloop.counter }}">
+                    {{ tag }}
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sort Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-sort-down"></i> Sort By</h6>
+        <select class="form-select form-select-sm" id="sort" name="sort">
+            <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>Date: Newest First</option>
+            <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>Date: Oldest First</option>
+            <option value="rating_desc" {% if filter_params.sort == 'rating_desc' %}selected{% endif %}>Rating: High to Low</option>
+            <option value="rating_asc" {% if filter_params.sort == 'rating_asc' %}selected{% endif %}>Rating: Low to High</option>
+            <option value="name_asc" {% if filter_params.sort == 'name_asc' %}selected{% endif %}>Restaurant: A-Z</option>
+            <option value="name_desc" {% if filter_params.sort == 'name_desc' %}selected{% endif %}>Restaurant: Z-A</option>
+        </select>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="p-3">
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-funnel-fill"></i> Apply Filters
+            </button>
+            <a href="{% url 'content:review_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Clear All
+            </a>
+        </div>
+    </div>
+</form>
