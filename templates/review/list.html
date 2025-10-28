@@ -12,10 +12,22 @@
                 <h1 class="mb-2">Reviews</h1>
                 <p class="lead mb-0">Browse our restaurant reviews</p>
             </div>
-            <!-- Mobile Filter Button -->
-            <button class="btn btn-primary d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar" aria-controls="filterSidebar">
-                <i class="bi bi-funnel"></i> Filters
-            </button>
+            <div class="d-flex gap-2">
+                {% if user.is_staff %}
+                <!-- Admin: Create New Review Button (Desktop) -->
+                <a href="{% url 'admin:content_review_add' %}" class="btn btn-success d-none d-md-inline-flex align-items-center gap-1">
+                    <i class="bi bi-plus-circle"></i> Create New Review
+                </a>
+                <!-- Admin: Create New Review Button (Mobile - Icon only) -->
+                <a href="{% url 'admin:content_review_add' %}" class="btn btn-success d-md-none" title="Create New Review">
+                    <i class="bi bi-plus-circle"></i>
+                </a>
+                {% endif %}
+                <!-- Mobile Filter Button -->
+                <button class="btn btn-primary d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar" aria-controls="filterSidebar">
+                    <i class="bi bi-funnel"></i> Filters
+                </button>
+            </div>
         </div>
     </div>
 </div>
