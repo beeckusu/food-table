@@ -328,6 +328,92 @@
     flex-shrink: 0;
 }
 
+/* Sidebar Search */
+.sidebar-search {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
+.sidebar-search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    pointer-events: none;
+}
+
+.sidebar-search-input {
+    flex: 1;
+    padding: 0.5rem 2.5rem 0.5rem 2.25rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: #1f2937;
+    background: #ffffff;
+    transition: all 0.15s ease;
+    min-height: 36px;
+}
+
+.sidebar-search-input:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 0;
+    border-color: #2563eb;
+}
+
+.sidebar-search-input::placeholder {
+    color: #9ca3af;
+}
+
+.sidebar-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    transition: all 0.15s ease;
+}
+
+.sidebar-search-clear:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+}
+
+.sidebar-search-clear:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.sidebar-search-clear i {
+    font-size: 1rem;
+}
+
+.sidebar-search-results-count {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-align: center;
+    background: #f3f4f6;
+    border-radius: 0.25rem;
+}
+
 .sidebar-title {
     font-size: 1.25rem;
     font-weight: 600;
@@ -501,6 +587,20 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Search Highlight */
+.search-highlight {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.125rem;
+    font-weight: 600;
+}
+
+/* Hidden by Filter */
+.hidden-by-filter {
+    display: none !important;
 }
 
 .sidebar-entry-link:hover {

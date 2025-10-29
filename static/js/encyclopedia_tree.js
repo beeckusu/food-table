@@ -221,6 +221,11 @@
             this.closeBtn = document.getElementById('sidebar-close-btn');
             this.backdrop = document.getElementById('sidebar-backdrop');
             this.mainWrapper = document.querySelector('.encyclopedia-main-wrapper');
+            this.searchFilter = null; // Will be set later
+        }
+
+        setSearchFilter(searchFilter) {
+            this.searchFilter = searchFilter;
         }
 
         init() {
@@ -265,6 +270,11 @@
 
         close() {
             this.setSidebarState(false, true);
+
+            // Clear search filter when closing on mobile
+            if (this.isMobile() && this.searchFilter) {
+                this.searchFilter.clearFilter();
+            }
         }
 
         setSidebarState(isOpen, animate = true) {
@@ -306,6 +316,221 @@
             // Auto-close sidebar on mobile
             else if (this.isMobile() && this.state.sidebarOpen) {
                 this.setSidebarState(false, false);
+            }
+        }
+    }
+
+    // Sidebar Search Filter
+    class SidebarSearchFilter {
+        constructor(treeSync) {
+            this.treeSync = treeSync;
+            this.searchInput = document.getElementById('sidebar-search-input');
+            this.clearBtn = document.getElementById('sidebar-search-clear');
+            this.resultsCount = document.getElementById('sidebar-search-results-count');
+            this.debounceTimer = null;
+            this.originalExpandedState = new Set();
+            this.isFiltering = false;
+        }
+
+        init() {
+            if (!this.searchInput) return;
+
+            // Event listeners
+            this.searchInput.addEventListener('input', (e) => {
+                this.handleSearchInput(e.target.value);
+            });
+
+            if (this.clearBtn) {
+                this.clearBtn.addEventListener('click', () => {
+                    this.clearFilter();
+                });
+            }
+
+            // Clear on escape
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.clearFilter();
+                    e.preventDefault();
+                }
+            });
+        }
+
+        handleSearchInput(query) {
+            // Debounce the search
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+                this.filterTree(query.trim());
+            }, 250);
+
+            // Show/hide clear button
+            if (this.clearBtn) {
+                this.clearBtn.hidden = query.length === 0;
+            }
+        }
+
+        filterTree(query) {
+            if (!query) {
+                this.clearFilter();
+                return;
+            }
+
+            // Save original expanded state on first filter
+            if (!this.isFiltering) {
+                this.originalExpandedState = new Set(this.treeSync.state.expandedEntries);
+                this.isFiltering = true;
+            }
+
+            const searchLower = query.toLowerCase();
+            const allEntries = document.querySelectorAll('.sidebar-tree-entry');
+            const matchingEntries = new Set();
+            let matchCount = 0;
+
+            // First pass: Find all matching entries
+            allEntries.forEach(entry => {
+                const link = entry.querySelector('.sidebar-entry-link');
+                if (!link) return;
+
+                const text = link.textContent.trim();
+                const isMatch = text.toLowerCase().includes(searchLower);
+
+                if (isMatch) {
+                    const entryId = entry.getAttribute('data-entry-id');
+                    if (entryId) {
+                        matchingEntries.add(entryId);
+                        matchCount++;
+                    }
+                }
+            });
+
+            // Second pass: Show matching entries and their ancestors
+            allEntries.forEach(entry => {
+                const entryId = entry.getAttribute('data-entry-id');
+                const isMatch = matchingEntries.has(entryId);
+                const hasMatchingDescendant = this.hasMatchingDescendant(entry, matchingEntries);
+
+                if (isMatch || hasMatchingDescendant) {
+                    entry.classList.remove('hidden-by-filter');
+
+                    // Auto-expand entries with matching descendants
+                    if (hasMatchingDescendant && entryId) {
+                        this.treeSync.updateTreeNode(entryId, true, true);
+                    }
+                } else {
+                    entry.classList.add('hidden-by-filter');
+                }
+            });
+
+            // Highlight matching text
+            this.highlightMatches(query, matchingEntries);
+
+            // Update results count
+            this.updateResultCount(matchCount);
+        }
+
+        hasMatchingDescendant(entry, matchingEntries) {
+            const children = entry.querySelectorAll('.sidebar-tree-entry');
+            for (const child of children) {
+                const childId = child.getAttribute('data-entry-id');
+                if (matchingEntries.has(childId)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        highlightMatches(query, matchingEntries) {
+            const searchLower = query.toLowerCase();
+
+            matchingEntries.forEach(entryId => {
+                const entry = document.querySelector(`.sidebar-tree-entry[data-entry-id="${entryId}"]`);
+                if (!entry) return;
+
+                const link = entry.querySelector('.sidebar-entry-link');
+                if (!link) return;
+
+                const originalText = link.textContent.trim();
+                const lowerText = originalText.toLowerCase();
+                const startIndex = lowerText.indexOf(searchLower);
+
+                if (startIndex !== -1) {
+                    const before = originalText.substring(0, startIndex);
+                    const match = originalText.substring(startIndex, startIndex + query.length);
+                    const after = originalText.substring(startIndex + query.length);
+
+                    link.innerHTML = `${this.escapeHtml(before)}<span class="search-highlight">${this.escapeHtml(match)}</span>${this.escapeHtml(after)}`;
+                }
+            });
+        }
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        updateResultCount(count) {
+            if (!this.resultsCount) return;
+
+            if (count > 0) {
+                this.resultsCount.textContent = `${count} ${count === 1 ? 'result' : 'results'} found`;
+                this.resultsCount.hidden = false;
+            } else if (this.isFiltering) {
+                this.resultsCount.textContent = 'No results found';
+                this.resultsCount.hidden = false;
+            } else {
+                this.resultsCount.hidden = true;
+            }
+        }
+
+        clearFilter() {
+            // Clear input
+            if (this.searchInput) {
+                this.searchInput.value = '';
+            }
+
+            // Hide clear button
+            if (this.clearBtn) {
+                this.clearBtn.hidden = true;
+            }
+
+            // Show all entries
+            const allEntries = document.querySelectorAll('.sidebar-tree-entry');
+            allEntries.forEach(entry => {
+                entry.classList.remove('hidden-by-filter');
+            });
+
+            // Remove highlights
+            const links = document.querySelectorAll('.sidebar-entry-link');
+            links.forEach(link => {
+                const highlighted = link.querySelector('.search-highlight');
+                if (highlighted) {
+                    link.textContent = link.textContent; // Reset to plain text
+                }
+            });
+
+            // Restore original expanded state
+            if (this.isFiltering) {
+                // Collapse all first
+                const allEntryIds = [];
+                allEntries.forEach(entry => {
+                    const entryId = entry.getAttribute('data-entry-id');
+                    if (entryId) allEntryIds.push(entryId);
+                });
+
+                allEntryIds.forEach(entryId => {
+                    const shouldBeExpanded = this.originalExpandedState.has(entryId);
+                    this.treeSync.updateTreeNode(entryId, shouldBeExpanded, true);
+                });
+
+                this.isFiltering = false;
+            }
+
+            // Hide results count
+            this.updateResultCount(0);
+
+            // Return focus to input
+            if (this.searchInput) {
+                this.searchInput.focus();
             }
         }
     }
@@ -371,19 +596,43 @@
         const state = new TreeState();
         const treeSync = new TreeSync(state);
         const sidebarManager = new SidebarManager(state);
+        const searchFilter = new SidebarSearchFilter(treeSync);
         const highlighter = new CurrentEntryHighlighter();
 
         // Expose treeSync globally for current entry highlighting
         window.treeSync = treeSync;
 
+        // Connect search filter to sidebar manager
+        sidebarManager.setSearchFilter(searchFilter);
+
         // Initialize sidebar
         sidebarManager.init();
+
+        // Initialize search filter
+        searchFilter.init();
 
         // Restore expanded state
         treeSync.restoreState();
 
         // Highlight current entry
         highlighter.highlight();
+
+        // Keyboard shortcut: Ctrl/Cmd+F to focus search (when sidebar is open)
+        document.addEventListener('keydown', (e) => {
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const isCtrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+
+            if (isCtrlOrCmd && e.key === 'f') {
+                const sidebar = document.getElementById('encyclopedia-sidebar');
+                const searchInput = document.getElementById('sidebar-search-input');
+
+                // Only intercept if sidebar is open and search input exists
+                if (sidebar && sidebar.classList.contains('open') && searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            }
+        });
 
         // Event listeners for tree toggles in main tree
         document.querySelectorAll('.tree-toggle').forEach(toggle => {
