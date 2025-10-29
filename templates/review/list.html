@@ -4,204 +4,165 @@
 {% block title %}Reviews - Food Table{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">Reviews</h1>
-        <p class="lead">Browse our restaurant reviews</p>
-    </div>
-</div>
-
-<!-- Filter Form -->
+<!-- Page Header -->
 <div class="row mb-4">
     <div class="col-12">
-        <form method="get" id="filterForm" class="border p-3 bg-light">
-            <div class="row g-3">
-                <!-- Rating Range -->
-                <div class="col-md-6">
-                    <label class="form-label">Rating Range: <span id="rating_min_value">{{ filter_params.rating_min|default:"0" }}</span> - <span id="rating_max_value">{{ filter_params.rating_max|default:"100" }}</span></label>
-                    <div id="rating-slider" style="margin: 20px 10px;"></div>
-                    <input type="hidden" id="rating_min" name="rating_min" value="{{ filter_params.rating_min|default:"0" }}">
-                    <input type="hidden" id="rating_max" name="rating_max" value="{{ filter_params.rating_max|default:"100" }}">
-                </div>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2">Reviews</h1>
+                <p class="lead mb-0">Browse our restaurant reviews</p>
+            </div>
+            <div class="d-flex gap-2">
+                {% if user.is_staff %}
+                <!-- Admin: Create New Review Button (Desktop) -->
+                <a href="{% url 'admin:content_review_add' %}" class="btn btn-success d-none d-md-inline-flex align-items-center gap-1">
+                    <i class="bi bi-plus-circle"></i> Create New Review
+                </a>
+                <!-- Admin: Create New Review Button (Mobile - Icon only) -->
+                <a href="{% url 'admin:content_review_add' %}" class="btn btn-success d-md-none" title="Create New Review">
+                    <i class="bi bi-plus-circle"></i>
+                </a>
+                {% endif %}
+                <!-- Mobile Filter Button -->
+                <button class="btn btn-primary d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar" aria-controls="filterSidebar">
+                    <i class="bi bi-funnel"></i> Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-                <!-- Restaurant Name -->
-                <div class="col-md-6">
-                    <label for="restaurant" class="form-label">Restaurant</label>
-                    <select class="form-select" id="restaurant" name="restaurant">
-                        <option value="">All Restaurants</option>
-                        {% for restaurant in restaurant_options %}
-                        <option value="{{ restaurant }}" {% if filter_params.restaurant == restaurant %}selected{% endif %}>
-                            {{ restaurant }}
-                        </option>
-                        {% endfor %}
-                    </select>
+<div class="row">
+    <!-- Filter Sidebar (Desktop: visible, Mobile: offcanvas) -->
+    <div class="col-md-3">
+        <!-- Desktop Sidebar -->
+        <div class="d-none d-md-block">
+            <div class="card shadow-sm mb-4" style="position: sticky; top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter Reviews</h5>
                 </div>
-
-                <!-- Date Range -->
-                <div class="col-md-3">
-                    <label for="date_from" class="form-label">Visit Date From</label>
-                    <input type="date" class="form-control" id="date_from" name="date_from"
-                           value="{{ filter_params.date_from }}">
-                </div>
-                <div class="col-md-3">
-                    <label for="date_to" class="form-label">Visit Date To</label>
-                    <input type="date" class="form-control" id="date_to" name="date_to"
-                           value="{{ filter_params.date_to }}">
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label d-block">Quick Date Ranges:</label>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(7)">Last Week</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(30)">Last Month</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRange(90)">Last 3 Months</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setDateRangeThisYear()">This Year</button>
-                    </div>
-                </div>
-
-                <!-- Tags -->
-                <div class="col-12">
-                    <label class="form-label d-block">Tags (select all that apply):</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        {% for tag in tag_options %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="tags" value="{{ tag }}" id="tag_{{ forloop.counter }}"
-                                   {% if tag in filter_params.tags %}checked{% endif %}>
-                            <label class="form-check-label" for="tag_{{ forloop.counter }}">
-                                {{ tag }}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Sort Order -->
-                <div class="col-md-6">
-                    <label for="sort" class="form-label">Sort by</label>
-                    <select class="form-select" id="sort" name="sort" onchange="document.getElementById('filterForm').submit()">
-                        <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>Date: Newest First</option>
-                        <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>Date: Oldest First</option>
-                        <option value="rating_desc" {% if filter_params.sort == 'rating_desc' %}selected{% endif %}>Rating: High to Low</option>
-                        <option value="rating_asc" {% if filter_params.sort == 'rating_asc' %}selected{% endif %}>Rating: Low to High</option>
-                        <option value="name_asc" {% if filter_params.sort == 'name_asc' %}selected{% endif %}>Restaurant: A-Z</option>
-                        <option value="name_desc" {% if filter_params.sort == 'name_desc' %}selected{% endif %}>Restaurant: Z-A</option>
-                    </select>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary">Apply Filters</button>
-                    <a href="{% url 'content:review_list' %}" class="btn btn-secondary">Clear Filters</a>
+                <div class="card-body p-0">
+                    {% include 'review/_filter_form.html' %}
                 </div>
             </div>
-        </form>
-    </div>
-</div>
+        </div>
 
-<!-- Active Filters Display -->
-{% if active_filters %}
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="text-muted">Active filters:</span>
-            {% for filter in active_filters %}
-            <span class="badge bg-primary d-flex align-items-center gap-1">
-                <strong>{{ filter.label }}:</strong> {{ filter.value }}
-                <a href="{{ filter.remove_url }}" class="text-white text-decoration-none" title="Remove this filter">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-            </span>
-            {% endfor %}
-            <a href="{% url 'content:review_list' %}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-x-circle"></i> Clear All Filters
-            </a>
+        <!-- Mobile Offcanvas -->
+        <div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="filterSidebar" aria-labelledby="filterSidebarLabel">
+            <div class="offcanvas-header bg-primary text-white">
+                <h5 class="offcanvas-title" id="filterSidebarLabel"><i class="bi bi-funnel"></i> Filter Reviews</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-0">
+                {% include 'review/_filter_form.html' %}
+            </div>
         </div>
     </div>
-</div>
-{% endif %}
 
-<!-- Review Count Indicator -->
-<div class="row mb-3">
-    <div class="col-12">
+    <!-- Main Content Area -->
+    <div class="col-md-9">
+        <!-- Active Filters Display -->
         {% if active_filters %}
-            <p class="text-muted">
-                Showing <strong>{{ paginator.count }}</strong> of <strong>{{ total_reviews }}</strong> reviews
-            </p>
-        {% else %}
-            <p class="text-muted">
-                Showing <strong>{{ total_reviews }}</strong> reviews
-            </p>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Reviews Grid -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% for review in reviews %}
-    <div class="col">
-        {% include 'components/review_card.html' with review=review %}
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">
-            No reviews found. Create some reviews in the admin panel to get started.
+        <div class="mb-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted">Active filters:</span>
+                {% for filter in active_filters %}
+                <span class="badge bg-primary d-flex align-items-center gap-1">
+                    <strong>{{ filter.label }}:</strong> {{ filter.value }}
+                    <a href="{{ filter.remove_url }}" class="text-white text-decoration-none" title="Remove this filter">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span>
+                {% endfor %}
+                <a href="{% url 'content:review_list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear All
+                </a>
+            </div>
         </div>
+        {% endif %}
+
+        <!-- Review Count Indicator -->
+        <div class="mb-3">
+            {% if active_filters %}
+                <p class="text-muted mb-0">
+                    Showing <strong>{{ paginator.count }}</strong> of <strong>{{ total_reviews }}</strong> reviews
+                </p>
+            {% else %}
+                <p class="text-muted mb-0">
+                    <strong>{{ total_reviews }}</strong> reviews
+                </p>
+            {% endif %}
+        </div>
+
+        <!-- Reviews Grid -->
+        <div class="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-4 mb-4">
+            {% for review in reviews %}
+            <div class="col">
+                {% include 'components/review_card.html' with review=review %}
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No reviews found matching your filters. Try adjusting your search criteria.
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page=1" aria-label="First">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;&laquo;</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;&raquo;</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
     </div>
-    {% endfor %}
 </div>
-
-<!-- Pagination -->
-{% if is_paginated %}
-<nav aria-label="Page navigation" class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page=1" aria-label="First">
-                <span aria-hidden="true">&laquo;&laquo;</span>
-            </a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link">&laquo;&laquo;</span>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">&laquo;</span>
-        </li>
-        {% endif %}
-
-        <li class="page-item active">
-            <span class="page-link">
-                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-            </span>
-        </li>
-
-        {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
-            </a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Last">
-                <span aria-hidden="true">&raquo;&raquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link">&raquo;</span>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">&raquo;&raquo;</span>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -214,6 +175,8 @@
 // Initialize noUiSlider for rating range
 document.addEventListener('DOMContentLoaded', function() {
     var ratingSlider = document.getElementById('rating-slider');
+    if (!ratingSlider) return;
+
     var ratingMinInput = document.getElementById('rating_min');
     var ratingMaxInput = document.getElementById('rating_max');
     var ratingMinValue = document.getElementById('rating_min_value');
@@ -268,5 +231,16 @@ function formatDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
+
+// Auto-close offcanvas on form submit (mobile)
+document.getElementById('filterForm').addEventListener('submit', function() {
+    var offcanvasElement = document.getElementById('filterSidebar');
+    if (offcanvasElement) {
+        var offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+        if (offcanvas) {
+            offcanvas.hide();
+        }
+    }
+});
 </script>
 {% endblock %}

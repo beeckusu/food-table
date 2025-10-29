@@ -85,6 +85,15 @@ class Encyclopedia(models.Model):
 
         return ancestors
 
+    def get_depth(self):
+        """
+        Calculate depth level in hierarchy (0 for root entries).
+        Uses get_ancestors() which includes cycle detection.
+        """
+        if not self.parent:
+            return 0
+        return len(self.get_ancestors())
+
     def get_hierarchy_breadcrumb(self, separator=' > '):
         """
         Get the hierarchy breadcrumb string for this entry.

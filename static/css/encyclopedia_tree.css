@@ -1,0 +1,773 @@
+/* Encyclopedia Tree View Styles */
+
+/* Tree Container */
+.encyclopedia-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.encyclopedia-tree ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Tree Entry Base Styles */
+.tree-entry {
+    position: relative;
+    margin-bottom: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+}
+
+.tree-entry-content {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    min-height: 44px; /* WCAG mobile touch target */
+    gap: 0.75rem;
+}
+
+.tree-entry:hover {
+    transform: translateX(2px);
+}
+
+/* Depth-Based Color Coding (WCAG AA Compliant) */
+.tree-entry[data-depth="0"] {
+    border-left: 4px solid #1e40af; /* Deep Blue */
+    background: rgba(30, 64, 175, 0.05);
+}
+
+.tree-entry[data-depth="0"]:hover {
+    background: rgba(30, 64, 175, 0.1);
+}
+
+.tree-entry[data-depth="1"] {
+    border-left: 4px solid #059669; /* Green */
+    background: rgba(5, 150, 105, 0.05);
+    margin-left: 1.5rem;
+}
+
+.tree-entry[data-depth="1"]:hover {
+    background: rgba(5, 150, 105, 0.1);
+}
+
+.tree-entry[data-depth="2"] {
+    border-left: 4px solid #d97706; /* Amber */
+    background: rgba(217, 119, 6, 0.05);
+    margin-left: 3rem;
+}
+
+.tree-entry[data-depth="2"]:hover {
+    background: rgba(217, 119, 6, 0.1);
+}
+
+.tree-entry[data-depth="3"],
+.tree-entry[data-depth="4"],
+.tree-entry[data-depth="5"],
+.tree-entry[data-depth="6"],
+.tree-entry[data-depth="7"],
+.tree-entry[data-depth="8"],
+.tree-entry[data-depth="9"] {
+    border-left: 4px solid #6b7280; /* Gray */
+    background: rgba(107, 114, 128, 0.05);
+}
+
+.tree-entry[data-depth="3"]:hover,
+.tree-entry[data-depth="4"]:hover,
+.tree-entry[data-depth="5"]:hover,
+.tree-entry[data-depth="6"]:hover,
+.tree-entry[data-depth="7"]:hover,
+.tree-entry[data-depth="8"]:hover,
+.tree-entry[data-depth="9"]:hover {
+    background: rgba(107, 114, 128, 0.1);
+}
+
+.tree-entry[data-depth="3"] { margin-left: 4.5rem; }
+.tree-entry[data-depth="4"] { margin-left: 6rem; }
+.tree-entry[data-depth="5"] { margin-left: 7.5rem; }
+.tree-entry[data-depth="6"] { margin-left: 9rem; }
+.tree-entry[data-depth="7"] { margin-left: 10.5rem; }
+.tree-entry[data-depth="8"] { margin-left: 12rem; }
+.tree-entry[data-depth="9"] { margin-left: 13.5rem; }
+
+/* Expand/Collapse Button */
+.tree-toggle {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 0.25rem;
+    color: #4b5563;
+    transition: all 0.2s ease;
+}
+
+.tree-toggle:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+}
+
+.tree-toggle:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.tree-toggle i {
+    font-size: 1rem;
+    transition: transform 0.2s ease;
+}
+
+/* Placeholder for entries without children */
+.tree-toggle-placeholder {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* Entry Icons */
+.tree-icon {
+    font-size: 1.25rem;
+    min-width: 1.5rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.tree-icon.folder-icon {
+    color: #d97706;
+}
+
+.tree-icon.leaf-icon {
+    color: #3b82f6;
+}
+
+/* Entry Name Link */
+.tree-entry-link {
+    flex: 1;
+    text-decoration: none;
+    color: #1f2937;
+    font-weight: 500;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.tree-entry-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.tree-entry-link:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+}
+
+/* Child Count Badge */
+.child-count-badge {
+    background: #e5e7eb;
+    color: #374151;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* Children Container */
+.tree-children {
+    margin-top: 0.25rem;
+}
+
+.tree-children.collapsed {
+    display: none;
+}
+
+/* Control Buttons */
+.tree-controls {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.tree-control-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+}
+
+.tree-control-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.tree-control-btn:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.tree-control-btn i {
+    margin-right: 0.5rem;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+    /* Reduce indentation on mobile */
+    .tree-entry[data-depth="1"] { margin-left: 1rem; }
+    .tree-entry[data-depth="2"] { margin-left: 2rem; }
+    .tree-entry[data-depth="3"] { margin-left: 3rem; }
+    .tree-entry[data-depth="4"] { margin-left: 4rem; }
+    .tree-entry[data-depth="5"] { margin-left: 5rem; }
+    .tree-entry[data-depth="6"] { margin-left: 6rem; }
+    .tree-entry[data-depth="7"] { margin-left: 7rem; }
+    .tree-entry[data-depth="8"] { margin-left: 8rem; }
+    .tree-entry[data-depth="9"] { margin-left: 9rem; }
+
+    .tree-entry-content {
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .tree-entry-link {
+        font-size: 0.875rem;
+    }
+
+    .tree-icon {
+        font-size: 1rem;
+    }
+}
+
+/* Accessibility: High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .tree-entry[data-depth="0"] {
+        border-left-width: 6px;
+    }
+
+    .tree-entry[data-depth="1"],
+    .tree-entry[data-depth="2"],
+    .tree-entry[data-depth="3"] {
+        border-left-width: 5px;
+    }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .tree-entry,
+    .tree-toggle,
+    .tree-toggle i,
+    .tree-control-btn {
+        transition: none;
+    }
+
+    .tree-entry:hover {
+        transform: none;
+    }
+}
+
+/* ============================================
+   SIDEBAR NAVIGATION STYLES
+   ============================================ */
+
+/* Main Wrapper Layout */
+.encyclopedia-main-wrapper {
+    margin-left: 0;
+    transition: margin-left 0.3s ease;
+}
+
+.encyclopedia-main-wrapper.sidebar-open {
+    margin-left: 0;
+}
+
+@media (min-width: 768px) {
+    .encyclopedia-main-wrapper.sidebar-open {
+        margin-left: 280px;
+    }
+}
+
+/* Sidebar Container */
+.encyclopedia-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    background: #ffffff;
+    border-right: 1px solid #e5e7eb;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.encyclopedia-sidebar.open {
+    transform: translateX(0);
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    flex-shrink: 0;
+}
+
+/* Sidebar Search */
+.sidebar-search {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
+.sidebar-search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    pointer-events: none;
+}
+
+.sidebar-search-input {
+    flex: 1;
+    padding: 0.5rem 2.5rem 0.5rem 2.25rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: #1f2937;
+    background: #ffffff;
+    transition: all 0.15s ease;
+    min-height: 36px;
+}
+
+.sidebar-search-input:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 0;
+    border-color: #2563eb;
+}
+
+.sidebar-search-input::placeholder {
+    color: #9ca3af;
+}
+
+.sidebar-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    transition: all 0.15s ease;
+}
+
+.sidebar-search-clear:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+}
+
+.sidebar-search-clear:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.sidebar-search-clear i {
+    font-size: 1rem;
+}
+
+.sidebar-search-results-count {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-align: center;
+    background: #f3f4f6;
+    border-radius: 0.25rem;
+}
+
+.sidebar-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.sidebar-close-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    transition: color 0.2s ease;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.sidebar-close-btn:hover {
+    color: #1f2937;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-close-btn:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (min-width: 768px) {
+    .sidebar-close-btn {
+        display: none;
+    }
+}
+
+/* Sidebar Content */
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+}
+
+.sidebar-empty {
+    padding: 1rem;
+    color: #6b7280;
+    text-align: center;
+}
+
+/* Sidebar Tree Styles */
+.sidebar-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-tree ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Sidebar Tree Entry */
+.sidebar-tree-entry {
+    position: relative;
+    margin-bottom: 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.sidebar-entry-content {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+    min-height: 40px;
+    border-radius: 0.25rem;
+    transition: background 0.15s ease;
+}
+
+.sidebar-entry-content:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+/* Compact depth-based indentation */
+.sidebar-tree-entry[data-depth="1"] .sidebar-entry-content {
+    padding-left: 1.5rem;
+}
+
+.sidebar-tree-entry[data-depth="2"] .sidebar-entry-content {
+    padding-left: 2.5rem;
+}
+
+.sidebar-tree-entry[data-depth="3"] .sidebar-entry-content {
+    padding-left: 3.5rem;
+}
+
+.sidebar-tree-entry[data-depth="4"] .sidebar-entry-content {
+    padding-left: 4.5rem;
+}
+
+.sidebar-tree-entry[data-depth="5"] .sidebar-entry-content {
+    padding-left: 5.5rem;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-tree-toggle {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    border-radius: 0.25rem;
+    color: #6b7280;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-tree-toggle:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+}
+
+.sidebar-tree-toggle:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.sidebar-tree-toggle i {
+    font-size: 0.875rem;
+    transition: transform 0.15s ease;
+}
+
+.sidebar-tree-toggle-placeholder {
+    min-width: 24px;
+    min-height: 24px;
+    flex-shrink: 0;
+}
+
+/* Sidebar Icons */
+.sidebar-tree-icon {
+    font-size: 1rem;
+    min-width: 1.25rem;
+    text-align: center;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.sidebar-tree-icon.folder-icon {
+    color: #d97706;
+}
+
+.sidebar-tree-icon.leaf-icon {
+    color: #3b82f6;
+}
+
+/* Sidebar Entry Link */
+.sidebar-entry-link {
+    flex: 1;
+    text-decoration: none;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Search Highlight */
+.search-highlight {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.125rem;
+    font-weight: 600;
+}
+
+/* Hidden by Filter */
+.hidden-by-filter {
+    display: none !important;
+}
+
+.sidebar-entry-link:hover {
+    color: #2563eb;
+}
+
+.sidebar-entry-link:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+}
+
+/* Current Entry Highlighting */
+.sidebar-entry-link.current-entry {
+    color: #2563eb;
+    font-weight: 600;
+    background: rgba(37, 99, 235, 0.1);
+    padding: 0.25rem 0.5rem;
+    margin: -0.25rem -0.5rem;
+    border-radius: 0.25rem;
+}
+
+.tree-entry-link.current-entry {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+/* Sidebar Children Container */
+.sidebar-tree-children {
+    margin-top: 0.125rem;
+}
+
+.sidebar-tree-children.collapsed {
+    display: none;
+}
+
+/* Sidebar Toggle Button (Fixed) */
+.sidebar-toggle-btn {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1050;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle-btn:hover {
+    background: #f9fafb;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-toggle-btn:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.sidebar-toggle-btn i {
+    font-size: 1.25rem;
+    color: #374151;
+}
+
+/* Move toggle button when sidebar is open on desktop */
+@media (min-width: 768px) {
+    .encyclopedia-sidebar.open ~ .sidebar-toggle-btn {
+        left: 296px;
+    }
+}
+
+/* Sidebar Backdrop (Mobile Only) */
+.sidebar-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1030;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+    .sidebar-backdrop {
+        display: none;
+    }
+}
+
+/* Mobile Specific Styles */
+@media (max-width: 767px) {
+    .encyclopedia-sidebar {
+        width: 85vw;
+        max-width: 320px;
+    }
+
+    .sidebar-content {
+        padding: 0.75rem;
+    }
+
+    .sidebar-tree-entry[data-depth="1"] .sidebar-entry-content {
+        padding-left: 1.25rem;
+    }
+
+    .sidebar-tree-entry[data-depth="2"] .sidebar-entry-content {
+        padding-left: 2rem;
+    }
+
+    .sidebar-tree-entry[data-depth="3"] .sidebar-entry-content {
+        padding-left: 2.75rem;
+    }
+
+    .sidebar-tree-entry[data-depth="4"] .sidebar-entry-content {
+        padding-left: 3.5rem;
+    }
+
+    .sidebar-tree-entry[data-depth="5"] .sidebar-entry-content {
+        padding-left: 4.25rem;
+    }
+}
+
+/* Accessibility: Reduced Motion for Sidebar */
+@media (prefers-reduced-motion: reduce) {
+    .encyclopedia-sidebar,
+    .encyclopedia-main-wrapper,
+    .sidebar-backdrop,
+    .sidebar-toggle-btn,
+    .sidebar-tree-toggle,
+    .sidebar-tree-toggle i {
+        transition: none;
+    }
+}
+
+/* Accessibility: Focus Visible */
+.sidebar-toggle-btn:focus-visible,
+.sidebar-close-btn:focus-visible,
+.sidebar-tree-toggle:focus-visible,
+.sidebar-entry-link:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+    .encyclopedia-sidebar,
+    .sidebar-toggle-btn,
+    .sidebar-backdrop {
+        display: none !important;
+    }
+
+    .encyclopedia-main-wrapper {
+        margin-left: 0 !important;
+    }
+}

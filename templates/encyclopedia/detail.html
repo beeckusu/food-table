@@ -1,9 +1,23 @@
 {% extends 'base.html' %}
 {% load admin_tags %}
+{% load static %}
 
 {% block title %}{{ entry.name }} - Encyclopedia - Food Table{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/encyclopedia_tree.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/encyclopedia_tree.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
+<!-- Sidebar Navigation -->
+{% include 'encyclopedia/_sidebar_tree.html' %}
+
+<!-- Main Content Wrapper -->
+<div class="encyclopedia-main-wrapper">
 <!-- Breadcrumb Navigation -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -174,4 +188,6 @@
         <a href="{% url 'content:encyclopedia_list' %}" class="btn btn-secondary">Back to Encyclopedia</a>
     </div>
 </div>
+
+</div><!-- End encyclopedia-main-wrapper -->
 {% endblock %}

@@ -1,0 +1,47 @@
+<li class="sidebar-tree-entry"
+    data-entry-id="{{ entry.id }}"
+    data-depth="{{ entry.depth }}"
+    role="treeitem"
+    aria-expanded="false">
+
+    <div class="sidebar-entry-content">
+        <!-- Expand/Collapse Toggle or Placeholder -->
+        {% if entry.has_children %}
+        <button type="button"
+                class="sidebar-tree-toggle"
+                aria-label="Expand {{ entry.name }}"
+                data-entry-id="{{ entry.id }}">
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+        {% else %}
+        <div class="sidebar-tree-toggle-placeholder" aria-hidden="true"></div>
+        {% endif %}
+
+        <!-- Entry Icon -->
+        {% if entry.has_children %}
+        <i class="bi bi-folder sidebar-tree-icon folder-icon" aria-hidden="true"></i>
+        {% else %}
+        <i class="bi bi-file-text sidebar-tree-icon leaf-icon" aria-hidden="true"></i>
+        {% endif %}
+
+        <!-- Entry Name (Link) -->
+        <a href="{% url 'content:encyclopedia_detail' entry.slug %}"
+           class="sidebar-entry-link"
+           data-entry-id="{{ entry.id }}">
+            {{ entry.name }}
+        </a>
+    </div>
+
+    <!-- Children Container (Initially Collapsed) -->
+    {% if entry.has_children %}
+    <div class="sidebar-tree-children collapsed"
+         id="sidebar-children-{{ entry.id }}"
+         role="group">
+        <ul>
+            {% for child in entry.children.all %}
+                {% include 'encyclopedia/_sidebar_tree_node.html' with entry=child %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</li>

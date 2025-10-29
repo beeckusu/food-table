@@ -1,0 +1,49 @@
+<li class="tree-entry" data-entry-id="{{ entry.id }}" data-depth="{{ entry.depth }}" role="treeitem" aria-expanded="false">
+    <div class="tree-entry-content">
+        <!-- Expand/Collapse Toggle or Placeholder -->
+        {% if entry.has_children %}
+        <button type="button"
+                class="tree-toggle"
+                aria-label="Expand {{ entry.name }}"
+                data-entry-id="{{ entry.id }}">
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+        {% else %}
+        <div class="tree-toggle-placeholder" aria-hidden="true"></div>
+        {% endif %}
+
+        <!-- Entry Icon -->
+        {% if entry.has_children %}
+        <i class="bi bi-folder tree-icon folder-icon" aria-hidden="true"></i>
+        {% else %}
+        <i class="bi bi-file-text tree-icon leaf-icon" aria-hidden="true"></i>
+        {% endif %}
+
+        <!-- Entry Name (Link) -->
+        <a href="{% url 'content:encyclopedia_detail' entry.slug %}"
+           class="tree-entry-link">
+            {{ entry.name }}
+        </a>
+
+        <!-- Child Count Badge -->
+        {% if entry.has_children %}
+        <span class="child-count-badge"
+              aria-label="{{ entry.children_count }} child entries">
+            {{ entry.children_count }}
+        </span>
+        {% endif %}
+    </div>
+
+    <!-- Children Container (Initially Collapsed) -->
+    {% if entry.has_children %}
+    <div class="tree-children collapsed"
+         id="children-{{ entry.id }}"
+         role="group">
+        <ul>
+            {% for child in entry.children.all %}
+                {% include 'encyclopedia/tree_node.html' with entry=child %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</li>

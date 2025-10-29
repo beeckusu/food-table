@@ -1,103 +1,134 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Encyclopedia - Food Table{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/encyclopedia_tree.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/encyclopedia_tree.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">Encyclopedia</h1>
-        <p class="lead">Browse our collection of food knowledge entries</p>
-    </div>
-</div>
+<!-- Sidebar Navigation -->
+{% include 'encyclopedia/_sidebar_tree.html' %}
 
-<!-- Entries Grid -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% for entry in entries %}
-    <div class="col">
-        <div class="card h-100">
-            {% if entry.images.all.0 %}
-            <img src="{{ entry.images.all.0.image.url }}" class="card-img-top" alt="{{ entry.name }}" style="height: 200px; object-fit: cover;">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                <span class="text-muted">No image</span>
+<!-- Main Content Wrapper -->
+<div class="encyclopedia-main-wrapper">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Encyclopedia</h1>
+            <p class="lead">Browse our hierarchical collection of food knowledge entries</p>
+        </div>
+    </div>
+
+    {% if entries %}
+    <!-- Welcome Content -->
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title">Welcome to the Food Encyclopedia</h3>
+                    <p class="card-text">
+                        Explore our comprehensive collection of food knowledge organized in a hierarchical structure.
+                        Use the sidebar navigation on the left to browse through different categories and entries.
+                    </p>
+                    <p class="card-text">
+                        Click on any entry in the sidebar to view its detailed information, including descriptions,
+                        history, cultural significance, and related content.
+                    </p>
+
+                    <h5 class="mt-4">Quick Statistics</h5>
+                    <div class="row text-center mt-3">
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded">
+                                <h4 class="text-primary">{{ entries.count }}</h4>
+                                <small class="text-muted">Top-Level Categories</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded">
+                                <h4 class="text-primary">{{ total_entries }}</h4>
+                                <small class="text-muted">Total Entries</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded">
+                                <h4 class="text-primary">{{ max_depth }}</h4>
+                                <small class="text-muted">Maximum Depth</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ entry.name }}</h5>
-                <p class="card-text">
-                    {{ entry.description|truncatewords:20 }}
-                </p>
-                {% if entry.cuisine_type %}
-                <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>
-                {% endif %}
-                {% if entry.dish_category %}
-                <span class="badge bg-info">{{ entry.dish_category }}</span>
-                {% endif %}
+
+            <!-- Top-Level Categories Preview -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h4 class="card-title">Top-Level Categories</h4>
+                    <div class="row row-cols-1 row-cols-md-2 g-3 mt-2">
+                        {% for entry in entries %}
+                        <div class="col">
+                            <div class="card h-100 border-start border-4 border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="bi bi-folder text-warning me-2"></i>
+                                        <a href="{% url 'content:encyclopedia_detail' entry.slug %}">{{ entry.name }}</a>
+                                    </h5>
+                                    {% if entry.description %}
+                                    <p class="card-text small">{{ entry.description|truncatewords:20 }}</p>
+                                    {% endif %}
+                                    {% if entry.has_children %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-diagram-3"></i> {{ entry.children_count }} sub-entries
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
-            <div class="card-footer">
-                <a href="{% url 'content:encyclopedia_detail' entry.slug %}" class="btn btn-primary btn-sm">View Details</a>
+        </div>
+
+        <!-- Sidebar Tips -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightbulb text-warning"></i> Navigation Tips
+                    </h5>
+                    <ul class="small">
+                        <li class="mb-2">Click the <i class="bi bi-list"></i> button to toggle the sidebar</li>
+                        <li class="mb-2">Click <i class="bi bi-chevron-right"></i> to expand categories</li>
+                        <li class="mb-2">Your navigation state is automatically saved</li>
+                        <li class="mb-2">On mobile, tap the sidebar icon to open navigation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-search text-primary"></i> Search
+                    </h5>
+                    <p class="card-text small">
+                        Looking for something specific? Use the search feature to quickly find entries.
+                    </p>
+                    <a href="{% url 'content:encyclopedia_search' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-search"></i> Search Encyclopedia
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">
-            No encyclopedia entries found. Create some entries in the admin panel to get started.
-        </div>
+    {% else %}
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i> No encyclopedia entries found. Create some entries in the admin panel to get started.
     </div>
-    {% endfor %}
+    {% endif %}
 </div>
-
-<!-- Pagination -->
-{% if is_paginated %}
-<nav aria-label="Page navigation" class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?page=1" aria-label="First">
-                <span aria-hidden="true">&laquo;&laquo;</span>
-            </a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link">&laquo;&laquo;</span>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">&laquo;</span>
-        </li>
-        {% endif %}
-
-        <li class="page-item active">
-            <span class="page-link">
-                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-            </span>
-        </li>
-
-        {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
-            </a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
-                <span aria-hidden="true">&raquo;&raquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link">&raquo;</span>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">&raquo;&raquo;</span>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
 {% endblock %}
