@@ -7,38 +7,128 @@
 <link rel="stylesheet" href="{% static 'css/encyclopedia_tree.css' %}">
 {% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'js/encyclopedia_tree.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">Encyclopedia</h1>
-        <p class="lead">Browse our hierarchical collection of food knowledge entries</p>
+<!-- Sidebar Navigation -->
+{% include 'encyclopedia/_sidebar_tree.html' %}
+
+<!-- Main Content Wrapper -->
+<div class="encyclopedia-main-wrapper">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Encyclopedia</h1>
+            <p class="lead">Browse our hierarchical collection of food knowledge entries</p>
+        </div>
     </div>
-</div>
 
-{% if entries %}
-<!-- Tree Controls -->
-<div class="tree-controls">
-    <button type="button" class="tree-control-btn" id="expand-all-btn" aria-label="Expand all entries">
-        <i class="bi bi-arrows-expand" aria-hidden="true"></i>
-        Expand All
-    </button>
-    <button type="button" class="tree-control-btn" id="collapse-all-btn" aria-label="Collapse all entries">
-        <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
-        Collapse All
-    </button>
-</div>
+    {% if entries %}
+    <!-- Welcome Content -->
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title">Welcome to the Food Encyclopedia</h3>
+                    <p class="card-text">
+                        Explore our comprehensive collection of food knowledge organized in a hierarchical structure.
+                        Use the sidebar navigation on the left to browse through different categories and entries.
+                    </p>
+                    <p class="card-text">
+                        Click on any entry in the sidebar to view its detailed information, including descriptions,
+                        history, cultural significance, and related content.
+                    </p>
 
-<!-- Tree View -->
-<div role="tree" aria-label="Encyclopedia entries hierarchical view">
-    <ul class="encyclopedia-tree">
-        {% for entry in entries %}
-            {% include 'encyclopedia/tree_node.html' with entry=entry %}
-        {% endfor %}
-    </ul>
+                    <h5 class="mt-4">Quick Statistics</h5>
+                    <div class="row text-center mt-3">
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded">
+                                <h4 class="text-primary">{{ entries.count }}</h4>
+                                <small class="text-muted">Top-Level Categories</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded">
+                                <h4 class="text-primary">{{ total_entries }}</h4>
+                                <small class="text-muted">Total Entries</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded">
+                                <h4 class="text-primary">{{ max_depth }}</h4>
+                                <small class="text-muted">Maximum Depth</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top-Level Categories Preview -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h4 class="card-title">Top-Level Categories</h4>
+                    <div class="row row-cols-1 row-cols-md-2 g-3 mt-2">
+                        {% for entry in entries %}
+                        <div class="col">
+                            <div class="card h-100 border-start border-4 border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <i class="bi bi-folder text-warning me-2"></i>
+                                        <a href="{% url 'content:encyclopedia_detail' entry.slug %}">{{ entry.name }}</a>
+                                    </h5>
+                                    {% if entry.description %}
+                                    <p class="card-text small">{{ entry.description|truncatewords:20 }}</p>
+                                    {% endif %}
+                                    {% if entry.has_children %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-diagram-3"></i> {{ entry.children_count }} sub-entries
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Tips -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightbulb text-warning"></i> Navigation Tips
+                    </h5>
+                    <ul class="small">
+                        <li class="mb-2">Click the <i class="bi bi-list"></i> button to toggle the sidebar</li>
+                        <li class="mb-2">Click <i class="bi bi-chevron-right"></i> to expand categories</li>
+                        <li class="mb-2">Your navigation state is automatically saved</li>
+                        <li class="mb-2">On mobile, tap the sidebar icon to open navigation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-search text-primary"></i> Search
+                    </h5>
+                    <p class="card-text small">
+                        Looking for something specific? Use the search feature to quickly find entries.
+                    </p>
+                    <a href="{% url 'content:encyclopedia_search' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-search"></i> Search Encyclopedia
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i> No encyclopedia entries found. Create some entries in the admin panel to get started.
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="alert alert-info">
-    No encyclopedia entries found. Create some entries in the admin panel to get started.
-</div>
-{% endif %}
 {% endblock %}

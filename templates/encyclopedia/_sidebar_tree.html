@@ -1,0 +1,47 @@
+<!-- Sidebar Tree Navigator -->
+<aside id="encyclopedia-sidebar"
+       class="encyclopedia-sidebar"
+       role="navigation"
+       aria-label="Encyclopedia sidebar navigation">
+
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+        <h2 class="sidebar-title">Encyclopedia</h2>
+        <button type="button"
+                id="sidebar-close-btn"
+                class="sidebar-close-btn"
+                aria-label="Close sidebar">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <!-- Sidebar Tree Content -->
+    <div class="sidebar-content">
+        {% if entries %}
+        <nav role="tree" aria-label="Encyclopedia entries navigation tree">
+            <ul class="sidebar-tree">
+                {% for entry in entries %}
+                    {% include 'encyclopedia/_sidebar_tree_node.html' with entry=entry %}
+                {% endfor %}
+            </ul>
+        </nav>
+        {% else %}
+        <div class="sidebar-empty">
+            <p>No encyclopedia entries found.</p>
+        </div>
+        {% endif %}
+    </div>
+</aside>
+
+<!-- Sidebar Toggle Button (always visible) -->
+<button type="button"
+        id="sidebar-toggle-btn"
+        class="sidebar-toggle-btn"
+        aria-label="Toggle sidebar navigation"
+        aria-expanded="false"
+        aria-controls="encyclopedia-sidebar">
+    <i class="bi bi-list" aria-hidden="true"></i>
+</button>
+
+<!-- Mobile Backdrop -->
+<div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>

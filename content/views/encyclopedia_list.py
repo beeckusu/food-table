@@ -46,4 +46,15 @@ class EncyclopediaListView(ListView):
         for entry in context['entries']:
             annotate_entry(entry)
 
+        # Add statistics
+        context['total_entries'] = Encyclopedia.objects.count()
+
+        # Calculate max depth
+        max_depth = 0
+        for entry in Encyclopedia.objects.all():
+            depth = entry.get_depth()
+            if depth > max_depth:
+                max_depth = depth
+        context['max_depth'] = max_depth + 1  # +1 because depth is 0-indexed
+
         return context
