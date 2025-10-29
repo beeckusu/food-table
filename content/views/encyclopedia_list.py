@@ -5,7 +5,8 @@ from content.models import Encyclopedia
 class EncyclopediaListView(ListView):
     """
     List view for encyclopedia entries.
-    Shows all top-level entries (parent=None) with pagination.
+    Shows all encyclopedia entries (including hierarchical children) with pagination.
+    Optimized with select_related/prefetch_related to prevent N+1 queries.
     """
     model = Encyclopedia
     template_name = 'encyclopedia/list.html'
@@ -13,5 +14,5 @@ class EncyclopediaListView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        """Filter to show only top-level entries ordered by name."""
-        return Encyclopedia.objects.filter(parent=None).order_by('name')
+        """Return all encyclopedia entries with optimized parent/child queries, ordered by name."""
+        return Encyclopedia.objects.select_related('parent').prefetch_related('children').order_by('name')
