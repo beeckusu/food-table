@@ -34,9 +34,16 @@ class EncyclopediaListView(ListView):
         """Add additional context for tree view."""
         context = super().get_context_data(**kwargs)
 
-        # Annotate each entry with computed properties for template
-        for entry in context['entries']:
+        # Recursively annotate all entries (including children) with computed properties
+        def annotate_entry(entry):
             entry.depth = entry.get_depth()
             entry.has_children = entry.children.exists()
+            # Recursively annotate children
+            for child in entry.children.all():
+                annotate_entry(child)
+
+        # Annotate root entries and all their descendants
+        for entry in context['entries']:
+            annotate_entry(entry)
 
         return context
