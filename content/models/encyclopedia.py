@@ -85,6 +85,22 @@ class Encyclopedia(models.Model):
 
         return ancestors
 
+    def get_hierarchy_breadcrumb(self, separator=' > '):
+        """
+        Get the hierarchy breadcrumb string for this entry.
+        Returns a string like "Asian > Thai > Pad Thai" where the ancestors
+        are listed from root to immediate parent (not including self).
+
+        Args:
+            separator: String to use between hierarchy levels (default: ' > ')
+
+        Returns:
+            String representation of the hierarchy path, empty string if no ancestors
+        """
+        ancestors = self.get_ancestors()
+        ancestors.reverse()  # Reverse to get root -> parent order
+        return separator.join([ancestor.name for ancestor in ancestors])
+
     def get_descendants(self):
         """
         Get all descendants of this entry recursively.

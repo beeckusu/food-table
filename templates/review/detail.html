@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load review_tags %}
 {% load admin_tags %}
+{% load static %}
 
 {% block title %}{{ review.restaurant_name }} - Reviews - Food Table{% endblock %}
 
@@ -88,17 +89,45 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
                                 <h5 class="mb-1">
-                                    {% if dish.encyclopedia_entry %}
-                                    <a href="{% url 'content:encyclopedia_detail' dish.encyclopedia_entry.slug %}">
-                                        {{ dish.encyclopedia_entry.name }}
-                                    </a>
-                                    {% elif dish.dish_name %}
+                                    {% if dish.dish_name %}
                                     {{ dish.dish_name }}
-                                    <span class="badge bg-secondary ms-2">Not Linked</span>
+                                    {% elif dish.encyclopedia_entry %}
+                                    {{ dish.encyclopedia_entry.name }}
                                     {% else %}
                                     <span class="text-muted">Unlinked Dish</span>
                                     {% endif %}
                                 </h5>
+                                {% if dish.encyclopedia_entry %}
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="bi bi-book"></i> Linked to:
+                                        <a href="{% url 'content:encyclopedia_detail' dish.encyclopedia_entry.slug %}" class="text-decoration-none">
+                                            <strong>{{ dish.encyclopedia_entry.name }}</strong>
+                                        </a>
+                                        {% if user.is_authenticated %}
+                                        <button class="btn btn-link btn-sm p-0 ms-1 text-danger unlink-dish-btn"
+                                                data-dish-id="{{ dish.id }}"
+                                                style="font-size: 0.75rem; text-decoration: none;"
+                                                title="Unlink encyclopedia entry">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                {% elif dish.dish_name %}
+                                <div class="mb-2">
+                                    {% if user.is_authenticated %}
+                                    <button class="badge bg-secondary border-0 link-dish-btn"
+                                            data-dish-id="{{ dish.id }}"
+                                            data-dish-name="{{ dish.dish_name }}"
+                                            style="cursor: pointer;">
+                                        <i class="bi bi-link-45deg"></i> Link to Encyclopedia
+                                    </button>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Not Linked</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                                 {% if dish.dish_rating %}
                                 <div class="mb-2">
                                     {{ dish.dish_rating|rating_to_stars }}
@@ -190,4 +219,13 @@
         <a href="{% url 'content:review_list' %}" class="btn btn-secondary">Back to Reviews</a>
     </div>
 </div>
+
+<!-- Include Encyclopedia Link Modal -->
+{% include 'components/encyclopedia_link_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if user.is_authenticated %}
+<script src="{% static 'js/encyclopedia_link.js' %}"></script>
+{% endif %}
 {% endblock %}
