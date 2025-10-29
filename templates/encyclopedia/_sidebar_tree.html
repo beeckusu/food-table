@@ -15,6 +15,32 @@
         </button>
     </div>
 
+    <!-- Sidebar Search -->
+    <div class="sidebar-search">
+        <div class="sidebar-search-input-wrapper">
+            <i class="bi bi-search sidebar-search-icon" aria-hidden="true"></i>
+            <input type="search"
+                   id="sidebar-search-input"
+                   class="sidebar-search-input"
+                   placeholder="Search entries..."
+                   aria-label="Search encyclopedia entries"
+                   autocomplete="off">
+            <button type="button"
+                    id="sidebar-search-clear"
+                    class="sidebar-search-clear"
+                    aria-label="Clear search"
+                    hidden>
+                <i class="bi bi-x" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div id="sidebar-search-results-count"
+             class="sidebar-search-results-count"
+             role="status"
+             aria-live="polite"
+             hidden>
+        </div>
+    </div>
+
     <!-- Sidebar Tree Content -->
     <div class="sidebar-content">
         {% if entries %}

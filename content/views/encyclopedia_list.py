@@ -21,11 +21,19 @@ class EncyclopediaListView(ListView):
         - Annotated with children count
         - Ordered by name
         """
+        # Recursively prefetch all descendants (up to reasonable depth)
+        # We need to prefetch each level separately for the tree to work in templates
         return (
             Encyclopedia.objects
             .filter(parent__isnull=True)  # Only root entries
             .select_related('parent')
-            .prefetch_related('children')
+            .prefetch_related(
+                'children',
+                'children__children',
+                'children__children__children',
+                'children__children__children__children',
+                'children__children__children__children__children',
+            )
             .annotate(children_count=Count('children'))
             .order_by('name')
         )
