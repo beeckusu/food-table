@@ -1,103 +1,44 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Encyclopedia - Food Table{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/encyclopedia_tree.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">Encyclopedia</h1>
-        <p class="lead">Browse our collection of food knowledge entries</p>
+        <p class="lead">Browse our hierarchical collection of food knowledge entries</p>
     </div>
 </div>
 
-<!-- Entries Grid -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% for entry in entries %}
-    <div class="col">
-        <div class="card h-100">
-            {% if entry.images.all.0 %}
-            <img src="{{ entry.images.all.0.image.url }}" class="card-img-top" alt="{{ entry.name }}" style="height: 200px; object-fit: cover;">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                <span class="text-muted">No image</span>
-            </div>
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ entry.name }}</h5>
-                <p class="card-text">
-                    {{ entry.description|truncatewords:20 }}
-                </p>
-                {% if entry.cuisine_type %}
-                <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>
-                {% endif %}
-                {% if entry.dish_category %}
-                <span class="badge bg-info">{{ entry.dish_category }}</span>
-                {% endif %}
-            </div>
-            <div class="card-footer">
-                <a href="{% url 'content:encyclopedia_detail' entry.slug %}" class="btn btn-primary btn-sm">View Details</a>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">
-            No encyclopedia entries found. Create some entries in the admin panel to get started.
-        </div>
-    </div>
-    {% endfor %}
+{% if entries %}
+<!-- Tree Controls -->
+<div class="tree-controls">
+    <button type="button" class="tree-control-btn" id="expand-all-btn" aria-label="Expand all entries">
+        <i class="bi bi-arrows-expand" aria-hidden="true"></i>
+        Expand All
+    </button>
+    <button type="button" class="tree-control-btn" id="collapse-all-btn" aria-label="Collapse all entries">
+        <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+        Collapse All
+    </button>
 </div>
 
-<!-- Pagination -->
-{% if is_paginated %}
-<nav aria-label="Page navigation" class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?page=1" aria-label="First">
-                <span aria-hidden="true">&laquo;&laquo;</span>
-            </a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link">&laquo;&laquo;</span>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">&laquo;</span>
-        </li>
-        {% endif %}
-
-        <li class="page-item active">
-            <span class="page-link">
-                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-            </span>
-        </li>
-
-        {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
-            </a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
-                <span aria-hidden="true">&raquo;&raquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link">&raquo;</span>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">&raquo;&raquo;</span>
-        </li>
-        {% endif %}
+<!-- Tree View -->
+<div role="tree" aria-label="Encyclopedia entries hierarchical view">
+    <ul class="encyclopedia-tree">
+        {% for entry in entries %}
+            {% include 'encyclopedia/tree_node.html' with entry=entry %}
+        {% endfor %}
     </ul>
-</nav>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No encyclopedia entries found. Create some entries in the admin panel to get started.
+</div>
 {% endif %}
 {% endblock %}
