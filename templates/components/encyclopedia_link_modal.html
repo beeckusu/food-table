@@ -1,0 +1,29 @@
+<!-- Encyclopedia Link Modal -->
+{% if user.is_authenticated %}
+<div class="modal fade" id="encyclopediaLinkModal" tabindex="-1" aria-labelledby="encyclopediaLinkModalLabel" aria-hidden="true" data-search-url="{% url 'content:api_encyclopedia_search' %}">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="encyclopediaLinkModalLabel">Link Dish to Encyclopedia Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="encyclopediaSearch" class="form-label">Search for dish: <strong id="currentDishName"></strong></label>
+                    <input type="text" class="form-control" id="encyclopediaSearch" placeholder="Start typing to search...">
+                    <div class="form-text">Search by name or description</div>
+                </div>
+                <div id="searchResults" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Results will be populated here -->
+                </div>
+                <div id="searchStatus" class="text-muted text-center py-3" style="display: none;">
+                    <!-- Status messages -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

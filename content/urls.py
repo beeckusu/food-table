@@ -13,4 +13,7 @@ urlpatterns = [
     path('reviews/<int:pk>/', views.ReviewDetailView.as_view(), name='review_detail'),
     path('recipes/', views.RecipeListView.as_view(), name='recipe_list'),
     path('recipes/<slug:slug>/', views.RecipeDetailView.as_view(), name='recipe_detail'),
+    # API endpoints
+    path('api/encyclopedia/search/', views.EncyclopediaSearchApiView.as_view(), name='api_encyclopedia_search'),
+    path('api/dishes/<int:dish_id>/link/', views.DishLinkApiView.as_view(), name='api_dish_link'),
 ]
