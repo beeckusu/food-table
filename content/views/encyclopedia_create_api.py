@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views import View
 from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
@@ -10,11 +10,16 @@ from content.models import ReviewDish, Encyclopedia
 import json
 
 
-@method_decorator(login_required, name='dispatch')
+def is_staff_user(user):
+    """Check if user is staff."""
+    return user.is_staff
+
+
+@method_decorator([login_required, user_passes_test(is_staff_user)], name='dispatch')
 class EncyclopediaCreateApiView(View):
     """
     API endpoint for creating a new Encyclopedia entry and linking it to a dish.
-    Requires authentication.
+    Requires authentication and staff permissions.
     """
 
     def post(self, request, *args, **kwargs):

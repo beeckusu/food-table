@@ -104,7 +104,7 @@
                                         <a href="{% url 'content:encyclopedia_detail' dish.encyclopedia_entry.slug %}" class="text-decoration-none">
                                             <strong>{{ dish.encyclopedia_entry.name }}</strong>
                                         </a>
-                                        {% if user.is_authenticated %}
+                                        {% if user.is_staff %}
                                         <button class="btn btn-link btn-sm p-0 ms-1 text-danger unlink-dish-btn"
                                                 data-dish-id="{{ dish.id }}"
                                                 style="font-size: 0.75rem; text-decoration: none;"
@@ -116,7 +116,7 @@
                                 </div>
                                 {% elif dish.dish_name %}
                                 <div class="mb-2">
-                                    {% if user.is_authenticated %}
+                                    {% if user.is_staff %}
                                     <button class="badge bg-secondary border-0 link-dish-btn"
                                             data-dish-id="{{ dish.id }}"
                                             data-dish-name="{{ dish.dish_name }}"
@@ -225,7 +225,7 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if user.is_authenticated %}
+{% if user.is_staff %}
 <script src="{% static 'js/encyclopedia_link.js' %}"></script>
 {% endif %}
 {% endblock %}

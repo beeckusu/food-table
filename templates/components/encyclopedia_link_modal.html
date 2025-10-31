@@ -1,5 +1,5 @@
 <!-- Encyclopedia Link Modal -->
-{% if user.is_authenticated %}
+{% if user.is_staff %}
 <div class="modal fade" id="encyclopediaLinkModal" tabindex="-1" aria-labelledby="encyclopediaLinkModalLabel" aria-hidden="true" data-search-url="{% url 'content:api_encyclopedia_search' %}">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
