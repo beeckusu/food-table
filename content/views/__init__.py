@@ -3,6 +3,7 @@ from .encyclopedia_list import EncyclopediaListView
 from .encyclopedia_detail import EncyclopediaDetailView
 from .encyclopedia_search import EncyclopediaSearchView
 from .encyclopedia_search_api import EncyclopediaSearchApiView
+from .encyclopedia_suggest_api import EncyclopediaSuggestApiView
 from .encyclopedia_create_api import EncyclopediaCreateApiView
 from .dish_link_api import DishLinkApiView
 from .review_list import ReviewListView
@@ -17,6 +18,7 @@ __all__ = [
     'EncyclopediaDetailView',
     'EncyclopediaSearchView',
     'EncyclopediaSearchApiView',
+    'EncyclopediaSuggestApiView',
     'EncyclopediaCreateApiView',
     'DishLinkApiView',
     'ReviewListView',
