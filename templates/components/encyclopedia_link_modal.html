@@ -8,20 +8,91 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label for="encyclopediaSearch" class="form-label">Search for dish: <strong id="currentDishName"></strong></label>
-                    <input type="text" class="form-control" id="encyclopediaSearch" placeholder="Start typing to search...">
-                    <div class="form-text">Search by name or description</div>
+                <!-- Search Section -->
+                <div id="searchSection">
+                    <div class="mb-3">
+                        <label for="encyclopediaSearch" class="form-label">Search for dish: <strong id="currentDishName"></strong></label>
+                        <input type="text" class="form-control" id="encyclopediaSearch" placeholder="Start typing to search...">
+                        <div class="form-text">Search by name or description</div>
+                    </div>
+                    <div id="searchResults" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Results will be populated here -->
+                    </div>
+                    <div id="searchStatus" class="text-muted text-center py-3" style="display: none;">
+                        <!-- Status messages -->
+                    </div>
                 </div>
-                <div id="searchResults" class="list-group" style="max-height: 400px; overflow-y: auto;">
-                    <!-- Results will be populated here -->
-                </div>
-                <div id="searchStatus" class="text-muted text-center py-3" style="display: none;">
-                    <!-- Status messages -->
+
+                <!-- Create New Entry Form -->
+                <div id="createEntrySection" style="display: none;">
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-link p-0 mb-3" id="backToSearch">
+                            <i class="bi bi-arrow-left"></i> Back to search
+                        </button>
+                    </div>
+                    <h6 class="mb-3">Create New Encyclopedia Entry</h6>
+                    <form id="createEntryForm">
+                        <div class="mb-3">
+                            <label for="entryName" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="entryName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryDescription" class="form-label">Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="entryDescription" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryCuisineType" class="form-label">Cuisine Type</label>
+                            <input type="text" class="form-control" id="entryCuisineType" placeholder="e.g., Thai, Italian, Chinese">
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryDishCategory" class="form-label">Dish Category</label>
+                            <input type="text" class="form-control" id="entryDishCategory" placeholder="e.g., Noodles, Soup, Dessert">
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryRegion" class="form-label">Region</label>
+                            <input type="text" class="form-control" id="entryRegion" placeholder="e.g., Northern Thailand, Southern Italy">
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryCulturalSignificance" class="form-label">Cultural Significance</label>
+                            <textarea class="form-control" id="entryCulturalSignificance" rows="3" placeholder="Describe the cultural importance or traditions..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryPopularExamples" class="form-label">Popular Examples</label>
+                            <textarea class="form-control" id="entryPopularExamples" rows="2" placeholder="List well-known examples or variations..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryHistory" class="form-label">History</label>
+                            <textarea class="form-control" id="entryHistory" rows="3" placeholder="Describe the historical background..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entryParentSearch" class="form-label">Parent Entry (Optional)</label>
+                            <input type="text" class="form-control" id="entryParentSearch" placeholder="Search for parent entry...">
+                            <div class="form-text">Link this entry under a broader category</div>
+                            <div id="parentSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                <!-- Parent search results will be populated here -->
+                            </div>
+                            <div id="selectedParent" class="alert alert-info mt-2" style="display: none;">
+                                <strong>Selected:</strong> <span id="selectedParentName"></span>
+                                <button type="button" class="btn-close float-end" id="clearParent" aria-label="Clear"></button>
+                            </div>
+                        </div>
+                        <div id="createFormError" class="alert alert-danger" style="display: none;"></div>
+                    </form>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div id="searchFooter" class="w-100">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="showCreateFormBtn" style="display: none;">
+                        <i class="bi bi-plus-circle"></i> Create New Entry
+                    </button>
+                </div>
+                <div id="createFooter" class="w-100" style="display: none;">
+                    <button type="button" class="btn btn-secondary" id="cancelCreate">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveAndLinkBtn">
+                        <i class="bi bi-check-circle"></i> Save & Link
+                    </button>
+                </div>
             </div>
         </div>
     </div>

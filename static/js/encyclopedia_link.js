@@ -1,5 +1,5 @@
 // Encyclopedia Link Modal JavaScript
-// Handles linking/unlinking dishes to encyclopedia entries
+// Handles linking/unlinking dishes to encyclopedia entries and creating new entries
 
 document.addEventListener('DOMContentLoaded', function() {
     const modalElement = document.getElementById('encyclopediaLinkModal');
@@ -10,10 +10,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('searchResults');
     const searchStatus = document.getElementById('searchStatus');
     const currentDishNameEl = document.getElementById('currentDishName');
+
+    // Create form elements
+    const searchSection = document.getElementById('searchSection');
+    const createEntrySection = document.getElementById('createEntrySection');
+    const searchFooter = document.getElementById('searchFooter');
+    const createFooter = document.getElementById('createFooter');
+    const showCreateFormBtn = document.getElementById('showCreateFormBtn');
+    const backToSearchBtn = document.getElementById('backToSearch');
+    const cancelCreateBtn = document.getElementById('cancelCreate');
+    const saveAndLinkBtn = document.getElementById('saveAndLinkBtn');
+    const createEntryForm = document.getElementById('createEntryForm');
+    const createFormError = document.getElementById('createFormError');
+
+    // Form fields
+    const entryNameInput = document.getElementById('entryName');
+    const entryDescriptionInput = document.getElementById('entryDescription');
+    const entryCuisineTypeInput = document.getElementById('entryCuisineType');
+    const entryDishCategoryInput = document.getElementById('entryDishCategory');
+    const entryRegionInput = document.getElementById('entryRegion');
+    const entryCulturalSignificanceInput = document.getElementById('entryCulturalSignificance');
+    const entryPopularExamplesInput = document.getElementById('entryPopularExamples');
+    const entryHistoryInput = document.getElementById('entryHistory');
+    const entryParentSearchInput = document.getElementById('entryParentSearch');
+    const parentSearchResults = document.getElementById('parentSearchResults');
+    const selectedParentDiv = document.getElementById('selectedParent');
+    const selectedParentNameSpan = document.getElementById('selectedParentName');
+    const clearParentBtn = document.getElementById('clearParent');
+
     let currentDishId = null;
     let currentDishName = null;
     let searchTimeout = null;
+    let parentSearchTimeout = null;
     let selectedIndex = -1;
+    let selectedParentId = null;
 
     // Open modal when "Link to Encyclopedia" button is clicked
     function attachLinkHandlers() {
@@ -24,6 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentDishNameEl.textContent = currentDishName;
                 searchInput.value = '';
                 selectedIndex = -1;
+                showCreateFormBtn.style.display = 'inline-block';
                 modal.show();
                 // Focus on search input
                 setTimeout(() => searchInput.focus(), 100);
@@ -53,7 +84,49 @@ document.addEventListener('DOMContentLoaded', function() {
         currentDishId = null;
         currentDishName = null;
         selectedIndex = -1;
+        resetToSearchView();
     });
+
+    // Show/hide create form functions
+    function showCreateForm() {
+        searchSection.style.display = 'none';
+        createEntrySection.style.display = 'block';
+        searchFooter.style.display = 'none';
+        createFooter.style.display = 'block';
+
+        // Pre-populate name with dish name
+        entryNameInput.value = currentDishName || '';
+        entryDescriptionInput.value = '';
+        entryCuisineTypeInput.value = '';
+        entryDishCategoryInput.value = '';
+        entryRegionInput.value = '';
+        entryCulturalSignificanceInput.value = '';
+        entryPopularExamplesInput.value = '';
+        entryHistoryInput.value = '';
+        entryParentSearchInput.value = '';
+        selectedParentId = null;
+        selectedParentDiv.style.display = 'none';
+        parentSearchResults.style.display = 'none';
+        createFormError.style.display = 'none';
+
+        // Focus on description field since name is pre-filled
+        setTimeout(() => entryDescriptionInput.focus(), 100);
+    }
+
+    function resetToSearchView() {
+        searchSection.style.display = 'block';
+        createEntrySection.style.display = 'none';
+        searchFooter.style.display = 'block';
+        createFooter.style.display = 'none';
+        showCreateFormBtn.style.display = 'none';
+        createEntryForm.reset();
+        selectedParentId = null;
+    }
+
+    // Button handlers
+    showCreateFormBtn.addEventListener('click', showCreateForm);
+    backToSearchBtn.addEventListener('click', resetToSearchView);
+    cancelCreateBtn.addEventListener('click', resetToSearchView);
 
     // Debounced search
     searchInput.addEventListener('input', function() {
@@ -64,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
             searchResults.innerHTML = '';
             searchStatus.style.display = 'block';
             searchStatus.innerHTML = '<em>Type at least 2 characters to search</em>';
+            showCreateFormBtn.style.display = 'inline-block';
             return;
         }
 
@@ -121,8 +195,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     searchResults.innerHTML = '';
                     searchStatus.style.display = 'block';
                     searchStatus.innerHTML = '<em>No results found</em>';
+                    showCreateFormBtn.style.display = 'inline-block';
                     return;
                 }
+
+                // Keep create button visible even with results
+                showCreateFormBtn.style.display = 'inline-block';
 
                 selectedIndex = -1;
                 searchResults.innerHTML = data.results.map(entry => `
@@ -262,6 +340,162 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Error', 'Failed to unlink dish', 'danger');
         });
     }
+
+    // Parent search autocomplete
+    entryParentSearchInput.addEventListener('input', function() {
+        clearTimeout(parentSearchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            parentSearchResults.style.display = 'none';
+            parentSearchResults.innerHTML = '';
+            return;
+        }
+
+        parentSearchTimeout = setTimeout(() => {
+            const apiUrl = document.getElementById('encyclopediaLinkModal').dataset.searchUrl;
+
+            fetch(`${apiUrl}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.results.length === 0) {
+                        parentSearchResults.style.display = 'none';
+                        return;
+                    }
+
+                    parentSearchResults.style.display = 'block';
+                    parentSearchResults.innerHTML = data.results.map(entry => `
+                        <button type="button" class="list-group-item list-group-item-action parent-result"
+                                data-parent-id="${entry.id}"
+                                data-parent-name="${entry.name}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <span>${entry.name}</span>
+                                ${entry.cuisine_type ? `<small class="badge bg-info">${entry.cuisine_type}</small>` : ''}
+                            </div>
+                            ${entry.hierarchy ? `<small class="text-muted">${entry.hierarchy}</small>` : ''}
+                        </button>
+                    `).join('');
+
+                    // Add click handlers to parent results
+                    document.querySelectorAll('.parent-result').forEach(item => {
+                        item.addEventListener('click', function() {
+                            selectedParentId = this.dataset.parentId;
+                            selectedParentNameSpan.textContent = this.dataset.parentName;
+                            selectedParentDiv.style.display = 'block';
+                            parentSearchResults.style.display = 'none';
+                            entryParentSearchInput.value = '';
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Parent search error:', error);
+                    parentSearchResults.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    // Clear parent selection
+    clearParentBtn.addEventListener('click', function() {
+        selectedParentId = null;
+        selectedParentDiv.style.display = 'none';
+        entryParentSearchInput.value = '';
+    });
+
+    // Save & Link button handler
+    saveAndLinkBtn.addEventListener('click', function() {
+        // Validate form
+        const name = entryNameInput.value.trim();
+        const description = entryDescriptionInput.value.trim();
+
+        if (!name || !description) {
+            createFormError.textContent = 'Name and Description are required';
+            createFormError.style.display = 'block';
+            return;
+        }
+
+        createFormError.style.display = 'none';
+
+        // Disable button to prevent double submission
+        saveAndLinkBtn.disabled = true;
+        saveAndLinkBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                         getCookie('csrftoken');
+
+        // Prepare data
+        const data = {
+            name: name,
+            description: description,
+            cuisine_type: entryCuisineTypeInput.value.trim() || '',
+            dish_category: entryDishCategoryInput.value.trim() || '',
+            region: entryRegionInput.value.trim() || '',
+            cultural_significance: entryCulturalSignificanceInput.value.trim() || '',
+            popular_examples: entryPopularExamplesInput.value.trim() || '',
+            history: entryHistoryInput.value.trim() || '',
+            dish_id: currentDishId
+        };
+
+        if (selectedParentId) {
+            data.parent_id = selectedParentId;
+        }
+
+        // Call create API
+        fetch('/api/encyclopedia/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            saveAndLinkBtn.disabled = false;
+            saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+
+            if (data.success) {
+                // Update the UI
+                const dishBtn = document.querySelector(`.link-dish-btn[data-dish-id="${currentDishId}"]`);
+                if (dishBtn) {
+                    const container = dishBtn.closest('.mb-2');
+
+                    // Replace the link button with the encyclopedia link display
+                    container.innerHTML = `
+                        <small class="text-muted">
+                            <i class="bi bi-book"></i> Linked to:
+                            <a href="/encyclopedia/${data.encyclopedia.slug}/" class="text-decoration-none">
+                                <strong>${data.encyclopedia.name}</strong>
+                            </a>
+                            <button class="btn btn-link btn-sm p-0 ms-1 text-danger unlink-dish-btn"
+                                    data-dish-id="${currentDishId}"
+                                    style="font-size: 0.75rem; text-decoration: none;"
+                                    title="Unlink encyclopedia entry">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </small>
+                    `;
+
+                    // Re-attach unlink handlers
+                    attachUnlinkHandlers();
+                }
+                modal.hide();
+
+                // Show success message
+                showToast('Success', `Created and linked ${data.encyclopedia.name}`, 'success');
+            } else {
+                createFormError.textContent = data.error || 'Failed to create entry';
+                createFormError.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Create error:', error);
+            saveAndLinkBtn.disabled = false;
+            saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+            createFormError.textContent = 'Failed to create entry';
+            createFormError.style.display = 'block';
+        });
+    });
 
     function getCookie(name) {
         let cookieValue = null;
