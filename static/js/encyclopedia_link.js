@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('searchResults');
     const searchStatus = document.getElementById('searchStatus');
     const currentDishNameEl = document.getElementById('currentDishName');
+    const suggestedMatchesSection = document.getElementById('suggestedMatchesSection');
+    const suggestedMatches = document.getElementById('suggestedMatches');
 
     // Create form elements
     const searchSection = document.getElementById('searchSection');
@@ -56,6 +58,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedIndex = -1;
                 showCreateFormBtn.style.display = 'inline-block';
                 modal.show();
+                // Load suggestions based on dish name
+                loadSuggestions(currentDishName);
                 // Focus on search input
                 setTimeout(() => searchInput.focus(), 100);
             });
@@ -81,6 +85,8 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.value = '';
         searchResults.innerHTML = '';
         searchStatus.style.display = 'none';
+        suggestedMatchesSection.style.display = 'none';
+        suggestedMatches.innerHTML = '';
         currentDishId = null;
         currentDishName = null;
         selectedIndex = -1;
@@ -181,6 +187,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.classList.remove('active');
             }
         });
+    }
+
+    function loadSuggestions(dishName) {
+        if (!dishName || dishName.trim().length === 0) {
+            suggestedMatchesSection.style.display = 'none';
+            return;
+        }
+
+        fetch(`/api/encyclopedia/suggest/?dish_name=${encodeURIComponent(dishName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.suggestions.length === 0) {
+                    suggestedMatchesSection.style.display = 'none';
+                    return;
+                }
+
+                suggestedMatchesSection.style.display = 'block';
+                suggestedMatches.innerHTML = data.suggestions.map(entry => `
+                    <button type="button" class="list-group-item list-group-item-action suggestion-result"
+                            data-entry-id="${entry.id}"
+                            data-entry-name="${entry.name}"
+                            data-entry-slug="${entry.slug}">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${entry.name}</h6>
+                                ${entry.hierarchy ? `<small class="text-muted">${entry.hierarchy}</small>` : ''}
+                            </div>
+                            <span class="badge bg-success">${Math.round(entry.similarity * 100)}%</span>
+                        </div>
+                        ${entry.description ? `<p class="mb-0 mt-1 small text-muted">${entry.description}</p>` : ''}
+                    </button>
+                `).join('');
+
+                // Add click handlers to suggestions
+                document.querySelectorAll('.suggestion-result').forEach(item => {
+                    item.addEventListener('click', function() {
+                        linkDishToEncyclopedia(
+                            currentDishId,
+                            this.dataset.entryId,
+                            this.dataset.entryName,
+                            this.dataset.entrySlug
+                        );
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Suggestion loading error:', error);
+                suggestedMatchesSection.style.display = 'none';
+            });
     }
 
     function performSearch(query) {
