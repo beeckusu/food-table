@@ -1,17 +1,22 @@
 from django.http import JsonResponse
 from django.views import View
 from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import get_object_or_404
 from content.models import ReviewDish, Encyclopedia
 import json
 
 
-@method_decorator(login_required, name='dispatch')
+def is_staff_user(user):
+    """Check if user is staff."""
+    return user.is_staff
+
+
+@method_decorator([login_required, user_passes_test(is_staff_user)], name='dispatch')
 class DishLinkApiView(View):
     """
     API endpoint for linking a ReviewDish to an Encyclopedia entry.
-    Requires authentication.
+    Requires authentication and staff permissions.
     """
 
     def post(self, request, dish_id, *args, **kwargs):
