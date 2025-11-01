@@ -1,4 +1,22 @@
 <form method="get" id="filterForm">
+    <!-- Search Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-search"></i> Search</h6>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="search" name="search"
+                   placeholder="Search reviews..."
+                   value="{{ filter_params.search }}">
+            {% if filter_params.search %}
+            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('search').value=''; document.getElementById('filterForm').submit();">
+                <i class="bi bi-x"></i>
+            </button>
+            {% endif %}
+        </div>
+        <div class="form-text small mt-1">
+            Search restaurant names, dishes, and review notes
+        </div>
+    </div>
+
     <!-- Rating Section -->
     <div class="border-bottom p-3">
         <h6 class="mb-3"><i class="bi bi-star-fill text-warning"></i> Rating Range</h6>
@@ -68,7 +86,12 @@
     <div class="border-bottom p-3">
         <h6 class="mb-3"><i class="bi bi-sort-down"></i> Sort By</h6>
         <select class="form-select form-select-sm" id="sort" name="sort">
+            {% if filter_params.search %}
+            <option value="relevance" {% if filter_params.sort == 'relevance' or not filter_params.sort %}selected{% endif %}>Relevance</option>
+            <option value="date_desc" {% if filter_params.sort == 'date_desc' %}selected{% endif %}>Date: Newest First</option>
+            {% else %}
             <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>Date: Newest First</option>
+            {% endif %}
             <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>Date: Oldest First</option>
             <option value="rating_desc" {% if filter_params.sort == 'rating_desc' %}selected{% endif %}>Rating: High to Low</option>
             <option value="rating_asc" {% if filter_params.sort == 'rating_asc' %}selected{% endif %}>Rating: Low to High</option>

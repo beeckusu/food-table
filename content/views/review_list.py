@@ -1,6 +1,7 @@
 from django.views.generic import ListView
 from django.http import QueryDict
-from django.db.models import Count
+from django.db.models import Count, F
+from django.contrib.postgres.search import SearchQuery, SearchRank
 from content.models import Review, ReviewTag
 from content.forms import ReviewFilterForm
 
@@ -48,12 +49,13 @@ class ReviewListView(ListView):
 
         return form
 
-    def _get_sort_order(self, sort_key):
+    def _get_sort_order(self, sort_key, has_search=False):
         """
         Get the order_by fields based on sort parameter.
 
         Args:
             sort_key: Sort key from form cleaned_data
+            has_search: Whether a search query is active
 
         Returns:
             list: List of field names to pass to order_by()
@@ -66,11 +68,12 @@ class ReviewListView(ListView):
             'date_asc': ['visit_date', 'entry_time'],
             'name_asc': ['restaurant_name'],
             'name_desc': ['-restaurant_name'],
+            'relevance': ['-rank'],  # Only available when search is active
         }
 
-        # Default to newest first if no sort key
+        # Default to relevance when searching, otherwise newest first
         if not sort_key:
-            sort_key = 'date_desc'
+            sort_key = 'relevance' if has_search else 'date_desc'
 
         return sort_mapping.get(sort_key, ['-visit_date', '-entry_time'])
 
@@ -116,6 +119,18 @@ class ReviewListView(ListView):
         """
         active_filters = []
         cleaned_data = getattr(self.filter_form, 'cleaned_data', {})
+
+        # Search filter
+        if cleaned_data.get('search'):
+            remove_url = self._build_filter_query_string(
+                self.filter_form,
+                exclude_filters=['search']
+            )
+            active_filters.append({
+                'label': 'Search',
+                'value': cleaned_data['search'],
+                'remove_url': f"?{remove_url}" if remove_url else "?"
+            })
 
         # Restaurant filter
         if cleaned_data.get('restaurant'):
@@ -234,6 +249,15 @@ class ReviewListView(ListView):
         # Apply filters from cleaned_data (automatically validated)
         cleaned_data = getattr(self.filter_form, 'cleaned_data', {})
 
+        # Text search filter
+        if cleaned_data.get('search'):
+            search_query = SearchQuery(cleaned_data['search'])
+            queryset = queryset.annotate(
+                rank=SearchRank(F('search_vector'), search_query)
+            ).filter(
+                search_vector=search_query
+            )
+
         # Restaurant filter
         if cleaned_data.get('restaurant'):
             queryset = queryset.filter(restaurant_name__iexact=cleaned_data['restaurant'])
@@ -264,7 +288,8 @@ class ReviewListView(ListView):
             )
 
         # Apply sorting
-        order_by_fields = self._get_sort_order(cleaned_data.get('sort'))
+        has_search = bool(cleaned_data.get('search'))
+        order_by_fields = self._get_sort_order(cleaned_data.get('sort'), has_search=has_search)
         return queryset.order_by(*order_by_fields)
 
     def _get_restaurant_options(self):
