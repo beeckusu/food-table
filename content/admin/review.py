@@ -6,6 +6,14 @@ from content.models import Review, ReviewDish, ReviewTag, Image
 from .inlines import ImageInline
 
 
+class DishImageInline(GenericTabularInline):
+    """Inline for managing images attached to dishes"""
+    model = Image
+    extra = 1
+    fields = ['image', 'caption', 'alt_text', 'order']
+    ordering = ['order']
+
+
 class ReviewDishInline(admin.TabularInline):
     """Inline for managing dishes attached to reviews"""
     model = ReviewDish
@@ -73,3 +81,27 @@ class ReviewAdmin(admin.ModelAdmin):
         if not change:  # Only set on creation, not on update
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(ReviewDish)
+class ReviewDishAdmin(admin.ModelAdmin):
+    """Admin interface for ReviewDish model"""
+
+    list_display = ['dish_name', 'review', 'dish_rating', 'cost']
+    list_filter = ['dish_rating', 'review__visit_date']
+    search_fields = ['dish_name', 'notes', 'review__restaurant_name']
+    autocomplete_fields = ['encyclopedia_entry', 'review']
+
+    fieldsets = (
+        ('Dish Information', {
+            'fields': ('review', 'dish_name', 'encyclopedia_entry')
+        }),
+        ('Rating and Cost', {
+            'fields': ('dish_rating', 'cost')
+        }),
+        ('Notes', {
+            'fields': ('notes',)
+        }),
+    )
+
+    inlines = [DishImageInline]

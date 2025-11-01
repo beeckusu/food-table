@@ -6,6 +6,7 @@ from .encyclopedia_search_api import EncyclopediaSearchApiView
 from .encyclopedia_suggest_api import EncyclopediaSuggestApiView
 from .encyclopedia_create_api import EncyclopediaCreateApiView
 from .dish_link_api import DishLinkApiView
+from .dish_image_api import DishImageUploadApiView
 from .review_list import ReviewListView
 from .review_detail import ReviewDetailView
 from .recipe_list import RecipeListView
@@ -21,6 +22,7 @@ __all__ = [
     'EncyclopediaSuggestApiView',
     'EncyclopediaCreateApiView',
     'DishLinkApiView',
+    'DishImageUploadApiView',
     'ReviewListView',
     'ReviewDetailView',
     'RecipeListView',
