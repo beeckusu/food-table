@@ -68,6 +68,49 @@ class Review(models.Model):
             return f"{self.title} - {self.restaurant_name}"
         return f"{self.restaurant_name} ({self.visit_date})"
 
+    def save(self, *args, **kwargs):
+        """
+        Override save to auto-calculate overall rating from dish ratings when not provided.
+        """
+        # Auto-calculate rating if not provided (None, 0, or empty)
+        if not self.rating:
+            # If this is a new instance, we can't access related dishes yet
+            # So we need to save first, then update the rating
+            is_new = self.pk is None
+
+            if is_new:
+                # For new reviews, use default neutral rating
+                # It will be recalculated after dishes are added
+                self.rating = 50
+                # Mark as auto-calculated
+                self.metadata['rating_auto_calculated'] = True
+            else:
+                # For existing reviews, calculate from current dish ratings
+                self.rating = self._calculate_rating_from_dishes()
+                # Mark as auto-calculated
+                self.metadata['rating_auto_calculated'] = True
+
+        super().save(*args, **kwargs)
+
+    def _calculate_rating_from_dishes(self):
+        """
+        Calculate overall rating as the average of all dish ratings.
+
+        Returns:
+            int: Average rating (0-100), or 50 if no rated dishes exist
+        """
+        # Get all dish ratings that are not None
+        dish_ratings = self.review_dishes.filter(
+            dish_rating__isnull=False
+        ).values_list('dish_rating', flat=True)
+
+        if dish_ratings:
+            # Calculate average and round to nearest integer
+            return round(sum(dish_ratings) / len(dish_ratings))
+
+        # Default to neutral rating if no rated dishes
+        return 50
+
     def get_display_image(self):
         """
         Get the best image to display for this review.
