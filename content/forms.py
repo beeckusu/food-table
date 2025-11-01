@@ -5,6 +5,17 @@ class ReviewFilterForm(forms.Form):
     """
     Form for filtering and sorting reviews on the review list page.
     """
+    # Text search filter
+    search = forms.CharField(
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'id': 'search',
+            'placeholder': 'Search reviews...'
+        })
+    )
+
     # Rating range filters
     rating_min = forms.IntegerField(
         required=False,
@@ -51,6 +62,10 @@ class ReviewFilterForm(forms.Form):
         ('name_asc', 'Restaurant: A-Z'),
         ('name_desc', 'Restaurant: Z-A'),
     ]
+
+    SORT_CHOICES_WITH_RELEVANCE = [
+        ('relevance', 'Relevance'),
+    ] + SORT_CHOICES
     sort = forms.ChoiceField(
         required=False,
         choices=SORT_CHOICES,
@@ -82,6 +97,13 @@ class ReviewFilterForm(forms.Form):
         # Set tag choices
         if tag_choices:
             self.fields['tags'].choices = tag_choices
+
+        # Add relevance sort option if search is active
+        if self.data and self.data.get('search'):
+            self.fields['sort'].choices = self.SORT_CHOICES_WITH_RELEVANCE
+            # Default to relevance when searching
+            if not self.data.get('sort'):
+                self.initial['sort'] = 'relevance'
 
     def clean(self):
         """
