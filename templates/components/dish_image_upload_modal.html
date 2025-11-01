@@ -1,0 +1,62 @@
+<!-- Dish Image Upload Modal -->
+{% if user.is_staff %}
+<div class="modal fade" id="dishImageUploadModal" tabindex="-1" aria-labelledby="dishImageUploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dishImageUploadModalLabel">Upload Dish Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="dishImageUploadForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <!-- File Input -->
+                    <div class="mb-3">
+                        <label for="dishImageFile" class="form-label">Select Image <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="dishImageFile" name="image" accept="image/jpeg,image/png,image/gif,image/webp" required>
+                        <div class="form-text">Accepted formats: JPEG, PNG, GIF, WebP. Max size: 10MB</div>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div id="imagePreviewContainer" class="mb-3" style="display: none;">
+                        <label class="form-label">Preview</label>
+                        <div class="text-center">
+                            <img id="imagePreview" src="" alt="Preview" class="img-fluid rounded" style="max-height: 300px;">
+                        </div>
+                    </div>
+
+                    <!-- Caption -->
+                    <div class="mb-3">
+                        <label for="dishImageCaption" class="form-label">Caption (Optional)</label>
+                        <input type="text" class="form-control" id="dishImageCaption" name="caption" placeholder="Add a caption...">
+                    </div>
+
+                    <!-- Alt Text -->
+                    <div class="mb-3">
+                        <label for="dishImageAltText" class="form-label">Alt Text (Optional)</label>
+                        <input type="text" class="form-control" id="dishImageAltText" name="alt_text" placeholder="Describe the image for accessibility...">
+                        <div class="form-text">Helps screen readers describe the image</div>
+                    </div>
+
+                    <!-- Error Display -->
+                    <div id="uploadError" class="alert alert-danger" style="display: none;"></div>
+
+                    <!-- Success Display -->
+                    <div id="uploadSuccess" class="alert alert-success" style="display: none;">
+                        Image uploaded successfully!
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="uploadImageBtn">
+                    <span id="uploadBtnText"><i class="bi bi-upload"></i> Upload</span>
+                    <span id="uploadBtnSpinner" class="spinner-border spinner-border-sm" style="display: none;" role="status" aria-hidden="true"></span>
+                    <span id="uploadBtnLoading" style="display: none;">Uploading...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

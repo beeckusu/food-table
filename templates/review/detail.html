@@ -128,6 +128,15 @@
                                     {% endif %}
                                 </div>
                                 {% endif %}
+                                {% if user.is_staff %}
+                                <div class="mb-2">
+                                    <button class="badge bg-info border-0 upload-dish-image-btn"
+                                            data-dish-id="{{ dish.id }}"
+                                            style="cursor: pointer;">
+                                        <i class="bi bi-camera"></i> Upload Photo
+                                    </button>
+                                </div>
+                                {% endif %}
                                 {% if dish.dish_rating %}
                                 <div class="mb-2">
                                     {{ dish.dish_rating|rating_to_stars }}
@@ -222,10 +231,14 @@
 
 <!-- Include Encyclopedia Link Modal -->
 {% include 'components/encyclopedia_link_modal.html' %}
+
+<!-- Include Dish Image Upload Modal -->
+{% include 'components/dish_image_upload_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}
 {% if user.is_staff %}
 <script src="{% static 'js/encyclopedia_link.js' %}"></script>
+<script src="{% static 'js/dish_image_upload.js' %}"></script>
 {% endif %}
 {% endblock %}
