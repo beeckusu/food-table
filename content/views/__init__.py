@@ -9,6 +9,7 @@ from .dish_link_api import DishLinkApiView
 from .dish_image_api import DishImageUploadApiView
 from .review_list import ReviewListView
 from .review_detail import ReviewDetailView
+from .review_dish_list import ReviewDishListView
 from .recipe_list import RecipeListView
 from .recipe_detail import RecipeDetailView
 from .global_search import GlobalSearchView
@@ -25,6 +26,7 @@ __all__ = [
     'DishImageUploadApiView',
     'ReviewListView',
     'ReviewDetailView',
+    'ReviewDishListView',
     'RecipeListView',
     'RecipeDetailView',
     'GlobalSearchView',
