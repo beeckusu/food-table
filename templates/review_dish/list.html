@@ -1,0 +1,560 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Dishes - Food Table{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2">Review Dishes</h1>
+                <p class="lead mb-0">Browse and manage dishes from reviews</p>
+            </div>
+            <div class="d-flex gap-2">
+                <!-- Mobile Filter Button -->
+                <button class="btn btn-primary d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar" aria-controls="filterSidebar">
+                    <i class="bi bi-funnel"></i> Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Filter Sidebar (Desktop: visible, Mobile: offcanvas) -->
+    <div class="col-md-3">
+        <!-- Desktop Sidebar -->
+        <div class="d-none d-md-block">
+            <div class="card shadow-sm mb-4" style="position: sticky; top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter Dishes</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% include 'review_dish/_filter_form.html' %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Offcanvas -->
+        <div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="filterSidebar" aria-labelledby="filterSidebarLabel">
+            <div class="offcanvas-header bg-primary text-white">
+                <h5 class="offcanvas-title" id="filterSidebarLabel"><i class="bi bi-funnel"></i> Filter Dishes</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-0">
+                {% include 'review_dish/_filter_form.html' %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-md-9">
+        <!-- Active Filters Display -->
+        {% if active_filters %}
+        <div class="mb-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted">Active filters:</span>
+                {% for filter in active_filters %}
+                <span class="badge bg-primary d-flex align-items-center gap-1">
+                    <strong>{{ filter.label }}:</strong> {{ filter.value }}
+                    <a href="{{ filter.remove_url }}" class="text-white text-decoration-none" title="Remove this filter">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </span>
+                {% endfor %}
+                <a href="{% url 'content:review_dish_list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear All
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Dish Count Indicator -->
+        <div class="mb-3">
+            {% if active_filters %}
+                <p class="text-muted mb-0">
+                    Showing <strong>{{ paginator.count }}</strong> of <strong>{{ total_dishes }}</strong> dishes
+                </p>
+            {% else %}
+                <p class="text-muted mb-0">
+                    <strong>{{ total_dishes }}</strong> dishes
+                </p>
+            {% endif %}
+        </div>
+
+        <!-- Dishes Table -->
+        <div class="card shadow-sm mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="dishesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" style="width: 25%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'name_asc' %}name_desc{% else %}name_asc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                    Dish Name
+                                    {% if filter_params.sort == 'name_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'name_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="text-center" style="width: 10%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'link_asc' %}link_desc{% else %}link_asc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                                    Link
+                                    {% if filter_params.sort == 'link_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'link_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="d-none d-md-table-cell" style="width: 20%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'restaurant_asc' %}restaurant_desc{% else %}restaurant_asc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                    Restaurant
+                                    {% if filter_params.sort == 'restaurant_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'restaurant_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="text-center" style="width: 10%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'rating_desc' %}rating_asc{% else %}rating_desc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                                    Rating
+                                    {% if filter_params.sort == 'rating_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'rating_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="text-center d-none d-lg-table-cell" style="width: 10%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'cost_desc' %}cost_asc{% else %}cost_desc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                                    Cost
+                                    {% if filter_params.sort == 'cost_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'cost_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="text-center d-none d-lg-table-cell" style="width: 10%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'date_desc' %}date_asc{% else %}date_desc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                                    Visit Date
+                                    {% if filter_params.sort == 'date_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'date_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dish in review_dishes %}
+                        <tr>
+                            <!-- Dish Name -->
+                            <td>
+                                <div class="fw-semibold">
+                                    <a href="#"
+                                       class="text-decoration-none text-dark review-link"
+                                       data-review-id="{{ dish.review.id }}"
+                                       data-review-url="{% url 'content:review_detail' dish.review.id %}">
+                                        {% if dish.encyclopedia_entry %}
+                                            {{ dish.encyclopedia_entry.name }}
+                                        {% elif dish.dish_name %}
+                                            {{ dish.dish_name }}
+                                        {% else %}
+                                            <span class="text-muted fst-italic">Unnamed Dish</span>
+                                        {% endif %}
+                                    </a>
+                                </div>
+                                <!-- Mobile-only: Show restaurant name -->
+                                <div class="d-md-none small text-muted">
+                                    <i class="bi bi-shop"></i> {{ dish.review.restaurant_name }}
+                                </div>
+                                <!-- Mobile-only: Show cost and visit date -->
+                                <div class="d-lg-none small text-muted">
+                                    {% if dish.cost %}
+                                        <i class="bi bi-currency-dollar"></i> ${{ dish.cost }}
+                                        {% if dish.review.visit_date %} | {% endif %}
+                                    {% endif %}
+                                    {% if dish.review.visit_date %}
+                                        <i class="bi bi-calendar3"></i> {{ dish.review.visit_date }}
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Encyclopedia Link Status -->
+                            <td class="text-center">
+                                {% if dish.encyclopedia_entry %}
+                                    <span class="badge bg-success" title="Linked to: {{ dish.encyclopedia_entry.name }}">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
+                                    </span>
+                                {% else %}
+                                    {% if user.is_staff %}
+                                        <button type="button"
+                                                class="badge bg-warning text-dark border-0"
+                                                style="cursor: pointer;"
+                                                title="Click to link to encyclopedia"
+                                                onclick="alert('Encyclopedia linking feature coming soon!');">
+                                            <i class="bi bi-exclamation-circle-fill"></i>
+                                            <span class="d-none d-xl-inline"> Unlinked</span>
+                                        </button>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark" title="Not Linked">
+                                            <i class="bi bi-exclamation-circle-fill"></i>
+                                            <span class="d-none d-xl-inline"> Unlinked</span>
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+
+                            <!-- Restaurant (Desktop only) -->
+                            <td class="d-none d-md-table-cell">
+                                {{ dish.review.restaurant_name }}
+                            </td>
+
+                            <!-- Rating -->
+                            <td class="text-center">
+                                {% if dish.dish_rating is not None %}
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <span class="fw-semibold">{{ dish.dish_rating }}</span>
+                                    </div>
+                                    <!-- Visual rating bar -->
+                                    <div class="progress" style="height: 4px; width: 60px; margin: 2px auto 0;">
+                                        <div class="progress-bar
+                                            {% if dish.dish_rating >= 80 %}bg-success
+                                            {% elif dish.dish_rating >= 60 %}bg-info
+                                            {% elif dish.dish_rating >= 40 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                            role="progressbar"
+                                            style="width: {{ dish.dish_rating }}%"
+                                            aria-valuenow="{{ dish.dish_rating }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Cost (Large screens only) -->
+                            <td class="text-center d-none d-lg-table-cell">
+                                {% if dish.cost %}
+                                    ${{ dish.cost }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Visit Date (Large screens only) -->
+                            <td class="text-center d-none d-lg-table-cell">
+                                {% if dish.review.visit_date %}
+                                    {{ dish.review.visit_date|date:"Y-m-d" }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                                    <p class="mt-3 mb-0">No dishes found matching your filters.</p>
+                                    <p class="small">Try adjusting your search criteria.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page=1" aria-label="First">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;&laquo;</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;&raquo;</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Review Detail Modal -->
+<div class="modal fade" id="reviewDetailModal" tabindex="-1" aria-labelledby="reviewDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reviewDetailModalLabel">Review Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="reviewDetailContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="#" id="viewFullReview" class="btn btn-primary" target="_blank">View Full Page</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+<style>
+    /* Ensure table is scrollable on small screens */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Make tooltips work on mobile */
+    @media (max-width: 767.98px) {
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.4rem;
+        }
+    }
+
+    /* Sortable column link styles */
+    th a {
+        transition: background-color 0.2s;
+        padding: 0.5rem;
+        margin: -0.5rem;
+        border-radius: 0.25rem;
+    }
+
+    th a:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Dish name link hover effect */
+    td a.text-dark:hover {
+        color: var(--bs-primary) !important;
+        text-decoration: underline !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+<script>
+// Initialize noUiSlider for rating range
+document.addEventListener('DOMContentLoaded', function() {
+    var ratingSlider = document.getElementById('rating-slider');
+    if (!ratingSlider) return;
+
+    var ratingMinInput = document.getElementById('rating_min');
+    var ratingMaxInput = document.getElementById('rating_max');
+    var ratingMinValue = document.getElementById('rating_min_value');
+    var ratingMaxValue = document.getElementById('rating_max_value');
+
+    var minVal = parseInt(ratingMinInput.value) || 0;
+    var maxVal = parseInt(ratingMaxInput.value) || 100;
+
+    noUiSlider.create(ratingSlider, {
+        start: [minVal, maxVal],
+        connect: true,
+        range: {
+            'min': 0,
+            'max': 100
+        },
+        step: 1,
+        tooltips: false
+    });
+
+    ratingSlider.noUiSlider.on('update', function(values, handle) {
+        var value = Math.round(values[handle]);
+        if (handle === 0) {
+            ratingMinInput.value = value;
+            ratingMinValue.textContent = value;
+        } else {
+            ratingMaxInput.value = value;
+            ratingMaxValue.textContent = value;
+        }
+    });
+
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function setDateRange(days) {
+    const today = new Date();
+    const dateFrom = new Date();
+    dateFrom.setDate(today.getDate() - days);
+
+    document.getElementById('date_from').value = formatDate(dateFrom);
+    document.getElementById('date_to').value = formatDate(today);
+}
+
+function setDateRangeThisYear() {
+    const today = new Date();
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+
+    document.getElementById('date_from').value = formatDate(yearStart);
+    document.getElementById('date_to').value = formatDate(today);
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Auto-close offcanvas on form submit (mobile)
+var filterForm = document.getElementById('filterForm');
+if (filterForm) {
+    filterForm.addEventListener('submit', function() {
+        var offcanvasElement = document.getElementById('filterSidebar');
+        if (offcanvasElement) {
+            var offcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+            if (offcanvas) {
+                offcanvas.hide();
+            }
+        }
+    });
+}
+
+// Review detail modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const reviewLinks = document.querySelectorAll('.review-link');
+    const modal = new bootstrap.Modal(document.getElementById('reviewDetailModal'));
+    const modalContent = document.getElementById('reviewDetailContent');
+    const viewFullReviewBtn = document.getElementById('viewFullReview');
+
+    reviewLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const reviewUrl = this.getAttribute('data-review-url');
+
+            // Update "View Full Page" button
+            viewFullReviewBtn.href = reviewUrl;
+
+            // Show loading spinner
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            // Show modal
+            modal.show();
+
+            // Fetch review content
+            fetch(reviewUrl)
+                .then(response => response.text())
+                .then(html => {
+                    // Parse the HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+
+                    // Find the main content - it's in <main class="container">
+                    let content = doc.querySelector('main.container');
+
+                    if (!content) {
+                        // Fallback: try to find main tag
+                        content = doc.querySelector('main');
+                    }
+
+                    if (content) {
+                        // Clone the content
+                        const clonedContent = content.cloneNode(true);
+
+                        // Remove breadcrumb navigation
+                        const breadcrumb = clonedContent.querySelector('nav[aria-label="breadcrumb"]');
+                        if (breadcrumb) breadcrumb.remove();
+
+                        // Insert cleaned content into modal
+                        modalContent.innerHTML = clonedContent.innerHTML;
+                    } else {
+                        throw new Error('Could not find review content');
+                    }
+                })
+                .catch(error => {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Failed to load review. Please try again or <a href="${reviewUrl}">view the full page</a>.
+                        </div>
+                    `;
+                    console.error('Error loading review:', error);
+                });
+        });
+    });
+});
+</script>
+{% endblock %}

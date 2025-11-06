@@ -1,6 +1,6 @@
 from django.views.generic import ListView
 from django.http import QueryDict
-from django.db.models import Count, F, Q
+from django.db.models import F, Q, Case, When, Value, IntegerField
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from content.models import ReviewDish, Encyclopedia
 from content.forms import ReviewDishFilterForm
@@ -72,6 +72,8 @@ class ReviewDishListView(ListView):
             'name_desc': ['-dish_name'],
             'restaurant_asc': ['review__restaurant_name'],
             'restaurant_desc': ['-review__restaurant_name'],
+            'link_asc': ['encyclopedia_entry__name'],  # Nulls last for asc (unlinked at bottom)
+            'link_desc': ['-encyclopedia_entry__name'],  # Nulls first for desc (unlinked at bottom after reversing)
             'relevance': ['-rank'],  # Only available when search is active
         }
 
@@ -230,19 +232,6 @@ class ReviewDishListView(ListView):
                 'remove_url': f"?{remove_url}" if remove_url else "?"
             })
 
-        # Photo filter
-        if cleaned_data.get('has_photos') is not None:
-            remove_url = self._build_filter_query_string(
-                self.filter_form,
-                exclude_filters=['has_photos']
-            )
-            value = 'With Photos' if cleaned_data['has_photos'] else 'Without Photos'
-            active_filters.append({
-                'label': 'Photos',
-                'value': value,
-                'remove_url': f"?{remove_url}" if remove_url else "?"
-            })
-
         # Sort filter (only if not default)
         sort_value = cleaned_data.get('sort')
         if sort_value and sort_value != 'date_desc':
@@ -336,18 +325,45 @@ class ReviewDishListView(ListView):
         if cleaned_data.get('date_to'):
             queryset = queryset.filter(review__visit_date__lte=cleaned_data['date_to'])
 
-        # Photo filter
-        if cleaned_data.get('has_photos') is not None:
-            # Annotate with image count if not already done
-            queryset = queryset.annotate(image_count=Count('images'))
-            if cleaned_data['has_photos']:
-                queryset = queryset.filter(image_count__gt=0)
-            else:
-                queryset = queryset.filter(image_count=0)
-
         # Apply sorting
         has_search = bool(cleaned_data.get('search'))
-        order_by_fields = self._get_sort_order(cleaned_data.get('sort'), has_search=has_search)
+        sort_key = cleaned_data.get('sort')
+
+        # Special handling for link sorting to ensure unlinked items go to bottom
+        if sort_key in ['link_asc', 'link_desc']:
+            # Annotate with a field to push nulls to the end
+            queryset = queryset.annotate(
+                has_link=Case(
+                    When(encyclopedia_entry__isnull=True, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            )
+            if sort_key == 'link_asc':
+                # Unlinked last, then sort linked by name ascending
+                order_by_fields = ['has_link', 'encyclopedia_entry__name']
+            else:  # link_desc
+                # Unlinked last, then sort linked by name descending
+                order_by_fields = ['has_link', '-encyclopedia_entry__name']
+        # Special handling for cost sorting to ensure null costs go to bottom
+        elif sort_key in ['cost_asc', 'cost_desc']:
+            # Annotate with a field to push nulls to the end
+            queryset = queryset.annotate(
+                has_cost=Case(
+                    When(cost__isnull=True, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            )
+            if sort_key == 'cost_asc':
+                # No cost last, then sort by cost ascending
+                order_by_fields = ['has_cost', 'cost']
+            else:  # cost_desc
+                # No cost last, then sort by cost descending
+                order_by_fields = ['has_cost', '-cost']
+        else:
+            order_by_fields = self._get_sort_order(sort_key, has_search=has_search)
+
         return queryset.order_by(*order_by_fields)
 
     def _get_restaurant_options(self):

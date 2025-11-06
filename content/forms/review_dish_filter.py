@@ -88,19 +88,6 @@ class ReviewDishFilterForm(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'id': 'date_to'})
     )
 
-    # Photo filter
-    has_photos = forms.NullBooleanField(
-        required=False,
-        widget=forms.Select(
-            choices=[
-                ('', 'All Dishes'),
-                ('true', 'With Photos'),
-                ('false', 'Without Photos'),
-            ],
-            attrs={'class': 'form-select', 'id': 'has_photos'}
-        )
-    )
-
     # Sort parameter
     SORT_CHOICES = [
         ('date_desc', 'Date: Newest First'),
@@ -113,6 +100,8 @@ class ReviewDishFilterForm(forms.Form):
         ('name_desc', 'Dish Name: Z-A'),
         ('restaurant_asc', 'Restaurant: A-Z'),
         ('restaurant_desc', 'Restaurant: Z-A'),
+        ('link_asc', 'Encyclopedia Link: A-Z'),
+        ('link_desc', 'Encyclopedia Link: Z-A'),
     ]
 
     SORT_CHOICES_WITH_RELEVANCE = [
