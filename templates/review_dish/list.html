@@ -173,10 +173,10 @@
                                        class="text-decoration-none text-dark review-link"
                                        data-review-id="{{ dish.review.id }}"
                                        data-review-url="{% url 'content:review_detail' dish.review.id %}">
-                                        {% if dish.encyclopedia_entry %}
-                                            {{ dish.encyclopedia_entry.name }}
-                                        {% elif dish.dish_name %}
+                                        {% if dish.dish_name %}
                                             {{ dish.dish_name }}
+                                        {% elif dish.encyclopedia_entry %}
+                                            {{ dish.encyclopedia_entry.name }}
                                         {% else %}
                                             <span class="text-muted fst-italic">Unnamed Dish</span>
                                         {% endif %}

@@ -1,12 +1,11 @@
 from django import forms
-from content.models import Encyclopedia
 
 
 class ReviewDishFilterForm(forms.Form):
     """
     Form for filtering and sorting review dishes on the review dish list page.
     """
-    # Text search filter - searches across dish name, notes, and encyclopedia name
+    # Text search filter - searches across dish name and encyclopedia name
     search = forms.CharField(
         required=False,
         max_length=255,
@@ -14,6 +13,17 @@ class ReviewDishFilterForm(forms.Form):
             'class': 'form-control',
             'id': 'search',
             'placeholder': 'Search dishes...'
+        })
+    )
+
+    # Restaurant search filter - searches restaurant names
+    restaurant_search = forms.CharField(
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'id': 'restaurant_search',
+            'placeholder': 'Search restaurants...'
         })
     )
 
@@ -31,21 +41,6 @@ class ReviewDishFilterForm(forms.Form):
             'class': 'form-select',
             'id': 'link_status'
         })
-    )
-
-    # Restaurant name filter
-    restaurant = forms.CharField(
-        required=False,
-        max_length=255,
-        widget=forms.Select(attrs={'class': 'form-select', 'id': 'restaurant'})
-    )
-
-    # Encyclopedia entry filter
-    encyclopedia_entry = forms.ModelChoiceField(
-        required=False,
-        queryset=Encyclopedia.objects.none(),  # Will be populated in __init__
-        empty_label='All Encyclopedia Entries',
-        widget=forms.Select(attrs={'class': 'form-select', 'id': 'encyclopedia_entry'})
     )
 
     # Dish rating range filters
@@ -104,10 +99,6 @@ class ReviewDishFilterForm(forms.Form):
         ('link_desc', 'Encyclopedia Link: Z-A'),
     ]
 
-    SORT_CHOICES_WITH_RELEVANCE = [
-        ('relevance', 'Relevance'),
-    ] + SORT_CHOICES
-
     sort = forms.ChoiceField(
         required=False,
         choices=SORT_CHOICES,
@@ -118,34 +109,6 @@ class ReviewDishFilterForm(forms.Form):
             'onchange': 'document.getElementById("filterForm").submit()'
         })
     )
-
-    def __init__(self, *args, restaurant_choices=None, encyclopedia_choices=None, **kwargs):
-        """
-        Initialize form with dynamic choices for restaurant and encyclopedia entries.
-
-        Args:
-            restaurant_choices: List of (value, label) tuples for restaurant dropdown
-            encyclopedia_choices: QuerySet of Encyclopedia objects for encyclopedia dropdown
-        """
-        super().__init__(*args, **kwargs)
-
-        # Set restaurant choices
-        if restaurant_choices:
-            self.fields['restaurant'].widget = forms.Select(
-                choices=[('', 'All Restaurants')] + restaurant_choices,
-                attrs={'class': 'form-select', 'id': 'restaurant'}
-            )
-
-        # Set encyclopedia entry choices
-        if encyclopedia_choices:
-            self.fields['encyclopedia_entry'].queryset = encyclopedia_choices
-
-        # Add relevance sort option if search is active
-        if self.data and self.data.get('search'):
-            self.fields['sort'].choices = self.SORT_CHOICES_WITH_RELEVANCE
-            # Default to relevance when searching
-            if not self.data.get('sort'):
-                self.initial['sort'] = 'relevance'
 
     def clean(self):
         """
