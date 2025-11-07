@@ -1,8 +1,7 @@
 from django.views.generic import ListView
 from django.http import QueryDict
-from django.db.models import F, Q, Case, When, Value, IntegerField
-from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
-from content.models import ReviewDish, Encyclopedia
+from django.db.models import Q, Case, When, Value, IntegerField
+from content.models import ReviewDish
 from content.forms import ReviewDishFilterForm
 
 
@@ -19,24 +18,16 @@ class ReviewDishListView(ListView):
 
     def _get_filter_form(self):
         """
-        Create and validate the filter form with dynamic choices.
+        Create and validate the filter form.
 
         Returns:
             ReviewDishFilterForm: Validated form instance
         """
-        # Get dynamic choices
-        restaurant_choices = [(r, r) for r in self._get_restaurant_options()]
-        encyclopedia_choices = self._get_encyclopedia_options()
-
         # Get GET data - use None if empty to create unbound form
         get_data = self.request.GET if self.request.GET else None
 
-        # Create form with GET data and choices
-        form = ReviewDishFilterForm(
-            get_data,
-            restaurant_choices=restaurant_choices,
-            encyclopedia_choices=encyclopedia_choices
-        )
+        # Create form with GET data
+        form = ReviewDishFilterForm(get_data)
 
         # Validate form (will populate cleaned_data)
         # Even if validation fails, cleaned_data will be populated with valid fields
@@ -74,12 +65,11 @@ class ReviewDishListView(ListView):
             'restaurant_desc': ['-review__restaurant_name'],
             'link_asc': ['encyclopedia_entry__name'],  # Nulls last for asc (unlinked at bottom)
             'link_desc': ['-encyclopedia_entry__name'],  # Nulls first for desc (unlinked at bottom after reversing)
-            'relevance': ['-rank'],  # Only available when search is active
         }
 
-        # Default to relevance when searching, otherwise newest first
+        # Default to newest first
         if not sort_key:
-            sort_key = 'relevance' if has_search else 'date_desc'
+            sort_key = 'date_desc'
 
         return sort_mapping.get(sort_key, ['-review__visit_date', '-review__entry_time'])
 
@@ -125,15 +115,27 @@ class ReviewDishListView(ListView):
         active_filters = []
         cleaned_data = getattr(self.filter_form, 'cleaned_data', {})
 
-        # Search filter
+        # Dish search filter
         if cleaned_data.get('search'):
             remove_url = self._build_filter_query_string(
                 self.filter_form,
                 exclude_filters=['search']
             )
             active_filters.append({
-                'label': 'Search',
+                'label': 'Dish Search',
                 'value': cleaned_data['search'],
+                'remove_url': f"?{remove_url}" if remove_url else "?"
+            })
+
+        # Restaurant search filter
+        if cleaned_data.get('restaurant_search'):
+            remove_url = self._build_filter_query_string(
+                self.filter_form,
+                exclude_filters=['restaurant_search']
+            )
+            active_filters.append({
+                'label': 'Restaurant',
+                'value': cleaned_data['restaurant_search'],
                 'remove_url': f"?{remove_url}" if remove_url else "?"
             })
 
@@ -150,30 +152,6 @@ class ReviewDishListView(ListView):
             active_filters.append({
                 'label': 'Link Status',
                 'value': status_display,
-                'remove_url': f"?{remove_url}" if remove_url else "?"
-            })
-
-        # Restaurant filter
-        if cleaned_data.get('restaurant'):
-            remove_url = self._build_filter_query_string(
-                self.filter_form,
-                exclude_filters=['restaurant']
-            )
-            active_filters.append({
-                'label': 'Restaurant',
-                'value': cleaned_data['restaurant'],
-                'remove_url': f"?{remove_url}" if remove_url else "?"
-            })
-
-        # Encyclopedia entry filter
-        if cleaned_data.get('encyclopedia_entry'):
-            remove_url = self._build_filter_query_string(
-                self.filter_form,
-                exclude_filters=['encyclopedia_entry']
-            )
-            active_filters.append({
-                'label': 'Encyclopedia Entry',
-                'value': cleaned_data['encyclopedia_entry'].name,
                 'remove_url': f"?{remove_url}" if remove_url else "?"
             })
 
@@ -272,20 +250,19 @@ class ReviewDishListView(ListView):
         # Apply filters from cleaned_data (automatically validated)
         cleaned_data = getattr(self.filter_form, 'cleaned_data', {})
 
-        # Text search filter using PostgreSQL full-text search
+        # Dish search filter - searches dish names and encyclopedia entries
         if cleaned_data.get('search'):
-            search_query = SearchQuery(cleaned_data['search'])
+            search_term = cleaned_data['search']
+            queryset = queryset.filter(
+                Q(dish_name__icontains=search_term) |
+                Q(encyclopedia_entry__name__icontains=search_term)
+            )
 
-            # Build search vector from dish_name, notes, and encyclopedia name
-            search_vector = SearchVector('dish_name', weight='A')
-            search_vector += SearchVector('notes', weight='B')
-            search_vector += SearchVector('encyclopedia_entry__name', weight='A')
-
-            queryset = queryset.annotate(
-                search_vector_annotated=search_vector,
-                rank=SearchRank(F('search_vector_annotated'), search_query)
-            ).filter(
-                search_vector_annotated=search_query
+        # Restaurant search filter - searches restaurant names
+        if cleaned_data.get('restaurant_search'):
+            restaurant_term = cleaned_data['restaurant_search']
+            queryset = queryset.filter(
+                review__restaurant_name__icontains=restaurant_term
             )
 
         # Link status filter
@@ -295,14 +272,6 @@ class ReviewDishListView(ListView):
         elif link_status == 'unlinked':
             queryset = queryset.filter(encyclopedia_entry__isnull=True)
         # 'all' means no filter
-
-        # Restaurant filter
-        if cleaned_data.get('restaurant'):
-            queryset = queryset.filter(review__restaurant_name__iexact=cleaned_data['restaurant'])
-
-        # Encyclopedia entry filter
-        if cleaned_data.get('encyclopedia_entry'):
-            queryset = queryset.filter(encyclopedia_entry=cleaned_data['encyclopedia_entry'])
 
         # Dish rating range filters (validated by form)
         if cleaned_data.get('rating_min') is not None:
@@ -366,33 +335,6 @@ class ReviewDishListView(ListView):
 
         return queryset.order_by(*order_by_fields)
 
-    def _get_restaurant_options(self):
-        """
-        Get distinct restaurant names for dropdown.
-        Returns sorted list of unique restaurant names from dishes in public reviews.
-        """
-        restaurants = ReviewDish.objects.filter(
-            review__is_private=False
-        ).values_list('review__restaurant_name', flat=True).distinct().order_by('review__restaurant_name')
-
-        # Filter out None and empty strings
-        return [r for r in restaurants if r]
-
-    def _get_encyclopedia_options(self):
-        """
-        Get encyclopedia entries that are used in review dishes.
-        Returns queryset of Encyclopedia objects ordered by name.
-        """
-        # Get IDs of encyclopedia entries that are linked to at least one review dish
-        used_encyclopedia_ids = ReviewDish.objects.filter(
-            review__is_private=False,
-            encyclopedia_entry__isnull=False
-        ).values_list('encyclopedia_entry_id', flat=True).distinct()
-
-        return Encyclopedia.objects.filter(
-            id__in=used_encyclopedia_ids
-        ).order_by('name')
-
     def get_context_data(self, **kwargs):
         """
         Add filter form and related data to template context.
@@ -407,10 +349,6 @@ class ReviewDishListView(ListView):
 
         # Add filter query string for pagination links
         context['filter_query_string'] = self._build_filter_query_string(self.filter_form, exclude_page=True)
-
-        # Add dropdown options (still needed for custom rendering)
-        context['restaurant_options'] = self._get_restaurant_options()
-        context['encyclopedia_options'] = self._get_encyclopedia_options()
 
         # Add active filters for badge display
         context['active_filters'] = self._get_active_filters()

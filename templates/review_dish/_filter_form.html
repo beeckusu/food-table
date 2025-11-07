@@ -1,7 +1,7 @@
 <form method="get" id="filterForm">
-    <!-- Search Section -->
+    <!-- Dish Search Section -->
     <div class="border-bottom p-3">
-        <h6 class="mb-3"><i class="bi bi-search"></i> Search</h6>
+        <h6 class="mb-3"><i class="bi bi-search"></i> Search Dishes</h6>
         <div class="input-group input-group-sm">
             <input type="text" class="form-control" id="search" name="search"
                    placeholder="Search dishes..."
@@ -13,7 +13,25 @@
             {% endif %}
         </div>
         <div class="form-text small mt-1">
-            Search dish names, notes, and encyclopedia entries
+            Search dish names and encyclopedia entries
+        </div>
+    </div>
+
+    <!-- Restaurant Search Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-shop"></i> Search Restaurants</h6>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="restaurant_search" name="restaurant_search"
+                   placeholder="Search restaurants..."
+                   value="{{ filter_params.restaurant_search }}">
+            {% if filter_params.restaurant_search %}
+            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('restaurant_search').value=''; document.getElementById('filterForm').submit();">
+                <i class="bi bi-x"></i>
+            </button>
+            {% endif %}
+        </div>
+        <div class="form-text small mt-1">
+            Filter by restaurant name
         </div>
     </div>
 
@@ -24,32 +42,6 @@
             <option value="all" {% if filter_params.link_status == 'all' or not filter_params.link_status %}selected{% endif %}>All Dishes</option>
             <option value="linked" {% if filter_params.link_status == 'linked' %}selected{% endif %}>Linked to Encyclopedia</option>
             <option value="unlinked" {% if filter_params.link_status == 'unlinked' %}selected{% endif %}>Not Linked</option>
-        </select>
-    </div>
-
-    <!-- Restaurant Section -->
-    <div class="border-bottom p-3">
-        <h6 class="mb-3"><i class="bi bi-shop"></i> Restaurant</h6>
-        <select class="form-select form-select-sm" id="restaurant" name="restaurant">
-            <option value="">All Restaurants</option>
-            {% for restaurant in restaurant_options %}
-            <option value="{{ restaurant }}" {% if filter_params.restaurant == restaurant %}selected{% endif %}>
-                {{ restaurant }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
-
-    <!-- Encyclopedia Entry Section -->
-    <div class="border-bottom p-3">
-        <h6 class="mb-3"><i class="bi bi-book"></i> Encyclopedia Entry</h6>
-        <select class="form-select form-select-sm" id="encyclopedia_entry" name="encyclopedia_entry">
-            <option value="">All Entries</option>
-            {% for entry in encyclopedia_options %}
-            <option value="{{ entry.id }}" {% if filter_params.encyclopedia_entry.id == entry.id %}selected{% endif %}>
-                {{ entry.name }}
-            </option>
-            {% endfor %}
         </select>
     </div>
 
@@ -107,12 +99,7 @@
     <div class="border-bottom p-3">
         <h6 class="mb-3"><i class="bi bi-sort-down"></i> Sort By</h6>
         <select class="form-select form-select-sm" id="sort" name="sort">
-            {% if filter_params.search %}
-            <option value="relevance" {% if filter_params.sort == 'relevance' or not filter_params.sort %}selected{% endif %}>Relevance</option>
-            <option value="date_desc" {% if filter_params.sort == 'date_desc' %}selected{% endif %}>Date: Newest First</option>
-            {% else %}
             <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>Date: Newest First</option>
-            {% endif %}
             <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>Date: Oldest First</option>
             <option value="rating_desc" {% if filter_params.sort == 'rating_desc' %}selected{% endif %}>Dish Rating: High to Low</option>
             <option value="rating_asc" {% if filter_params.sort == 'rating_asc' %}selected{% endif %}>Dish Rating: Low to High</option>
