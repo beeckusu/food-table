@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedParentDiv = document.getElementById('selectedParent');
     const selectedParentNameSpan = document.getElementById('selectedParentName');
     const clearParentBtn = document.getElementById('clearParent');
+    const entrySimilarDishesSearchInput = document.getElementById('entrySimilarDishesSearch');
+    const similarDishesSearchResults = document.getElementById('similarDishesSearchResults');
+    const selectedSimilarDishesDiv = document.getElementById('selectedSimilarDishes');
+    const similarDishesChips = document.getElementById('similarDishesChips');
 
     let currentDishId = null;
     let currentDishName = null;
@@ -46,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let parentSearchTimeout = null;
     let selectedIndex = -1;
     let selectedParentId = null;
+    let similarDishesSearchTimeout = null;
+    let selectedSimilarDishes = []; // Array of {id, name} objects
 
     // Open modal when "Link to Encyclopedia" button is clicked
     function attachLinkHandlers() {
@@ -113,6 +119,10 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedParentId = null;
         selectedParentDiv.style.display = 'none';
         parentSearchResults.style.display = 'none';
+        entrySimilarDishesSearchInput.value = '';
+        selectedSimilarDishes = [];
+        selectedSimilarDishesDiv.style.display = 'none';
+        similarDishesSearchResults.style.display = 'none';
         createFormError.style.display = 'none';
 
         // Focus on description field since name is pre-filled
@@ -456,6 +466,93 @@ document.addEventListener('DOMContentLoaded', function() {
         entryParentSearchInput.value = '';
     });
 
+    // Similar dishes search autocomplete
+    entrySimilarDishesSearchInput.addEventListener('input', function() {
+        clearTimeout(similarDishesSearchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            similarDishesSearchResults.style.display = 'none';
+            similarDishesSearchResults.innerHTML = '';
+            return;
+        }
+
+        similarDishesSearchTimeout = setTimeout(() => {
+            const apiUrl = document.getElementById('encyclopediaLinkModal').dataset.searchUrl;
+
+            fetch(`${apiUrl}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.results.length === 0) {
+                        similarDishesSearchResults.style.display = 'none';
+                        return;
+                    }
+
+                    similarDishesSearchResults.style.display = 'block';
+                    similarDishesSearchResults.innerHTML = data.results.map(entry => `
+                        <button type="button" class="list-group-item list-group-item-action similar-dish-result"
+                                data-similar-id="${entry.id}"
+                                data-similar-name="${entry.name}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <span>${entry.name}</span>
+                                ${entry.cuisine_type ? `<small class="badge bg-info">${entry.cuisine_type}</small>` : ''}
+                            </div>
+                            ${entry.hierarchy ? `<small class="text-muted">${entry.hierarchy}</small>` : ''}
+                        </button>
+                    `).join('');
+
+                    // Add click handlers to similar dish results
+                    document.querySelectorAll('.similar-dish-result').forEach(item => {
+                        item.addEventListener('click', function() {
+                            const similarId = this.dataset.similarId;
+                            const similarName = this.dataset.similarName;
+
+                            // Check if already selected
+                            if (!selectedSimilarDishes.find(d => d.id === similarId)) {
+                                selectedSimilarDishes.push({ id: similarId, name: similarName });
+                                renderSimilarDishesChips();
+                            }
+
+                            similarDishesSearchResults.style.display = 'none';
+                            entrySimilarDishesSearchInput.value = '';
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Similar dishes search error:', error);
+                    similarDishesSearchResults.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    // Render selected similar dishes as chips
+    function renderSimilarDishesChips() {
+        if (selectedSimilarDishes.length === 0) {
+            selectedSimilarDishesDiv.style.display = 'none';
+            return;
+        }
+
+        selectedSimilarDishesDiv.style.display = 'block';
+        similarDishesChips.innerHTML = selectedSimilarDishes.map(dish => `
+            <span class="badge bg-primary d-flex align-items-center gap-2" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                ${dish.name}
+                <button type="button" class="btn-close btn-close-white"
+                        data-remove-similar-id="${dish.id}"
+                        style="font-size: 0.6rem;"
+                        aria-label="Remove"></button>
+            </span>
+        `).join('');
+
+        // Add click handlers to remove buttons
+        document.querySelectorAll('[data-remove-similar-id]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idToRemove = this.dataset.removeSimilarId;
+                selectedSimilarDishes = selectedSimilarDishes.filter(d => d.id !== idToRemove);
+                renderSimilarDishesChips();
+            });
+        });
+    }
+
     // Save & Link button handler
     saveAndLinkBtn.addEventListener('click', function() {
         // Validate form
@@ -493,6 +590,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (selectedParentId) {
             data.parent_id = selectedParentId;
+        }
+
+        if (selectedSimilarDishes.length > 0) {
+            data.similar_dishes_ids = selectedSimilarDishes.map(d => d.id);
         }
 
         // Call create API

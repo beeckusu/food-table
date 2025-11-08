@@ -84,6 +84,20 @@
                                 <button type="button" class="btn-close float-end" id="clearParent" aria-label="Clear"></button>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label for="entrySimilarDishesSearch" class="form-label">Similar Dishes Globally (Optional)</label>
+                            <input type="text" class="form-control" id="entrySimilarDishesSearch" placeholder="Search for similar dishes...">
+                            <div class="form-text">Link to similar dishes from other cuisines</div>
+                            <div id="similarDishesSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                <!-- Similar dishes search results will be populated here -->
+                            </div>
+                            <div id="selectedSimilarDishes" class="mt-2" style="display: none;">
+                                <strong class="d-block mb-2">Selected Similar Dishes:</strong>
+                                <div id="similarDishesChips" class="d-flex flex-wrap gap-2">
+                                    <!-- Selected similar dishes chips will be populated here -->
+                                </div>
+                            </div>
+                        </div>
                         <div id="createFormError" class="alert alert-danger" style="display: none;"></div>
                     </form>
                 </div>
