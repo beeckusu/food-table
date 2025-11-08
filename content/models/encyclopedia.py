@@ -38,9 +38,8 @@ class Encyclopedia(models.Model):
     history = models.TextField(blank=True)
     similar_dishes = models.ManyToManyField(
         'self',
-        symmetrical=False,
-        blank=True,
-        related_name='similar_to'
+        symmetrical=True,
+        blank=True
     )
 
     # Metadata Fields
