@@ -36,6 +36,7 @@ class EncyclopediaCreateApiView(View):
             "popular_examples": str (optional),
             "history": str (optional),
             "parent_id": int (optional),
+            "similar_dishes_ids": list[int] (optional - IDs of similar dishes to link),
             "dish_id": int (optional - if provided, links the dish to the entry)
         }
         """
@@ -67,6 +68,7 @@ class EncyclopediaCreateApiView(View):
             popular_examples = data.get('popular_examples', '').strip()
             history = data.get('history', '').strip()
             parent_id = data.get('parent_id')
+            similar_dishes_ids = data.get('similar_dishes_ids', [])
 
             # Get parent if provided
             parent = None
@@ -107,6 +109,19 @@ class EncyclopediaCreateApiView(View):
                 encyclopedia_entry.save()
             except ValidationError as e:
                 return JsonResponse({'error': str(e)}, status=400)
+
+            # Link similar dishes if provided
+            if similar_dishes_ids:
+                try:
+                    # Validate that all IDs exist
+                    similar_dishes = Encyclopedia.objects.filter(id__in=similar_dishes_ids)
+                    if similar_dishes.count() != len(similar_dishes_ids):
+                        return JsonResponse({'error': 'One or more similar dish IDs are invalid'}, status=400)
+
+                    # Set the similar dishes
+                    encyclopedia_entry.similar_dishes.set(similar_dishes)
+                except Exception as e:
+                    return JsonResponse({'error': f'Error linking similar dishes: {str(e)}'}, status=400)
 
             # Link the dish to the new encyclopedia entry if dish was provided
             if dish:

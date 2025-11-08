@@ -13,6 +13,10 @@ class EncyclopediaDetailView(DetailView):
     slug_field = 'slug'
     slug_url_kwarg = 'slug'
 
+    def get_queryset(self):
+        """Optimize queryset with prefetch_related for better performance."""
+        return Encyclopedia.objects.prefetch_related('similar_dishes')
+
     def get_context_data(self, **kwargs):
         """Add additional context for ancestors, children, and related content."""
         context = super().get_context_data(**kwargs)
@@ -40,6 +44,9 @@ class EncyclopediaDetailView(DetailView):
             .prefetch_related('images', 'review__images')
             .order_by('-review__visit_date', '-review__entry_time')
         )
+
+        # Add similar dishes with optimized query
+        context['similar_dishes'] = entry.similar_dishes.all().order_by('name')
 
         # Add tree entries for sidebar navigation with full tree structure
         root_entries = (
