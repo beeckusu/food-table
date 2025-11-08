@@ -193,17 +193,65 @@
     </div>
 </div>
 
-<!-- Related Reviews (Placeholder) -->
+<!-- Related Reviews -->
+{% if related_review_dishes %}
 <div class="row mt-4">
     <div class="col-12">
         <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Related Reviews</h4>
+            </div>
             <div class="card-body">
-                <h4 class="card-title">Related Reviews</h4>
-                <p class="text-muted">Reviews feature coming soon...</p>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for dish in related_review_dishes %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if dish.images.all.0 %}
+                            <img src="{{ dish.images.all.0.image.url }}" class="card-img-top" alt="{{ dish.dish_name }}" style="height: 200px; object-fit: cover;">
+                            {% elif dish.review.images.all.0 %}
+                            <img src="{{ dish.review.images.all.0.image.url }}" class="card-img-top" alt="{{ dish.review.restaurant_name }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-utensils text-white" style="font-size: 3rem;"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">
+                                    <a href="{% url 'content:review_detail' dish.review.id %}" class="text-decoration-none">{{ dish.review.restaurant_name }}</a>
+                                </h5>
+                                <p class="card-text text-muted small mb-2">
+                                    <i class="bi bi-calendar3"></i> {{ dish.review.visit_date|date:"M d, Y" }}
+                                    {% if dish.review.title %}
+                                    <br>{{ dish.review.title }}
+                                    {% endif %}
+                                </p>
+                                {% if dish.dish_name %}
+                                <p class="card-text mb-2"><strong>Dish:</strong> {{ dish.dish_name }}</p>
+                                {% endif %}
+                                {% if dish.notes %}
+                                <p class="card-text small text-muted mb-2">{{ dish.notes|truncatewords:20 }}</p>
+                                {% endif %}
+                                <div class="mt-auto">
+                                    <div class="mb-2">
+                                        <span class="badge bg-primary me-1">Overall: {{ dish.review.rating }}/100</span>
+                                        {% if dish.dish_rating %}
+                                        <span class="badge bg-info">Dish: {{ dish.dish_rating }}/100</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if dish.cost %}
+                                    <span class="badge bg-secondary">${{ dish.cost }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Related Recipes -->
 {% if related_recipes %}
