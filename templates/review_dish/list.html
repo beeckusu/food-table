@@ -201,17 +201,31 @@
                             <!-- Encyclopedia Link Status -->
                             <td class="text-center">
                                 {% if dish.encyclopedia_entry %}
-                                    <span class="badge bg-success" title="Linked to: {{ dish.encyclopedia_entry.name }}">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                        <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
-                                    </span>
+                                    {% if user.is_staff %}
+                                        <button type="button"
+                                                class="badge bg-success border-0 encyclopedia-badge-linked"
+                                                style="cursor: pointer;"
+                                                title="Linked to: {{ dish.encyclopedia_entry.name }}. Click to unlink."
+                                                data-dish-id="{{ dish.id }}"
+                                                data-encyclopedia-id="{{ dish.encyclopedia_entry.id }}"
+                                                data-encyclopedia-name="{{ dish.encyclopedia_entry.name }}">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                            <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
+                                        </button>
+                                    {% else %}
+                                        <span class="badge bg-success" title="Linked to: {{ dish.encyclopedia_entry.name }}">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                            <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
+                                        </span>
+                                    {% endif %}
                                 {% else %}
                                     {% if user.is_staff %}
                                         <button type="button"
-                                                class="badge bg-warning text-dark border-0"
+                                                class="badge bg-warning text-dark border-0 encyclopedia-badge-unlinked"
                                                 style="cursor: pointer;"
                                                 title="Click to link to encyclopedia"
-                                                onclick="alert('Encyclopedia linking feature coming soon!');">
+                                                data-dish-id="{{ dish.id }}"
+                                                data-dish-name="{% if dish.dish_name %}{{ dish.dish_name }}{% elif dish.encyclopedia_entry %}{{ dish.encyclopedia_entry.name }}{% else %}Unnamed Dish{% endif %}">
                                             <i class="bi bi-exclamation-circle-fill"></i>
                                             <span class="d-none d-xl-inline"> Unlinked</span>
                                         </button>
@@ -366,46 +380,21 @@
         </div>
     </div>
 </div>
+
+<!-- Include Encyclopedia Link Modal -->
+{% include 'components/encyclopedia_link_modal.html' %}
 {% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
-<style>
-    /* Ensure table is scrollable on small screens */
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* Make tooltips work on mobile */
-    @media (max-width: 767.98px) {
-        .btn-group-sm > .btn {
-            padding: 0.25rem 0.4rem;
-        }
-    }
-
-    /* Sortable column link styles */
-    th a {
-        transition: background-color 0.2s;
-        padding: 0.5rem;
-        margin: -0.5rem;
-        border-radius: 0.25rem;
-    }
-
-    th a:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-    }
-
-    /* Dish name link hover effect */
-    td a.text-dark:hover {
-        color: var(--bs-primary) !important;
-        text-decoration: underline !important;
-    }
-</style>
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/review_dish_list.css' %}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+{% load static %}
+<script src="{% static 'js/review_dish_link.js' %}"></script>
 <script>
 // Initialize noUiSlider for rating range
 document.addEventListener('DOMContentLoaded', function() {
