@@ -30,6 +30,9 @@ class EncyclopediaDetailView(DetailView):
         # Add tags
         context['tags'] = entry.encyclopedia_tags.all()
 
+        # Add related recipes with optimized query
+        context['related_recipes'] = entry.recipes.prefetch_related('images').all()
+
         # Add tree entries for sidebar navigation with full tree structure
         root_entries = (
             Encyclopedia.objects

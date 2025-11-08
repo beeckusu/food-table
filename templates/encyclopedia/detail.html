@@ -205,17 +205,47 @@
     </div>
 </div>
 
-<!-- Related Recipes (Placeholder) -->
+<!-- Related Recipes -->
+{% if related_recipes %}
 <div class="row mt-4">
     <div class="col-12">
         <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Related Recipes</h4>
+            </div>
             <div class="card-body">
-                <h4 class="card-title">Related Recipes</h4>
-                <p class="text-muted">Recipes feature coming soon...</p>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for recipe in related_recipes %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if recipe.images.all.0 %}
+                            <img src="{{ recipe.images.all.0.image.url }}" class="card-img-top" alt="{{ recipe.name }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-file-earmark-text text-white" style="font-size: 3rem;"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="{% url 'content:recipe_detail' recipe.slug %}" class="text-decoration-none">{{ recipe.name }}</a>
+                                </h5>
+                                <p class="card-text text-muted small">{{ recipe.description|truncatewords:20 }}</p>
+                                {% if recipe.difficulty %}
+                                <span class="badge bg-info">{{ recipe.get_difficulty_display }}</span>
+                                {% endif %}
+                                {% if recipe.total_time_minutes %}
+                                <span class="badge bg-secondary">{{ recipe.total_time_minutes }} min</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Back Button -->
 <div class="row mt-4">

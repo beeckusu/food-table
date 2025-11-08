@@ -31,6 +31,10 @@ class EncyclopediaCreateApiView(View):
             "description": str (required),
             "cuisine_type": str (optional),
             "dish_category": str (optional),
+            "region": str (optional),
+            "cultural_significance": str (optional),
+            "popular_examples": str (optional),
+            "history": str (optional),
             "parent_id": int (optional),
             "dish_id": int (optional - if provided, links the dish to the entry)
         }
