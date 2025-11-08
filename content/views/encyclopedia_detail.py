@@ -33,6 +33,14 @@ class EncyclopediaDetailView(DetailView):
         # Add related recipes with optimized query
         context['related_recipes'] = entry.recipes.prefetch_related('images').all()
 
+        # Add related review dishes with optimized query to avoid N+1 queries
+        context['related_review_dishes'] = (
+            entry.dish_reviews
+            .select_related('review')
+            .prefetch_related('images', 'review__images')
+            .order_by('-review__visit_date', '-review__entry_time')
+        )
+
         # Add tree entries for sidebar navigation with full tree structure
         root_entries = (
             Encyclopedia.objects
