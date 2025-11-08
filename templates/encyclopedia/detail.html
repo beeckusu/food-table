@@ -10,6 +10,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/encyclopedia_tree.js' %}" defer></script>
+<script src="{% static 'js/encyclopedia_parent.js' %}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -125,6 +126,40 @@
         </div>
         {% endif %}
 
+        <!-- Parent Entry -->
+        {% if user.is_staff %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Parent Entry</h5>
+                <div id="parentEntrySection">
+                    {% if entry.parent %}
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <a href="{% url 'content:encyclopedia_detail' entry.parent.slug %}" class="text-decoration-none">
+                                <i class="bi bi-folder"></i> {{ entry.parent.name }}
+                            </a>
+                            {% if entry.parent.get_hierarchy_breadcrumb %}
+                            <br><small class="text-muted">{{ entry.parent.get_hierarchy_breadcrumb }}</small>
+                            {% endif %}
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" id="changeParentBtn" title="Change parent">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-sm btn-link text-danger p-0 mt-2" id="removeParentBtn">
+                        <i class="bi bi-x-circle"></i> Remove parent
+                    </button>
+                    {% else %}
+                    <p class="text-muted small mb-2">No parent entry</p>
+                    <button class="btn btn-sm btn-primary" id="addParentBtn">
+                        <i class="bi bi-plus-circle"></i> Add Parent
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Child Entries -->
         {% if children %}
         <div class="card mb-4">
@@ -190,4 +225,19 @@
 </div>
 
 </div><!-- End encyclopedia-main-wrapper -->
+
+<!-- Include Encyclopedia Link Modal (reused for parent selection) -->
+{% include 'components/encyclopedia_link_modal.html' %}
+
+<!-- Hidden data for JavaScript -->
+{% if user.is_staff %}
+<div id="encyclopediaPageData"
+     data-entry-id="{{ entry.id }}"
+     data-entry-name="{{ entry.name }}"
+     data-entry-slug="{{ entry.slug }}"
+     data-set-parent-url="{% url 'content:api_encyclopedia_set_parent' entry.id %}"
+     style="display: none;">
+</div>
+{% endif %}
+
 {% endblock %}
