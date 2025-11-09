@@ -759,6 +759,109 @@
     outline-offset: 2px;
 }
 
+/* ============================================
+   SIMILAR DISH CARD STYLES
+   ============================================ */
+
+/* Base Card Styles */
+.similar-dish-card__link {
+    color: inherit;
+    transition: color 0.2s ease;
+}
+
+.similar-dish-card__link:hover {
+    color: #2563eb;
+}
+
+.similar-dish-card__link:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+}
+
+/* Placeholder Card Styles */
+.similar-dish-card--placeholder {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px dashed #d1d5db;
+}
+
+.similar-dish-card--placeholder:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+/* Placeholder Link (Admin Users) */
+.similar-dish-card__link--placeholder-admin {
+    color: #6b7280 !important;
+    font-style: italic;
+    transition: color 0.2s ease;
+}
+
+.similar-dish-card__link--placeholder-admin:hover {
+    color: #1f2937 !important;
+    text-decoration: underline;
+}
+
+.similar-dish-card__link--placeholder-admin:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+}
+
+.similar-dish-card__link--placeholder-admin .similar-dish-card__name {
+    font-style: italic;
+}
+
+/* Placeholder Text (Regular Users) */
+.similar-dish-card__text--placeholder {
+    color: #9ca3af;
+    font-style: italic;
+    cursor: default;
+}
+
+/* Placeholder Badge Styling */
+.similar-dish-card__link--placeholder-admin .badge,
+.similar-dish-card__text--placeholder .badge {
+    font-style: normal;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .similar-dish-card__link--placeholder-admin,
+    .similar-dish-card__text--placeholder {
+        font-size: 0.875rem;
+    }
+
+    .similar-dish-card__link--placeholder-admin .badge,
+    .similar-dish-card__text--placeholder .badge {
+        font-size: 0.625rem;
+        padding: 0.25rem 0.4rem;
+    }
+}
+
+/* Accessibility: High Contrast Mode */
+@media (prefers-contrast: high) {
+    .similar-dish-card--placeholder {
+        border-width: 2px;
+        border-color: #6b7280;
+    }
+
+    .similar-dish-card__link--placeholder-admin,
+    .similar-dish-card__text--placeholder {
+        font-weight: 600;
+    }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .similar-dish-card__link,
+    .similar-dish-card__link--placeholder-admin,
+    .similar-dish-card--placeholder {
+        transition: none;
+    }
+}
+
 /* Print Styles */
 @media print {
     .encyclopedia-sidebar,
@@ -769,5 +872,16 @@
 
     .encyclopedia-main-wrapper {
         margin-left: 0 !important;
+    }
+
+    /* Hide placeholder badges in print */
+    .similar-dish-card__link--placeholder-admin .badge,
+    .similar-dish-card__text--placeholder .badge {
+        display: none;
+    }
+
+    /* Remove dashed border for print */
+    .similar-dish-card--placeholder {
+        border-style: solid;
     }
 }

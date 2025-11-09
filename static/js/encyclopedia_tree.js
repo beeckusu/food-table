@@ -680,6 +680,14 @@
                 }
             });
         });
+
+        // Initialize Bootstrap tooltips for placeholder entries
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        if (tooltipTriggerList.length > 0 && typeof bootstrap !== 'undefined') {
+            [...tooltipTriggerList].map(tooltipTriggerEl =>
+                new bootstrap.Tooltip(tooltipTriggerEl)
+            );
+        }
     }
 
     // Run on DOM ready

@@ -14,8 +14,12 @@ class EncyclopediaDetailView(DetailView):
     slug_url_kwarg = 'slug'
 
     def get_queryset(self):
-        """Optimize queryset with prefetch_related for better performance."""
-        return Encyclopedia.objects.prefetch_related('similar_dishes')
+        """
+        Optimize queryset with prefetch_related for better performance.
+        Note: We don't prefetch similar_dishes here because it's a symmetrical ManyToMany
+        relationship, which would cause infinite recursion during prefetch.
+        """
+        return Encyclopedia.objects.all()
 
     def get_context_data(self, **kwargs):
         """Add additional context for ancestors, children, and related content."""
@@ -46,7 +50,8 @@ class EncyclopediaDetailView(DetailView):
         )
 
         # Add similar dishes with optimized query
-        context['similar_dishes'] = entry.similar_dishes.all().order_by('name')
+        # Convert to list to prevent recursion issues with symmetrical ManyToMany relationship
+        context['similar_dishes'] = list(entry.similar_dishes.all().order_by('name'))
 
         # Add tree entries for sidebar navigation with full tree structure
         root_entries = (
