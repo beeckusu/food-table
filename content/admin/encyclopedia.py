@@ -130,6 +130,12 @@ class EncyclopediaAdmin(admin.ModelAdmin):
 
     class Media:
         css = {
-            'all': ('admin/css/encyclopedia_placeholder.css',)
+            'all': (
+                'admin/css/encyclopedia_placeholder.css',
+                'admin/css/encyclopedia_quick_create.css',
+            )
         }
-        js = ('admin/js/encyclopedia_placeholder.js',)
+        js = (
+            'admin/js/encyclopedia_placeholder.js',
+            'admin/js/encyclopedia_quick_create.js',
+        )
