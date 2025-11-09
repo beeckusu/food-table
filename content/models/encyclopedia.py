@@ -16,7 +16,8 @@ class Encyclopedia(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, db_index=True)
-    description = models.TextField()
+    description = models.TextField(blank=True)
+    is_placeholder = models.BooleanField(default=False, db_index=True)
 
     # Hierarchical Structure
     parent = models.ForeignKey(
@@ -64,7 +65,16 @@ class Encyclopedia(models.Model):
         ]
 
     def __str__(self):
+        if self.is_placeholder:
+            return f"[PLACEHOLDER] {self.name}"
         return self.name
+
+    @property
+    def is_complete(self):
+        """
+        Returns True if the entry is complete (not a placeholder or placeholder with description).
+        """
+        return not self.is_placeholder or bool(self.description)
 
     def get_ancestors(self):
         """
@@ -156,10 +166,26 @@ class Encyclopedia(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Override save to perform cycle prevention check.
+        Override save to perform cycle prevention check and placeholder validation.
         """
+        # Check for cycles in parent hierarchy
         if self.parent is not None:
             self._check_cycle()
+
+        # Validate placeholder requirements
+        if not self.is_placeholder and not self.description:
+            raise ValidationError(
+                "Non-placeholder entries must have a description. "
+                "Set is_placeholder=True to create an entry without a description."
+            )
+
+        # Prevent circular placeholder references
+        if self.is_placeholder and self.parent and self.parent.is_placeholder:
+            raise ValidationError(
+                "A placeholder entry cannot have another placeholder as its parent. "
+                f"Parent '{self.parent.name}' is also a placeholder."
+            )
+
         super().save(*args, **kwargs)
 
 
