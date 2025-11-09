@@ -307,22 +307,53 @@
                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                     {% for similar_dish in similar_dishes %}
                     <div class="col">
-                        <div class="card h-100">
+                        <div class="card h-100 similar-dish-card {% if similar_dish.is_placeholder %}similar-dish-card--placeholder{% endif %}">
                             <div class="card-body">
                                 <h5 class="card-title">
-                                    <a href="{% url 'content:encyclopedia_detail' similar_dish.slug %}" class="text-decoration-none">
-                                        {{ similar_dish.name }}
-                                    </a>
+                                    {% if similar_dish.is_placeholder %}
+                                        {% if user.is_staff %}
+                                            {# Admin users: clickable placeholder with visual indicator #}
+                                            <a href="{% url 'content:encyclopedia_detail' similar_dish.slug %}"
+                                               class="text-decoration-none similar-dish-card__link similar-dish-card__link--placeholder-admin"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               title="Placeholder entry - Click to edit and complete">
+                                                <i class="bi bi-pencil-square me-1"></i>
+                                                <span class="similar-dish-card__name">{{ similar_dish.name }}</span>
+                                                <span class="badge bg-warning text-dark ms-2">Stub</span>
+                                            </a>
+                                        {% else %}
+                                            {# Regular users: plain text placeholder #}
+                                            <span class="similar-dish-card__text similar-dish-card__text--placeholder"
+                                                  data-bs-toggle="tooltip"
+                                                  data-bs-placement="top"
+                                                  title="This is a placeholder entry that hasn't been completed yet">
+                                                {{ similar_dish.name }}
+                                                <span class="badge bg-secondary ms-2">Incomplete</span>
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        {# Complete entries: normal rendering #}
+                                        <a href="{% url 'content:encyclopedia_detail' similar_dish.slug %}"
+                                           class="text-decoration-none similar-dish-card__link">
+                                            {{ similar_dish.name }}
+                                        </a>
+                                    {% endif %}
                                 </h5>
+
                                 {% if similar_dish.get_hierarchy_breadcrumb %}
-                                <p class="card-text text-muted small mb-2">
+                                <p class="card-text text-muted small mb-2 similar-dish-card__breadcrumb">
                                     <i class="bi bi-diagram-3"></i> {{ similar_dish.get_hierarchy_breadcrumb }}
                                 </p>
                                 {% endif %}
+
                                 {% if similar_dish.description %}
-                                <p class="card-text small">{{ similar_dish.description|truncatewords:20 }}</p>
+                                <p class="card-text small similar-dish-card__description">
+                                    {{ similar_dish.description|truncatewords:20 }}
+                                </p>
                                 {% endif %}
-                                <div class="mt-2">
+
+                                <div class="mt-2 similar-dish-card__badges">
                                     {% if similar_dish.cuisine_type %}
                                     <span class="badge bg-secondary">{{ similar_dish.cuisine_type }}</span>
                                     {% endif %}
