@@ -179,13 +179,6 @@ class Encyclopedia(models.Model):
                 "Set is_placeholder=True to create an entry without a description."
             )
 
-        # Prevent circular placeholder references
-        if self.is_placeholder and self.parent and self.parent.is_placeholder:
-            raise ValidationError(
-                "A placeholder entry cannot have another placeholder as its parent. "
-                f"Parent '{self.parent.name}' is also a placeholder."
-            )
-
         super().save(*args, **kwargs)
 
 

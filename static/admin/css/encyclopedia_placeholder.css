@@ -1,0 +1,42 @@
+/* Encyclopedia Placeholder Admin Styling */
+
+/* Highlight placeholder rows in the change list */
+#result_list tbody tr.placeholder-row {
+    background-color: #fef3c7;
+    border-left: 3px solid #f59e0b;
+}
+
+#result_list tbody tr.placeholder-row:hover {
+    background-color: #fde68a;
+}
+
+/* Style for placeholder entries without description */
+#result_list tbody tr.placeholder-empty-row {
+    background-color: #fee2e2;
+    border-left: 3px solid #dc2626;
+}
+
+#result_list tbody tr.placeholder-empty-row:hover {
+    background-color: #fecaca;
+}
+
+/* Add a subtle indicator to the description field when placeholder is checked */
+.field-description.placeholder-mode {
+    opacity: 0.7;
+}
+
+.field-description.placeholder-mode .help {
+    display: inline-block;
+    margin-top: 5px;
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+/* Style the placeholder checkbox help text */
+.field-is_placeholder .help {
+    background-color: #dbeafe;
+    padding: 8px;
+    border-left: 3px solid #3b82f6;
+    margin-top: 5px;
+    display: block;
+}
