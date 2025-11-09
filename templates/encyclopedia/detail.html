@@ -11,6 +11,7 @@
 {% block extra_js %}
 <script src="{% static 'js/encyclopedia_tree.js' %}" defer></script>
 <script src="{% static 'js/encyclopedia_parent.js' %}" defer></script>
+<script src="{% static 'js/encyclopedia_placeholder.js' %}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -313,11 +314,13 @@
                                     {% if similar_dish.is_placeholder %}
                                         {% if user.is_staff %}
                                             {# Admin users: clickable placeholder with visual indicator #}
-                                            <a href="{% url 'content:encyclopedia_detail' similar_dish.slug %}"
-                                               class="text-decoration-none similar-dish-card__link similar-dish-card__link--placeholder-admin"
+                                            <a href="#"
+                                               class="text-decoration-none similar-dish-card__link similar-dish-card__link--placeholder-admin encyclopedia-placeholder"
+                                               data-placeholder-id="{{ similar_dish.id }}"
+                                               data-placeholder-name="{{ similar_dish.name }}"
                                                data-bs-toggle="tooltip"
                                                data-bs-placement="top"
-                                               title="Placeholder entry - Click to edit and complete">
+                                               title="Placeholder entry - Click to convert to full entry">
                                                 <i class="bi bi-pencil-square me-1"></i>
                                                 <span class="similar-dish-card__name">{{ similar_dish.name }}</span>
                                                 <span class="badge bg-warning text-dark ms-2">Stub</span>
@@ -383,6 +386,9 @@
 
 <!-- Include Encyclopedia Link Modal (reused for parent selection) -->
 {% include 'components/encyclopedia_link_modal.html' %}
+
+<!-- Include Placeholder Conversion Modal -->
+{% include 'components/encyclopedia_placeholder_modal.html' %}
 
 <!-- Hidden data for JavaScript -->
 {% if user.is_staff %}

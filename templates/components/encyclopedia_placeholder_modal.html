@@ -1,0 +1,104 @@
+<!-- Encyclopedia Placeholder Conversion Modal -->
+{% if user.is_staff %}
+<div class="modal fade" id="placeholderConvertModal" tabindex="-1" aria-labelledby="placeholderConvertModalLabel" aria-hidden="true" data-convert-url="{% url 'content:api_encyclopedia_convert' 0 %}">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="placeholderConvertModalLabel">Convert Placeholder Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Choice Section -->
+                <div id="placeholderChoiceSection">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Converting:</strong> <span id="placeholderName"></span>
+                    </div>
+                    <p class="mb-3">
+                        This entry is currently a placeholder. Choose how you'd like to proceed:
+                    </p>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary btn-lg" id="showConvertFormBtn">
+                            <i class="bi bi-pencil-square"></i> Create Full Entry
+                        </button>
+                        <div class="text-muted small text-center mb-2">
+                            Fill in details in a user-friendly form
+                        </div>
+
+                        <button type="button" class="btn btn-outline-secondary" id="editInAdminBtn">
+                            <i class="bi bi-gear"></i> Edit in Admin
+                        </button>
+                        <div class="text-muted small text-center">
+                            Opens standard admin edit page
+                        </div>
+                    </div>
+                    <div class="mt-3 p-2 bg-light rounded">
+                        <small class="text-muted">
+                            <i class="bi bi-shield-check"></i> All existing relationships and links will be preserved
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Convert Form Section -->
+                <div id="placeholderConvertFormSection" style="display: none;">
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-link p-0 mb-3" id="backToChoiceBtn">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </button>
+                    </div>
+                    <h6 class="mb-3">Complete Entry Details</h6>
+                    <form id="convertPlaceholderForm">
+                        <div class="mb-3">
+                            <label for="convertEntryName" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="convertEntryName" readonly>
+                            <div class="form-text">Name cannot be changed during conversion</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryDescription" class="form-label">Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="convertEntryDescription" rows="4" required placeholder="Provide a detailed description of this dish..."></textarea>
+                            <div class="form-text">Required to convert from placeholder</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryCuisineType" class="form-label">Cuisine Type</label>
+                            <input type="text" class="form-control" id="convertEntryCuisineType" placeholder="e.g., Thai, Italian, Chinese">
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryDishCategory" class="form-label">Dish Category</label>
+                            <input type="text" class="form-control" id="convertEntryDishCategory" placeholder="e.g., Noodles, Soup, Dessert">
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryRegion" class="form-label">Region</label>
+                            <input type="text" class="form-control" id="convertEntryRegion" placeholder="e.g., Northern Thailand, Southern Italy">
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryCulturalSignificance" class="form-label">Cultural Significance</label>
+                            <textarea class="form-control" id="convertEntryCulturalSignificance" rows="3" placeholder="Describe the cultural importance or traditions..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryPopularExamples" class="form-label">Popular Examples</label>
+                            <textarea class="form-control" id="convertEntryPopularExamples" rows="2" placeholder="List well-known examples or variations..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convertEntryHistory" class="form-label">History</label>
+                            <textarea class="form-control" id="convertEntryHistory" rows="3" placeholder="Describe the historical background..."></textarea>
+                        </div>
+                        <div id="convertFormError" class="alert alert-danger" style="display: none;"></div>
+                        <div id="convertFormSuccess" class="alert alert-success" style="display: none;"></div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div id="placeholderChoiceFooter" class="w-100">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+                <div id="placeholderConvertFooter" class="w-100" style="display: none;">
+                    <button type="button" class="btn btn-secondary" id="cancelConvertBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveConvertBtn">
+                        <i class="bi bi-check-circle"></i> Save & Convert
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
