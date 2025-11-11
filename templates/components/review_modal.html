@@ -136,25 +136,32 @@
                         <div class="card mb-3 dish-card">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <h6 class="mb-0">Dish <span class="dish-number"></span></h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="mb-0">Dish <span class="dish-number"></span></h6>
+                                        <div class="btn-group btn-group-sm dish-reorder-buttons" role="group">
+                                            <button type="button" class="btn btn-outline-secondary move-up-btn" title="Move up">
+                                                <i class="bi bi-arrow-up"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary move-down-btn" title="Move down">
+                                                <i class="bi bi-arrow-down"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                     <button type="button" class="btn btn-sm btn-outline-danger remove-dish-btn">
                                         <i class="bi bi-trash"></i> Remove
                                     </button>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Dish Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control dish-name" required>
+                                    <input type="text" class="form-control dish-name" required autocomplete="off">
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Image</label>
-                                    <div class="dish-image-upload-container">
-                                        <input type="file" class="form-control dish-image" accept="image/*">
-                                        <div class="dish-image-preview" style="display: none;">
-                                            <img src="" alt="Dish preview" class="dish-preview-img">
-                                            <button type="button" class="btn btn-sm btn-outline-danger remove-image-btn">
-                                                <i class="bi bi-x-circle"></i> Remove Image
-                                            </button>
-                                        </div>
+                                    <label class="form-label">Encyclopedia Links <span class="badge bg-secondary">Optional</span></label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary link-encyclopedia-btn">
+                                        <i class="bi bi-book"></i> Link to Encyclopedia
+                                    </button>
+                                    <div class="encyclopedia-chips mt-2" style="display: none;">
+                                        <div class="d-flex flex-wrap gap-2"></div>
                                     </div>
                                 </div>
                                 <div class="mb-3">
@@ -165,7 +172,26 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Notes</label>
+                                    <label class="form-label">Image <span class="badge bg-secondary">Optional</span></label>
+                                    <div class="dish-image-upload-container">
+                                        <div class="dish-image-drop-zone">
+                                            <input type="file" class="form-control dish-image" accept="image/jpeg,image/png,image/webp">
+                                            <div class="drop-zone-text">
+                                                <i class="bi bi-cloud-upload"></i>
+                                                <p class="mb-0">Click to select or drag & drop an image</p>
+                                                <small class="text-muted">JPEG, PNG, WebP (max 10MB)</small>
+                                            </div>
+                                        </div>
+                                        <div class="dish-image-preview" style="display: none;">
+                                            <img src="" alt="Dish preview" class="dish-preview-img">
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-image-btn">
+                                                <i class="bi bi-x-circle"></i> Remove Image
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Notes <span class="badge bg-secondary">Optional</span></label>
                                     <textarea class="form-control dish-notes" rows="2" placeholder="Optional notes about this dish..."></textarea>
                                 </div>
                             </div>
@@ -200,6 +226,35 @@
                 <button type="button" class="btn btn-success" id="reviewSubmitBtn" style="display: none;">
                     <i class="bi bi-check-circle"></i> Submit Review
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Encyclopedia Search Modal (nested within review flow) -->
+<div class="modal fade" id="reviewEncyclopediaSearchModal" tabindex="-1" aria-labelledby="reviewEncyclopediaSearchLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reviewEncyclopediaSearchLabel">
+                    <i class="bi bi-book"></i> Link to Encyclopedia
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="reviewEncyclopediaSearch" class="form-label">Search Encyclopedia Entries</label>
+                    <input type="text" class="form-control" id="reviewEncyclopediaSearch"
+                           placeholder="Type to search..." autocomplete="off">
+                    <div class="form-text">Search by name, cuisine type, or category</div>
+                </div>
+                <div id="reviewEncyclopediaSearchStatus" class="text-muted mb-2" style="display: none;"></div>
+                <div id="reviewEncyclopediaSearchResults" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Search results will appear here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
