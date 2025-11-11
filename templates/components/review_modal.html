@@ -20,12 +20,26 @@
                     <form id="basicInfoForm">
                         <div class="mb-3">
                             <label for="reviewRestaurantName" class="form-label">Restaurant Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="reviewRestaurantName" required>
-                            <div class="form-text">The name of the restaurant you're reviewing</div>
+                            <input type="text" class="form-control" id="reviewRestaurantName" required autocomplete="off">
+                            <div id="restaurantSearchResults" class="list-group mt-2" style="display: none;"></div>
+                            <div id="restaurantSearchStatus" class="form-text"></div>
                         </div>
                         <div class="mb-3">
                             <label for="reviewVisitDate" class="form-label">Visit Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="reviewVisitDate" required>
+                            <div class="form-text">Date must not be in the future</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reviewPartySize" class="form-label">Party Size</label>
+                                <input type="number" class="form-control" id="reviewPartySize" min="1" value="1">
+                                <div class="form-text">Number of people</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="reviewEntryTime" class="form-label">Time</label>
+                                <input type="time" class="form-control" id="reviewEntryTime">
+                                <div class="form-text">Optional</div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="reviewMealType" class="form-label">Meal Type</label>
@@ -77,6 +91,13 @@
                                 <span class="badge bg-primary" id="ratingValue" style="min-width: 50px;">50</span>
                             </div>
                             <div class="form-text">Rate from 0-100</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reviewTitle" class="form-label">Review Title</label>
+                            <input type="text" class="form-control" id="reviewTitle" maxlength="200" placeholder="Optional title for your review">
+                            <div class="form-text">
+                                <span id="titleCharCount">0</span>/200 characters
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="reviewNotes" class="form-label">Notes/Comments</label>
