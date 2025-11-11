@@ -162,7 +162,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 case 'dishes':
                     // At least one dish is required
+                    // Save dishes first to ensure formData is up to date
+                    saveDishes();
                     isValid = formData.dishes.length > 0;
+                    console.log('Dishes validation - count:', formData.dishes.length, 'valid:', isValid);
                     break;
 
                 case 'confirm':
@@ -222,12 +225,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Go to next step
     function goToNextStep() {
+        console.log('goToNextStep called, currentStep:', currentStep);
         if (currentStep >= REVIEW_STEPS.length - 1) return;
 
         const step = REVIEW_STEPS[currentStep];
+        console.log('Current step:', step.id, 'required:', step.required);
 
         // Validate if required
-        if (step.required && !validateCurrentStep()) {
+        const isValid = validateCurrentStep();
+        console.log('Step is valid:', isValid);
+
+        if (step.required && !isValid) {
             showError('Please fill in all required fields before continuing.');
             return;
         }
@@ -303,6 +311,9 @@ document.addEventListener('DOMContentLoaded', function() {
             dishes: []
         };
         hasUnsavedChanges = false;
+
+        // Reset dish counter
+        dishCounter = 0;
 
         // Clear all form fields
         document.getElementById('basicInfoForm').reset();
@@ -595,6 +606,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Encyclopedia Search Modal
+    const encyclopediaSearchModal = new bootstrap.Modal(document.getElementById('reviewEncyclopediaSearchModal'));
+    const encyclopediaSearchInput = document.getElementById('reviewEncyclopediaSearch');
+    const encyclopediaSearchResults = document.getElementById('reviewEncyclopediaSearchResults');
+    const encyclopediaSearchStatus = document.getElementById('reviewEncyclopediaSearchStatus');
+    let encyclopediaSearchTimeout = null;
+    let currentDishCard = null;
+    let encyclopediaSelectedIndex = -1;
+
     // Dish management
     let dishCounter = 0;
 
@@ -610,9 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dishCard.style.display = 'block';
         dishCard.id = `dish-${dishCounter}`;
         dishCard.dataset.dishId = dishCounter;
-
-        // Update dish number
-        dishCard.querySelector('.dish-number').textContent = dishCounter;
+        dishCard.dataset.encyclopediaIds = '[]'; // Store encyclopedia IDs as JSON
 
         // Pre-fill data if provided
         if (dishData) {
@@ -620,6 +638,12 @@ document.addEventListener('DOMContentLoaded', function() {
             dishCard.querySelector('.dish-rating').value = dishData.rating || 50;
             dishCard.querySelector('.dish-rating-value').textContent = dishData.rating || 50;
             dishCard.querySelector('.dish-notes').value = dishData.notes || '';
+
+            // Pre-fill encyclopedia links if provided
+            if (dishData.encyclopedia_ids && dishData.encyclopedia_ids.length > 0) {
+                dishCard.dataset.encyclopediaIds = JSON.stringify(dishData.encyclopedia_ids);
+                // Note: chips would need to be rendered if we had the encyclopedia data
+            }
         }
 
         // Add to container
@@ -644,28 +668,73 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         dishCard.querySelector('.remove-dish-btn').addEventListener('click', function() {
+            console.log('Remove button clicked for dish:', dishCard.id);
+            const name = dishCard.querySelector('.dish-name').value.trim();
+            const notes = dishCard.querySelector('.dish-notes').value.trim();
+            const previewImg = dishCard.querySelector('.dish-preview-img');
+            const hasImage = previewImg && previewImg.src && previewImg.src.startsWith('data:');
+            const hasData = name !== '' || notes !== '' || hasImage;
+
+            console.log('Dish has data:', hasData, '(name:', name, 'notes:', notes, 'image:', hasImage, ')');
+
+            if (hasData && !confirm('Remove this dish? All data for this dish will be lost.')) {
+                console.log('User cancelled removal');
+                return;
+            }
+
+            console.log('Removing dish...');
             dishCard.remove();
+            updateDishNumbers();
             saveDishes();
             validateCurrentStep();
         });
 
-        // Image upload handler
+        // Encyclopedia link button
+        dishCard.querySelector('.link-encyclopedia-btn').addEventListener('click', function() {
+            openEncyclopediaSearch(dishCard);
+        });
+
+        // Reorder buttons
+        dishCard.querySelector('.move-up-btn').addEventListener('click', function() {
+            moveDishUp(dishCard);
+        });
+
+        dishCard.querySelector('.move-down-btn').addEventListener('click', function() {
+            moveDishDown(dishCard);
+        });
+
+        // Image upload handler with validation
         const imageInput = dishCard.querySelector('.dish-image');
+        const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
         const imagePreview = dishCard.querySelector('.dish-image-preview');
         const previewImg = dishCard.querySelector('.dish-preview-img');
         const removeImageBtn = dishCard.querySelector('.remove-image-btn');
 
         imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewImg.src = e.target.result;
-                    imagePreview.style.display = 'block';
-                    imageInput.style.display = 'none';
-                    saveDishes();
-                };
-                reader.readAsDataURL(file);
+            handleImageFile(e.target.files[0], dishCard);
+        });
+
+        // Drag & drop support
+        imageDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            imageDropZone.classList.add('drag-over');
+        });
+
+        imageDropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            imageDropZone.classList.remove('drag-over');
+        });
+
+        imageDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            imageDropZone.classList.remove('drag-over');
+
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleImageFile(file, dishCard);
             }
         });
 
@@ -673,30 +742,313 @@ document.addEventListener('DOMContentLoaded', function() {
             imageInput.value = '';
             previewImg.src = '';
             imagePreview.style.display = 'none';
-            imageInput.style.display = 'block';
+            imageDropZone.style.display = 'block';
             saveDishes();
         });
 
-        // Save dishes
+        // Update dish numbers after adding to container
+        updateDishNumbers();
+
+        // Save dishes and focus on name field
         saveDishes();
         validateCurrentStep();
+
+        setTimeout(() => {
+            dishCard.querySelector('.dish-name').focus();
+        }, 100);
+    }
+
+    function handleImageFile(file, dishCard) {
+        if (!file) return;
+
+        const imageInput = dishCard.querySelector('.dish-image');
+        const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
+        const imagePreview = dishCard.querySelector('.dish-image-preview');
+        const previewImg = dishCard.querySelector('.dish-preview-img');
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showError('Invalid file type. Please select a JPEG, PNG, or WebP image.');
+            return;
+        }
+
+        // Validate file size (10MB max)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            showError('File is too large. Maximum size is 10MB.');
+            return;
+        }
+
+        // Clear any errors
+        hideError();
+
+        // Read and preview image
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            imagePreview.style.display = 'block';
+            imageDropZone.style.display = 'none';
+            saveDishes();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function updateDishNumbers() {
+        const dishCards = document.querySelectorAll('.dish-card:not(#dishFormTemplate)');
+        dishCards.forEach((card, index) => {
+            card.querySelector('.dish-number').textContent = index + 1;
+        });
+    }
+
+    function moveDishUp(dishCard) {
+        const prevCard = dishCard.previousElementSibling;
+        if (prevCard && prevCard.id !== 'dishFormTemplate') {
+            dishCard.parentNode.insertBefore(dishCard, prevCard);
+            updateDishNumbers();
+            saveDishes();
+        }
+    }
+
+    function moveDishDown(dishCard) {
+        const nextCard = dishCard.nextElementSibling;
+        if (nextCard) {
+            dishCard.parentNode.insertBefore(nextCard, dishCard);
+            updateDishNumbers();
+            saveDishes();
+        }
     }
 
     function saveDishes() {
         formData.dishes = [];
 
         document.querySelectorAll('.dish-card').forEach(card => {
-            if (card.id !== 'dishFormTemplate') {
+            if (card.id !== 'dishFormTemplate' && card.style.display !== 'none') {
                 const name = card.querySelector('.dish-name').value.trim();
                 const rating = card.querySelector('.dish-rating').value;
                 const notes = card.querySelector('.dish-notes').value.trim();
                 const imagePreview = card.querySelector('.dish-preview-img');
-                const imageSrc = imagePreview && imagePreview.src ? imagePreview.src : null;
+                const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
+                const encyclopediaIds = JSON.parse(card.dataset.encyclopediaIds || '[]');
 
                 if (name) { // Only save dishes with a name
-                    formData.dishes.push({ name, rating, notes, image: imageSrc });
+                    formData.dishes.push({
+                        name,
+                        rating,
+                        notes,
+                        image: imageSrc,
+                        encyclopedia_ids: encyclopediaIds
+                    });
                 }
             }
         });
+
+        console.log('Dishes saved:', formData.dishes.length);
     }
+
+    // Encyclopedia Search Functions
+    function openEncyclopediaSearch(dishCard) {
+        currentDishCard = dishCard;
+        encyclopediaSearchInput.value = '';
+        encyclopediaSearchResults.innerHTML = '';
+        encyclopediaSearchStatus.style.display = 'none';
+        encyclopediaSelectedIndex = -1;
+
+        // Show modal
+        encyclopediaSearchModal.show();
+
+        // Focus on search input
+        setTimeout(() => encyclopediaSearchInput.focus(), 100);
+    }
+
+    // Debounced encyclopedia search
+    encyclopediaSearchInput.addEventListener('input', function() {
+        clearTimeout(encyclopediaSearchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            encyclopediaSearchResults.innerHTML = '';
+            encyclopediaSearchStatus.style.display = 'block';
+            encyclopediaSearchStatus.innerHTML = '<em>Type at least 2 characters to search</em>';
+            return;
+        }
+
+        encyclopediaSearchStatus.style.display = 'block';
+        encyclopediaSearchStatus.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Searching...';
+
+        encyclopediaSearchTimeout = setTimeout(() => performEncyclopediaSearch(query), 300);
+    });
+
+    // Keyboard navigation for encyclopedia search
+    encyclopediaSearchInput.addEventListener('keydown', function(e) {
+        const items = encyclopediaSearchResults.querySelectorAll('.list-group-item');
+
+        if (e.key === 'Escape') {
+            encyclopediaSearchModal.hide();
+            return;
+        }
+
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            encyclopediaSelectedIndex = Math.min(encyclopediaSelectedIndex + 1, items.length - 1);
+            updateEncyclopediaSelection(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            encyclopediaSelectedIndex = Math.max(encyclopediaSelectedIndex - 1, -1);
+            updateEncyclopediaSelection(items);
+        } else if (e.key === 'Enter' && encyclopediaSelectedIndex >= 0) {
+            e.preventDefault();
+            items[encyclopediaSelectedIndex].click();
+        }
+    });
+
+    function updateEncyclopediaSelection(items) {
+        items.forEach((item, index) => {
+            if (index === encyclopediaSelectedIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    function performEncyclopediaSearch(query) {
+        fetch(`/api/encyclopedia/search/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                encyclopediaSearchStatus.style.display = 'none';
+
+                if (data.results.length === 0) {
+                    encyclopediaSearchResults.innerHTML = '';
+                    encyclopediaSearchStatus.style.display = 'block';
+                    encyclopediaSearchStatus.innerHTML = '<em>No results found</em>';
+                    return;
+                }
+
+                encyclopediaSelectedIndex = -1;
+                encyclopediaSearchResults.innerHTML = data.results.map(entry => `
+                    <button type="button" class="list-group-item list-group-item-action encyclopedia-search-result"
+                            data-entry-id="${entry.id}"
+                            data-entry-name="${entry.name}"
+                            data-entry-slug="${entry.slug || ''}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${entry.name}</h6>
+                            ${entry.cuisine_type ? `<small class="badge bg-info">${entry.cuisine_type}</small>` : ''}
+                        </div>
+                        ${entry.hierarchy ? `<small class="text-muted"><i class="bi bi-arrow-right-short"></i> ${entry.hierarchy}</small>` : ''}
+                        ${entry.dish_category ? `<small class="badge bg-secondary ms-2">${entry.dish_category}</small>` : ''}
+                    </button>
+                `).join('');
+
+                // Add click handlers to results
+                document.querySelectorAll('.encyclopedia-search-result').forEach(item => {
+                    item.addEventListener('click', function() {
+                        addEncyclopediaLink(
+                            currentDishCard,
+                            this.dataset.entryId,
+                            this.dataset.entryName,
+                            this.dataset.entrySlug
+                        );
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Encyclopedia search error:', error);
+                encyclopediaSearchStatus.style.display = 'block';
+                encyclopediaSearchStatus.innerHTML = '<em class="text-danger">Error performing search</em>';
+            });
+    }
+
+    function addEncyclopediaLink(dishCard, entryId, entryName, entrySlug) {
+        // Get current encyclopedia IDs
+        const currentIds = JSON.parse(dishCard.dataset.encyclopediaIds || '[]');
+
+        // Check if already linked
+        const existingLink = currentIds.find(link => link.id === entryId);
+        if (existingLink) {
+            // Already linked, just close modal
+            encyclopediaSearchModal.hide();
+            return;
+        }
+
+        // Add new link
+        currentIds.push({
+            id: entryId,
+            name: entryName,
+            slug: entrySlug
+        });
+
+        // Update dataset
+        dishCard.dataset.encyclopediaIds = JSON.stringify(currentIds);
+
+        // Render chips
+        renderEncyclopediaChips(dishCard);
+
+        // Save dishes
+        saveDishes();
+
+        // Clear search and close modal
+        encyclopediaSearchInput.value = '';
+        encyclopediaSearchModal.hide();
+    }
+
+    function removeEncyclopediaLink(dishCard, entryId) {
+        // Get current encyclopedia IDs
+        let currentIds = JSON.parse(dishCard.dataset.encyclopediaIds || '[]');
+
+        // Remove the entry
+        currentIds = currentIds.filter(link => link.id !== entryId);
+
+        // Update dataset
+        dishCard.dataset.encyclopediaIds = JSON.stringify(currentIds);
+
+        // Render chips
+        renderEncyclopediaChips(dishCard);
+
+        // Save dishes
+        saveDishes();
+    }
+
+    function renderEncyclopediaChips(dishCard) {
+        const chipsContainer = dishCard.querySelector('.encyclopedia-chips');
+        const chipsDiv = chipsContainer.querySelector('.d-flex');
+        const encyclopediaIds = JSON.parse(dishCard.dataset.encyclopediaIds || '[]');
+
+        if (encyclopediaIds.length === 0) {
+            chipsContainer.style.display = 'none';
+            return;
+        }
+
+        chipsContainer.style.display = 'block';
+        chipsDiv.innerHTML = encyclopediaIds.map(link => `
+            <span class="badge bg-primary d-flex align-items-center gap-1" style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
+                <i class="bi bi-book"></i>
+                ${link.name}
+                <button type="button" class="btn-close btn-close-white"
+                        data-remove-encyclopedia-id="${link.id}"
+                        style="font-size: 0.5rem;"
+                        aria-label="Remove"></button>
+            </span>
+        `).join('');
+
+        // Add click handlers to remove buttons
+        chipsDiv.querySelectorAll('[data-remove-encyclopedia-id]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idToRemove = this.dataset.removeEncyclopediaId;
+                removeEncyclopediaLink(dishCard, idToRemove);
+            });
+        });
+    }
+
+    // Reset encyclopedia search modal on close
+    document.getElementById('reviewEncyclopediaSearchModal').addEventListener('hidden.bs.modal', function() {
+        encyclopediaSearchInput.value = '';
+        encyclopediaSearchResults.innerHTML = '';
+        encyclopediaSearchStatus.style.display = 'none';
+        currentDishCard = null;
+        encyclopediaSelectedIndex = -1;
+    });
 });
