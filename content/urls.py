@@ -15,6 +15,7 @@ urlpatterns = [
     path('recipes/', views.RecipeListView.as_view(), name='recipe_list'),
     path('recipes/<slug:slug>/', views.RecipeDetailView.as_view(), name='recipe_detail'),
     # API endpoints
+    path('api/restaurants/search/', views.RestaurantSearchApiView.as_view(), name='api_restaurant_search'),
     path('api/encyclopedia/search/', views.EncyclopediaSearchApiView.as_view(), name='api_encyclopedia_search'),
     path('api/encyclopedia/suggest/', views.EncyclopediaSuggestApiView.as_view(), name='api_encyclopedia_suggest'),
     path('api/encyclopedia/create/', views.EncyclopediaCreateApiView.as_view(), name='api_encyclopedia_create'),

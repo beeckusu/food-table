@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dishes: []
     };
     let hasUnsavedChanges = false;
+    let restaurantSearchTimeout = null;
 
     // Initialize modal trigger
     const openModalBtn = document.getElementById('openReviewModal');
@@ -54,6 +55,14 @@ document.addEventListener('DOMContentLoaded', function() {
             dishes: []
         };
         hasUnsavedChanges = false;
+
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('reviewVisitDate').value = today;
+
+        // Set default party size to 1
+        document.getElementById('reviewPartySize').value = 1;
+
         showStep(currentStep);
         modal.show();
     }
@@ -125,7 +134,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'basic-info':
                     const restaurantName = document.getElementById('reviewRestaurantName').value.trim();
                     const visitDate = document.getElementById('reviewVisitDate').value.trim();
+                    const partySize = parseInt(document.getElementById('reviewPartySize').value);
+
+                    // Validate required fields
                     isValid = restaurantName !== '' && visitDate !== '';
+
+                    // Validate date is not in future
+                    if (visitDate) {
+                        const selectedDate = new Date(visitDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0); // Reset time for date-only comparison
+                        if (selectedDate > today) {
+                            isValid = false;
+                        }
+                    }
+
+                    // Validate party size is positive
+                    if (partySize < 1 || isNaN(partySize)) {
+                        isValid = false;
+                    }
                     break;
 
                 case 'rating':
@@ -162,6 +189,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.basicInfo = {
                     restaurantName: document.getElementById('reviewRestaurantName').value.trim(),
                     visitDate: document.getElementById('reviewVisitDate').value.trim(),
+                    partySize: document.getElementById('reviewPartySize').value,
+                    entryTime: document.getElementById('reviewEntryTime').value.trim(),
                     mealType: document.getElementById('reviewMealType').value
                 };
                 break;
@@ -178,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'rating':
                 formData.rating = {
                     overall: document.getElementById('reviewOverallRating').value,
+                    title: document.getElementById('reviewTitle').value.trim(),
                     notes: document.getElementById('reviewNotes').value.trim(),
                     ambiance: document.getElementById('reviewAmbiance').value,
                     service: document.getElementById('reviewService').value
@@ -285,6 +315,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('ambianceValue').textContent = '50';
         document.getElementById('serviceValue').textContent = '50';
 
+        // Reset title character count
+        document.getElementById('titleCharCount').textContent = '0';
+
+        // Clear restaurant search results
+        document.getElementById('restaurantSearchResults').style.display = 'none';
+        document.getElementById('restaurantSearchResults').innerHTML = '';
+        document.getElementById('restaurantSearchStatus').textContent = '';
+
         hideError();
     }
 
@@ -299,6 +337,10 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '<h6 class="border-bottom pb-2 mb-3">Basic Information</h6>';
         summaryHtml += `<p><strong>Restaurant:</strong> ${formData.basicInfo.restaurantName || 'N/A'}</p>`;
         summaryHtml += `<p><strong>Visit Date:</strong> ${formData.basicInfo.visitDate || 'N/A'}</p>`;
+        if (formData.basicInfo.entryTime) {
+            summaryHtml += `<p><strong>Time:</strong> ${formData.basicInfo.entryTime}</p>`;
+        }
+        summaryHtml += `<p><strong>Party Size:</strong> ${formData.basicInfo.partySize || '1'}</p>`;
         summaryHtml += `<p><strong>Meal Type:</strong> ${formData.basicInfo.mealType || 'Not specified'}</p>`;
 
         // Location (if provided)
@@ -313,6 +355,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Rating
         summaryHtml += '<h6 class="border-bottom pb-2 mb-3 mt-4">Rating & Notes</h6>';
         summaryHtml += `<p><strong>Overall Rating:</strong> <span class="badge bg-primary">${formData.rating.overall}</span></p>`;
+        if (formData.rating.title) {
+            summaryHtml += `<p><strong>Title:</strong> ${formData.rating.title}</p>`;
+        }
         summaryHtml += `<p><strong>Ambiance:</strong> <span class="badge bg-secondary">${formData.rating.ambiance}</span></p>`;
         summaryHtml += `<p><strong>Service:</strong> <span class="badge bg-secondary">${formData.rating.service}</span></p>`;
         if (formData.rating.notes) {
@@ -423,6 +468,132 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form input validation listeners
     document.getElementById('reviewRestaurantName').addEventListener('input', validateCurrentStep);
     document.getElementById('reviewVisitDate').addEventListener('input', validateCurrentStep);
+    document.getElementById('reviewPartySize').addEventListener('input', validateCurrentStep);
+
+    // Title character counter
+    document.getElementById('reviewTitle').addEventListener('input', function() {
+        const charCount = this.value.length;
+        document.getElementById('titleCharCount').textContent = charCount;
+    });
+
+    // Restaurant search with debounce (300ms)
+    const restaurantInput = document.getElementById('reviewRestaurantName');
+    const restaurantResults = document.getElementById('restaurantSearchResults');
+    const restaurantStatus = document.getElementById('restaurantSearchStatus');
+
+    restaurantInput.addEventListener('input', function() {
+        clearTimeout(restaurantSearchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            restaurantResults.style.display = 'none';
+            restaurantResults.innerHTML = '';
+            restaurantStatus.textContent = query.length === 1 ? 'Type at least 2 characters to search' : '';
+            validateCurrentStep();
+            return;
+        }
+
+        restaurantStatus.textContent = 'Searching...';
+
+        // Debounce with 300ms delay
+        restaurantSearchTimeout = setTimeout(() => {
+            performRestaurantSearch(query);
+        }, 300);
+    });
+
+    function performRestaurantSearch(query) {
+        fetch(`/api/restaurants/search/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                restaurantResults.innerHTML = '';
+
+                if (data.results && data.results.length > 0) {
+                    restaurantStatus.textContent = `${data.results.length} restaurant(s) found`;
+                    restaurantResults.style.display = 'block';
+
+                    data.results.forEach(restaurant => {
+                        const item = document.createElement('a');
+                        item.className = 'list-group-item list-group-item-action';
+                        item.href = '#';
+                        item.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>${restaurant.name}</strong>
+                                    ${restaurant.location ? `<br><small class="text-muted">${restaurant.location}</small>` : ''}
+                                </div>
+                                <span class="badge bg-secondary">${restaurant.visit_count} visit(s)</span>
+                            </div>
+                        `;
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            selectRestaurant(restaurant);
+                        });
+                        restaurantResults.appendChild(item);
+                    });
+
+                    // Add "Create new" option if no exact match
+                    const createNewItem = document.createElement('a');
+                    createNewItem.className = 'list-group-item list-group-item-action list-group-item-light';
+                    createNewItem.href = '#';
+                    createNewItem.innerHTML = `<i class="bi bi-plus-circle"></i> Create new: "${query}"`;
+                    createNewItem.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        selectRestaurant({ name: query, location: '' });
+                    });
+                    restaurantResults.appendChild(createNewItem);
+                } else {
+                    restaurantStatus.textContent = 'No restaurants found';
+                    restaurantResults.style.display = 'block';
+                    const createNewItem = document.createElement('a');
+                    createNewItem.className = 'list-group-item list-group-item-action';
+                    createNewItem.href = '#';
+                    createNewItem.innerHTML = `<i class="bi bi-plus-circle"></i> Create new: "${query}"`;
+                    createNewItem.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        selectRestaurant({ name: query, location: '' });
+                    });
+                    restaurantResults.appendChild(createNewItem);
+                }
+            })
+            .catch(error => {
+                console.error('Restaurant search error:', error);
+                restaurantStatus.textContent = 'Error searching restaurants';
+                restaurantResults.style.display = 'none';
+            });
+    }
+
+    function selectRestaurant(restaurant) {
+        restaurantInput.value = restaurant.name;
+        restaurantResults.style.display = 'none';
+        restaurantResults.innerHTML = '';
+        restaurantStatus.textContent = '';
+
+        // Pre-fill location if available
+        if (restaurant.location) {
+            // Split location into city/country if possible
+            const locationParts = restaurant.location.split(',').map(p => p.trim());
+            if (locationParts.length >= 2) {
+                document.getElementById('reviewCity').value = locationParts[0];
+                document.getElementById('reviewCountry').value = locationParts[1];
+            }
+        }
+
+        validateCurrentStep();
+    }
+
+    // Hide restaurant search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!restaurantInput.contains(e.target) && !restaurantResults.contains(e.target)) {
+            restaurantResults.style.display = 'none';
+        }
+    });
+
+    // Keyboard navigation for restaurant search
+    restaurantInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            restaurantResults.style.display = 'none';
+        }
+    });
 
     // Dish management
     let dishCounter = 0;
