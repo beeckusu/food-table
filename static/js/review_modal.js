@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let hasUnsavedChanges = false;
     let restaurantSearchTimeout = null;
 
+    // Draft manager
+    const draftManager = new ReviewDraftManager();
+
     // Initialize modal trigger
     const openModalBtn = document.getElementById('openReviewModal');
     if (openModalBtn) {
@@ -46,25 +49,89 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Open modal
-    function openModal() {
-        currentStep = 0;
-        formData = {
-            basicInfo: {},
-            location: {},
-            rating: {},
-            dishes: []
-        };
-        hasUnsavedChanges = false;
+    async function openModal() {
+        // Check for existing drafts
+        const draft = await draftManager.init();
 
-        // Set default date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('reviewVisitDate').value = today;
+        if (draft) {
+            // Restore draft data
+            restoreDraftData(draft);
+            currentStep = REVIEW_STEPS.findIndex(s => s.id === draft.step);
+            if (currentStep === -1) currentStep = 0;
+        } else {
+            // Start fresh
+            currentStep = 0;
+            formData = {
+                basicInfo: {},
+                location: {},
+                rating: {},
+                dishes: []
+            };
+            hasUnsavedChanges = false;
 
-        // Set default party size to 1
-        document.getElementById('reviewPartySize').value = 1;
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reviewVisitDate').value = today;
+
+            // Set default party size to 1
+            document.getElementById('reviewPartySize').value = 1;
+        }
+
+        // Start autosave
+        draftManager.startAutosave(
+            () => REVIEW_STEPS[currentStep].id,
+            () => formData
+        );
 
         showStep(currentStep);
         modal.show();
+    }
+
+    // Restore draft data into form
+    function restoreDraftData(draft) {
+        formData = draft.data;
+
+        // Restore basic info
+        if (formData.basicInfo) {
+            document.getElementById('reviewRestaurantName').value = formData.basicInfo.restaurantName || '';
+            document.getElementById('reviewVisitDate').value = formData.basicInfo.visitDate || '';
+            document.getElementById('reviewPartySize').value = formData.basicInfo.partySize || 1;
+            document.getElementById('reviewEntryTime').value = formData.basicInfo.entryTime || '';
+            document.getElementById('reviewMealType').value = formData.basicInfo.mealType || '';
+        }
+
+        // Restore location
+        if (formData.location) {
+            document.getElementById('reviewAddress').value = formData.location.address || '';
+            document.getElementById('reviewCity').value = formData.location.city || '';
+            document.getElementById('reviewCountry').value = formData.location.country || '';
+            document.getElementById('reviewNeighborhood').value = formData.location.neighborhood || '';
+        }
+
+        // Restore rating
+        if (formData.rating) {
+            document.getElementById('reviewOverallRating').value = formData.rating.overall || 50;
+            document.getElementById('ratingValue').textContent = formData.rating.overall || 50;
+            document.getElementById('reviewTitle').value = formData.rating.title || '';
+            document.getElementById('reviewNotes').value = formData.rating.notes || '';
+            document.getElementById('reviewAmbiance').value = formData.rating.ambiance || 50;
+            document.getElementById('ambianceValue').textContent = formData.rating.ambiance || 50;
+            document.getElementById('reviewService').value = formData.rating.service || 50;
+            document.getElementById('serviceValue').textContent = formData.rating.service || 50;
+
+            // Update character count
+            const titleLength = (formData.rating.title || '').length;
+            document.getElementById('titleCharCount').textContent = titleLength;
+        }
+
+        // Restore dishes
+        if (formData.dishes && formData.dishes.length > 0) {
+            formData.dishes.forEach(dishData => {
+                addDish(dishData);
+            });
+        }
+
+        hasUnsavedChanges = false;
     }
 
     // Show specific step
@@ -135,9 +202,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     const restaurantName = document.getElementById('reviewRestaurantName').value.trim();
                     const visitDate = document.getElementById('reviewVisitDate').value.trim();
                     const partySize = parseInt(document.getElementById('reviewPartySize').value);
+                    const dateValidationError = document.getElementById('dateValidationError');
 
                     // Validate required fields
                     isValid = restaurantName !== '' && visitDate !== '';
+
+                    console.log('Basic info validation:', {
+                        restaurantName,
+                        visitDate,
+                        partySize,
+                        isValid
+                    });
 
                     // Validate date is not in future
                     if (visitDate) {
@@ -146,12 +221,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         today.setHours(0, 0, 0, 0); // Reset time for date-only comparison
                         if (selectedDate > today) {
                             isValid = false;
+                            dateValidationError.style.display = 'block';
+                            console.log('Date is in future, invalid');
+                        } else {
+                            dateValidationError.style.display = 'none';
                         }
+                    } else {
+                        dateValidationError.style.display = 'none';
                     }
 
                     // Validate party size is positive
                     if (partySize < 1 || isNaN(partySize)) {
                         isValid = false;
+                        console.log('Party size invalid:', partySize);
                     }
                     break;
 
@@ -176,7 +258,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update next button state
         if (nextBtn.style.display !== 'none') {
-            nextBtn.disabled = !isValid && step.required;
+            const shouldDisable = !isValid && step.required;
+            nextBtn.disabled = shouldDisable;
+            console.log('Next button state:', {
+                isValid,
+                required: step.required,
+                shouldDisable,
+                buttonDisabled: nextBtn.disabled
+            });
         }
 
         return isValid;
@@ -186,6 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveCurrentStepData() {
         const step = REVIEW_STEPS[currentStep];
         hasUnsavedChanges = true;
+        draftManager.markUnsaved();
 
         switch (step.id) {
             case 'basic-info':
@@ -224,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Go to next step
-    function goToNextStep() {
+    async function goToNextStep() {
         console.log('goToNextStep called, currentStep:', currentStep);
         if (currentStep >= REVIEW_STEPS.length - 1) return;
 
@@ -243,6 +333,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save current step data
         saveCurrentStepData();
 
+        // Save draft
+        await draftManager.saveNow(step.id, formData);
+
         // Clear any errors
         hideError();
 
@@ -258,11 +351,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Go to previous step
-    function goToPreviousStep() {
+    async function goToPreviousStep() {
         if (currentStep <= 0) return;
 
         // Save current step data (don't validate)
         saveCurrentStepData();
+
+        // Save draft
+        await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
 
         // Clear any errors
         hideError();
@@ -289,9 +385,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Close modal with confirmation
-    function closeModal() {
+    async function closeModal() {
+        // Save draft before closing if there are changes
+        if (hasUnsavedChanges || draftManager.hasUnsaved()) {
+            saveCurrentStepData();
+            await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
+        }
+
         if (hasUnsavedChanges) {
-            if (confirm('You have unsaved changes. Are you sure you want to close?')) {
+            if (confirm('Your draft has been saved. Close the modal?')) {
                 modal.hide();
                 resetModal();
             }
@@ -311,6 +413,9 @@ document.addEventListener('DOMContentLoaded', function() {
             dishes: []
         };
         hasUnsavedChanges = false;
+
+        // Stop autosave
+        draftManager.stopAutosave();
 
         // Reset dish counter
         dishCounter = 0;
@@ -341,99 +446,244 @@ document.addEventListener('DOMContentLoaded', function() {
     function populateReviewSummary() {
         const summaryDiv = document.getElementById('reviewSummary');
 
-        let summaryHtml = '<div class="card">';
+        let summaryHtml = '';
+
+        // Basic Info Section
+        summaryHtml += '<div class="card mb-3">';
+        summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
+        summaryHtml += '<h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Basic Information</h6>';
+        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="0">';
+        summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
+        summaryHtml += '</div>';
         summaryHtml += '<div class="card-body">';
-
-        // Basic Info
-        summaryHtml += '<h6 class="border-bottom pb-2 mb-3">Basic Information</h6>';
-        summaryHtml += `<p><strong>Restaurant:</strong> ${formData.basicInfo.restaurantName || 'N/A'}</p>`;
-        summaryHtml += `<p><strong>Visit Date:</strong> ${formData.basicInfo.visitDate || 'N/A'}</p>`;
+        summaryHtml += `<p class="mb-2"><strong>Restaurant:</strong> ${formData.basicInfo.restaurantName || 'N/A'}</p>`;
+        summaryHtml += `<p class="mb-2"><strong>Visit Date:</strong> ${formData.basicInfo.visitDate || 'N/A'}</p>`;
         if (formData.basicInfo.entryTime) {
-            summaryHtml += `<p><strong>Time:</strong> ${formData.basicInfo.entryTime}</p>`;
+            summaryHtml += `<p class="mb-2"><strong>Time:</strong> ${formData.basicInfo.entryTime}</p>`;
         }
-        summaryHtml += `<p><strong>Party Size:</strong> ${formData.basicInfo.partySize || '1'}</p>`;
-        summaryHtml += `<p><strong>Meal Type:</strong> ${formData.basicInfo.mealType || 'Not specified'}</p>`;
+        summaryHtml += `<p class="mb-2"><strong>Party Size:</strong> ${formData.basicInfo.partySize || '1'} people</p>`;
+        if (formData.basicInfo.mealType) {
+            summaryHtml += `<p class="mb-0"><strong>Meal Type:</strong> <span class="badge bg-secondary">${formData.basicInfo.mealType}</span></p>`;
+        }
+        summaryHtml += '</div></div>';
 
-        // Location (if provided)
-        if (formData.location.address || formData.location.city || formData.location.country) {
-            summaryHtml += '<h6 class="border-bottom pb-2 mb-3 mt-4">Location</h6>';
-            if (formData.location.address) summaryHtml += `<p><strong>Address:</strong> ${formData.location.address}</p>`;
-            if (formData.location.city) summaryHtml += `<p><strong>City:</strong> ${formData.location.city}</p>`;
-            if (formData.location.country) summaryHtml += `<p><strong>Country:</strong> ${formData.location.country}</p>`;
-            if (formData.location.neighborhood) summaryHtml += `<p><strong>Neighborhood:</strong> ${formData.location.neighborhood}</p>`;
+        // Location Section (if provided)
+        if (formData.location.address || formData.location.city || formData.location.country || formData.location.neighborhood) {
+            summaryHtml += '<div class="card mb-3">';
+            summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
+            summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Location</h6>';
+            summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="1">';
+            summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
+            summaryHtml += '</div>';
+            summaryHtml += '<div class="card-body">';
+            if (formData.location.address) summaryHtml += `<p class="mb-2"><strong>Address:</strong> ${formData.location.address}</p>`;
+            if (formData.location.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${formData.location.city}</p>`;
+            if (formData.location.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${formData.location.country}</p>`;
+            if (formData.location.neighborhood) summaryHtml += `<p class="mb-0"><strong>Neighborhood:</strong> ${formData.location.neighborhood}</p>`;
+            summaryHtml += '</div></div>';
         }
 
-        // Rating
-        summaryHtml += '<h6 class="border-bottom pb-2 mb-3 mt-4">Rating & Notes</h6>';
-        summaryHtml += `<p><strong>Overall Rating:</strong> <span class="badge bg-primary">${formData.rating.overall}</span></p>`;
+        // Rating Section
+        summaryHtml += '<div class="card mb-3">';
+        summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
+        summaryHtml += '<h6 class="mb-0"><i class="bi bi-star me-2"></i>Rating & Notes</h6>';
+        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="2">';
+        summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
+        summaryHtml += '</div>';
+        summaryHtml += '<div class="card-body">';
+        summaryHtml += '<div class="mb-3">';
+        summaryHtml += `<strong>Overall Rating:</strong> <span class="badge bg-primary fs-6 ms-2">${formData.rating.overall}/100</span>`;
+        summaryHtml += '</div>';
         if (formData.rating.title) {
-            summaryHtml += `<p><strong>Title:</strong> ${formData.rating.title}</p>`;
+            summaryHtml += `<div class="mb-2"><strong>Title:</strong> "${formData.rating.title}"</div>`;
         }
-        summaryHtml += `<p><strong>Ambiance:</strong> <span class="badge bg-secondary">${formData.rating.ambiance}</span></p>`;
-        summaryHtml += `<p><strong>Service:</strong> <span class="badge bg-secondary">${formData.rating.service}</span></p>`;
+        summaryHtml += '<div class="row mb-2">';
+        summaryHtml += '<div class="col-md-6">';
+        summaryHtml += `<strong>Ambiance:</strong> <span class="badge bg-secondary">${formData.rating.ambiance}/100</span>`;
+        summaryHtml += '</div>';
+        summaryHtml += '<div class="col-md-6">';
+        summaryHtml += `<strong>Service:</strong> <span class="badge bg-secondary">${formData.rating.service}/100</span>`;
+        summaryHtml += '</div></div>';
         if (formData.rating.notes) {
-            summaryHtml += `<p><strong>Notes:</strong><br>${formData.rating.notes}</p>`;
+            summaryHtml += `<div class="mt-3"><strong>Notes:</strong><div class="border-start border-3 border-primary ps-3 mt-2">${formData.rating.notes.replace(/\n/g, '<br>')}</div></div>`;
         }
+        summaryHtml += '</div></div>';
 
-        // Dishes
-        summaryHtml += '<h6 class="border-bottom pb-2 mb-3 mt-4">Dishes</h6>';
+        // Dishes Section
+        summaryHtml += '<div class="card mb-3">';
+        summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
+        summaryHtml += '<h6 class="mb-0"><i class="bi bi-egg-fried me-2"></i>Dishes</h6>';
+        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="3">';
+        summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
+        summaryHtml += '</div>';
+        summaryHtml += '<div class="card-body">';
         if (formData.dishes.length > 0) {
             formData.dishes.forEach((dish, index) => {
-                summaryHtml += `<div class="mb-3 dish-summary-item">`;
+                summaryHtml += '<div class="dish-summary-item mb-3 pb-3 border-bottom">';
+                summaryHtml += '<div class="row">';
                 if (dish.image) {
-                    summaryHtml += `<img src="${dish.image}" alt="${dish.name}" class="dish-summary-image mb-2">`;
+                    summaryHtml += '<div class="col-md-3 mb-2 mb-md-0">';
+                    summaryHtml += `<img src="${dish.image}" alt="${dish.name}" class="img-fluid rounded" style="max-height: 120px; object-fit: cover; width: 100%;">`;
+                    summaryHtml += '</div>';
+                    summaryHtml += '<div class="col-md-9">';
+                } else {
+                    summaryHtml += '<div class="col-12">';
                 }
-                summaryHtml += `<div><strong>${index + 1}. ${dish.name}</strong> - <span class="badge bg-primary">${dish.rating}</span></div>`;
+                summaryHtml += `<h6 class="mb-1">${index + 1}. ${dish.name} <span class="badge bg-primary">${dish.rating}/100</span></h6>`;
+                // Show encyclopedia link if any (only one allowed per dish)
+                if (dish.encyclopedia_ids && dish.encyclopedia_ids.length > 0) {
+                    const entry = dish.encyclopedia_ids[0];
+                    summaryHtml += `<div class="mb-2"><span class="badge bg-info"><i class="bi bi-book"></i> ${entry.name}</span></div>`;
+                }
                 if (dish.notes) {
-                    summaryHtml += `<small class="text-muted">${dish.notes}</small>`;
+                    summaryHtml += `<p class="text-muted mb-0 small">${dish.notes}</p>`;
                 }
-                summaryHtml += `</div>`;
+                summaryHtml += '</div></div></div>';
             });
         } else {
-            summaryHtml += '<p class="text-muted">No dishes added</p>';
+            summaryHtml += '<p class="text-muted mb-0">No dishes added</p>';
         }
-
-        summaryHtml += '</div>';
-        summaryHtml += '</div>';
+        summaryHtml += '</div></div>';
 
         summaryDiv.innerHTML = summaryHtml;
+
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.edit-section-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const targetStep = parseInt(this.dataset.targetStep);
+                await goToStep(targetStep);
+            });
+        });
+    }
+
+    // Navigate to a specific step
+    async function goToStep(stepIndex) {
+        if (stepIndex < 0 || stepIndex >= REVIEW_STEPS.length) return;
+
+        // Save current step data
+        saveCurrentStepData();
+
+        // Save draft
+        await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
+
+        // Update current step
+        currentStep = stepIndex;
+
+        // Show the step
+        showStep(currentStep);
     }
 
     // Submit review
-    function submitReview() {
+    async function submitReview() {
         // Save final step data
         saveCurrentStepData();
+
+        // IMPORTANT: Re-save dishes to ensure encyclopedia links are captured
+        saveDishes();
 
         // Disable submit button
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
-        // In a real implementation, this would send data to the server
-        // For now, we'll just simulate a submission
-        console.log('Submitting review:', formData);
+        try {
+            // Prepare data for submission
+            const submissionData = {
+                basicInfo: formData.basicInfo,
+                location: formData.location,
+                rating: formData.rating,
+                dishes: formData.dishes,
+                draft_id: draftManager.getDraftId()
+            };
 
-        // Simulate API call
-        setTimeout(() => {
+            console.log('Submitting review with data:', JSON.stringify(submissionData, null, 2));
+            console.log('Dishes detail:', formData.dishes);
+
+            // Submit to API
+            const response = await fetch('/api/reviews/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': draftManager.getCsrfToken()
+                },
+                body: JSON.stringify(submissionData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Success! Reset draft manager
+                draftManager.reset();
+
+                // Show success message
+                showSuccessToast('Review submitted successfully!');
+
+                // Close modal
+                modal.hide();
+                resetModal();
+
+                // Redirect to review detail page
+                if (result.review_url) {
+                    setTimeout(() => {
+                        window.location.href = result.review_url;
+                    }, 500);
+                } else {
+                    // Reload page to show new review
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }
+            } else {
+                // Handle errors
+                if (result.errors) {
+                    // Validation errors - show them
+                    let errorMessages = [];
+                    for (const [field, message] of Object.entries(result.errors)) {
+                        errorMessages.push(message);
+                    }
+                    showError(errorMessages.join('<br>'));
+                } else {
+                    showError(result.error || 'Failed to submit review. Please try again.');
+                }
+
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Review';
+            }
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            showError('Network error. Please check your connection and try again.');
+
+            // Re-enable submit button
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Review';
+        }
+    }
 
-            // Show success and close modal
-            alert('Review submitted successfully! (This is a placeholder - actual implementation will save to server)');
-            modal.hide();
-            resetModal();
-        }, 1500);
+    // Show success toast notification
+    function showSuccessToast(message) {
+        // Simple toast implementation
+        // In a real app, you might use Bootstrap toast or a library
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `<i class="bi bi-check-circle me-2"></i>${message}`;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
     }
 
     // Error handling
     function showError(message) {
-        errorDiv.textContent = message;
+        errorDiv.innerHTML = message; // Changed to innerHTML to support HTML content
         errorDiv.style.display = 'block';
         errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function hideError() {
         errorDiv.style.display = 'none';
-        errorDiv.textContent = '';
+        errorDiv.innerHTML = '';
     }
 
     // Event listeners - Navigation buttons
@@ -496,11 +746,13 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(restaurantSearchTimeout);
         const query = this.value.trim();
 
+        // Always validate on input
+        validateCurrentStep();
+
         if (query.length < 2) {
             restaurantResults.style.display = 'none';
             restaurantResults.innerHTML = '';
             restaurantStatus.textContent = query.length === 1 ? 'Type at least 2 characters to search' : '';
-            validateCurrentStep();
             return;
         }
 
@@ -517,6 +769,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 restaurantResults.innerHTML = '';
+
+                // Validate after search results are ready
+                validateCurrentStep();
 
                 if (data.results && data.results.length > 0) {
                     restaurantStatus.textContent = `${data.results.length} restaurant(s) found`;
@@ -570,6 +825,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Restaurant search error:', error);
                 restaurantStatus.textContent = 'Error searching restaurants';
                 restaurantResults.style.display = 'none';
+                validateCurrentStep();
             });
     }
 
@@ -579,13 +835,17 @@ document.addEventListener('DOMContentLoaded', function() {
         restaurantResults.innerHTML = '';
         restaurantStatus.textContent = '';
 
-        // Pre-fill location if available
+        // Handle data format: "Street Address, City" stored in location field
         if (restaurant.location) {
-            // Split location into city/country if possible
             const locationParts = restaurant.location.split(',').map(p => p.trim());
-            if (locationParts.length >= 2) {
+
+            if (locationParts.length === 2) {
+                // Format: "Street Address, City"
+                document.getElementById('reviewAddress').value = locationParts[0];
+                document.getElementById('reviewCity').value = locationParts[1];
+            } else if (locationParts.length === 1) {
+                // Just one part - put in City
                 document.getElementById('reviewCity').value = locationParts[0];
-                document.getElementById('reviewCountry').value = locationParts[1];
             }
         }
 
@@ -642,7 +902,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // Pre-fill encyclopedia links if provided
             if (dishData.encyclopedia_ids && dishData.encyclopedia_ids.length > 0) {
                 dishCard.dataset.encyclopediaIds = JSON.stringify(dishData.encyclopedia_ids);
-                // Note: chips would need to be rendered if we had the encyclopedia data
+            }
+
+            // Pre-fill image if provided
+            if (dishData.image) {
+                const imagePreview = dishCard.querySelector('.dish-image-preview');
+                const previewImg = dishCard.querySelector('.dish-preview-img');
+                const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
+
+                previewImg.src = dishData.image;
+                imagePreview.style.display = 'block';
+                imageDropZone.style.display = 'none';
             }
         }
 
@@ -749,13 +1019,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update dish numbers after adding to container
         updateDishNumbers();
 
-        // Save dishes and focus on name field
+        // Render encyclopedia chips if data was pre-filled
+        renderEncyclopediaChips(dishCard);
+
+        // Save dishes and validate
         saveDishes();
         validateCurrentStep();
 
-        setTimeout(() => {
-            dishCard.querySelector('.dish-name').focus();
-        }, 100);
+        // Focus on name field only if this is a new dish (not being restored)
+        if (!dishData) {
+            setTimeout(() => {
+                dishCard.querySelector('.dish-name').focus();
+            }, 100);
+        }
     }
 
     function handleImageFile(file, dishCard) {
@@ -822,6 +1098,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveDishes() {
         formData.dishes = [];
 
+        console.log('saveDishes called, scanning dish cards...');
+
         document.querySelectorAll('.dish-card').forEach(card => {
             if (card.id !== 'dishFormTemplate' && card.style.display !== 'none') {
                 const name = card.querySelector('.dish-name').value.trim();
@@ -829,7 +1107,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const notes = card.querySelector('.dish-notes').value.trim();
                 const imagePreview = card.querySelector('.dish-preview-img');
                 const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
-                const encyclopediaIds = JSON.parse(card.dataset.encyclopediaIds || '[]');
+                // Read encyclopediaIds from parent element (the wrapper div where it's actually stored)
+                const encyclopediaIds = JSON.parse(card.parentElement.dataset.encyclopediaIds || '[]');
+
+                console.log(`Dish card ${card.id}:`, {
+                    name,
+                    encyclopediaIds,
+                    datasetValue: card.parentElement.dataset.encyclopediaIds
+                });
 
                 if (name) { // Only save dishes with a name
                     formData.dishes.push({
@@ -843,11 +1128,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        console.log('Dishes saved:', formData.dishes.length);
+        // Mark unsaved changes
+        hasUnsavedChanges = true;
+        draftManager.markUnsaved();
+
+        console.log('Dishes saved:', formData.dishes.length, 'Full dishes data:', JSON.stringify(formData.dishes, null, 2));
     }
 
     // Encyclopedia Search Functions
     function openEncyclopediaSearch(dishCard) {
+        console.log('Opening encyclopedia search for dish:', dishCard.id);
         currentDishCard = dishCard;
         encyclopediaSearchInput.value = '';
         encyclopediaSearchResults.innerHTML = '';
@@ -916,9 +1206,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function performEncyclopediaSearch(query) {
+        console.log('Searching encyclopedia for:', query);
         fetch(`/api/encyclopedia/search/?q=${encodeURIComponent(query)}`)
             .then(response => response.json())
             .then(data => {
+                console.log('Encyclopedia search results:', data);
                 encyclopediaSearchStatus.style.display = 'none';
 
                 if (data.results.length === 0) {
@@ -963,32 +1255,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function addEncyclopediaLink(dishCard, entryId, entryName, entrySlug) {
-        // Get current encyclopedia IDs
-        const currentIds = JSON.parse(dishCard.dataset.encyclopediaIds || '[]');
+        console.log('Adding encyclopedia link:', entryId, entryName, entrySlug);
 
-        // Check if already linked
-        const existingLink = currentIds.find(link => link.id === entryId);
-        if (existingLink) {
-            // Already linked, just close modal
-            encyclopediaSearchModal.hide();
-            return;
-        }
-
-        // Add new link
-        currentIds.push({
+        // Only allow one encyclopedia link per dish - replace existing if any
+        const newLink = {
             id: entryId,
             name: entryName,
             slug: entrySlug
-        });
+        };
 
-        // Update dataset
-        dishCard.dataset.encyclopediaIds = JSON.stringify(currentIds);
+        // Update dataset with single entry (replaces any existing)
+        dishCard.dataset.encyclopediaIds = JSON.stringify([newLink]);
+        console.log('Updated dataset:', dishCard.dataset.encyclopediaIds);
 
         // Render chips
         renderEncyclopediaChips(dishCard);
 
         // Save dishes
         saveDishes();
+        console.log('Encyclopedia link saved, formData.dishes:', formData.dishes);
 
         // Clear search and close modal
         encyclopediaSearchInput.value = '';
@@ -996,16 +1281,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function removeEncyclopediaLink(dishCard, entryId) {
-        // Get current encyclopedia IDs
-        let currentIds = JSON.parse(dishCard.dataset.encyclopediaIds || '[]');
+        // Clear the encyclopedia link
+        dishCard.dataset.encyclopediaIds = JSON.stringify([]);
 
-        // Remove the entry
-        currentIds = currentIds.filter(link => link.id !== entryId);
-
-        // Update dataset
-        dishCard.dataset.encyclopediaIds = JSON.stringify(currentIds);
-
-        // Render chips
+        // Render chips (will update button text too)
         renderEncyclopediaChips(dishCard);
 
         // Save dishes
@@ -1015,15 +1294,19 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderEncyclopediaChips(dishCard) {
         const chipsContainer = dishCard.querySelector('.encyclopedia-chips');
         const chipsDiv = chipsContainer.querySelector('.d-flex');
+        const linkButton = dishCard.querySelector('.link-encyclopedia-btn');
         const encyclopediaIds = JSON.parse(dishCard.dataset.encyclopediaIds || '[]');
 
         if (encyclopediaIds.length === 0) {
             chipsContainer.style.display = 'none';
+            linkButton.innerHTML = '<i class="bi bi-book"></i> Link to Encyclopedia';
             return;
         }
 
+        // Show the linked entry
         chipsContainer.style.display = 'block';
-        chipsDiv.innerHTML = encyclopediaIds.map(link => `
+        const link = encyclopediaIds[0]; // Only one link allowed
+        chipsDiv.innerHTML = `
             <span class="badge bg-primary d-flex align-items-center gap-1" style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
                 <i class="bi bi-book"></i>
                 ${link.name}
@@ -1032,15 +1315,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         style="font-size: 0.5rem;"
                         aria-label="Remove"></button>
             </span>
-        `).join('');
+        `;
 
-        // Add click handlers to remove buttons
-        chipsDiv.querySelectorAll('[data-remove-encyclopedia-id]').forEach(btn => {
-            btn.addEventListener('click', function() {
+        // Update button text to indicate a link exists
+        linkButton.innerHTML = '<i class="bi bi-arrow-repeat"></i> Change Encyclopedia Link';
+
+        // Add click handler to remove button
+        const removeBtn = chipsDiv.querySelector('[data-remove-encyclopedia-id]');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
                 const idToRemove = this.dataset.removeEncyclopediaId;
                 removeEncyclopediaLink(dishCard, idToRemove);
             });
-        });
+        }
     }
 
     // Reset encyclopedia search modal on close
