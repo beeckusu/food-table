@@ -54,8 +54,9 @@
                             <div class="form-text">Name cannot be changed during conversion</div>
                         </div>
                         <div class="mb-3">
-                            <label for="convertEntryDescription" class="form-label">Description <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="convertEntryDescription" rows="4" required placeholder="Provide a detailed description of this dish..."></textarea>
+                            <label class="form-label">Description <span class="text-danger">*</span></label>
+                            <div id="convertEntryDescriptionEditor" style="min-height: 120px;"></div>
+                            <input type="hidden" id="convertEntryDescription">
                             <div class="form-text">Required to convert from placeholder</div>
                         </div>
                         <div class="mb-3">
@@ -71,16 +72,19 @@
                             <input type="text" class="form-control" id="convertEntryRegion" placeholder="e.g., Northern Thailand, Southern Italy">
                         </div>
                         <div class="mb-3">
-                            <label for="convertEntryCulturalSignificance" class="form-label">Cultural Significance</label>
-                            <textarea class="form-control" id="convertEntryCulturalSignificance" rows="3" placeholder="Describe the cultural importance or traditions..."></textarea>
+                            <label class="form-label">Cultural Significance</label>
+                            <div id="convertEntryCulturalSignificanceEditor" style="min-height: 80px;"></div>
+                            <input type="hidden" id="convertEntryCulturalSignificance">
                         </div>
                         <div class="mb-3">
-                            <label for="convertEntryPopularExamples" class="form-label">Popular Examples</label>
-                            <textarea class="form-control" id="convertEntryPopularExamples" rows="2" placeholder="List well-known examples or variations..."></textarea>
+                            <label class="form-label">Popular Examples</label>
+                            <div id="convertEntryPopularExamplesEditor" style="min-height: 80px;"></div>
+                            <input type="hidden" id="convertEntryPopularExamples">
                         </div>
                         <div class="mb-3">
-                            <label for="convertEntryHistory" class="form-label">History</label>
-                            <textarea class="form-control" id="convertEntryHistory" rows="3" placeholder="Describe the historical background..."></textarea>
+                            <label class="form-label">History</label>
+                            <div id="convertEntryHistoryEditor" style="min-height: 80px;"></div>
+                            <input type="hidden" id="convertEntryHistory">
                         </div>
                         <div id="convertFormError" class="alert alert-danger" style="display: none;"></div>
                         <div id="convertFormSuccess" class="alert alert-success" style="display: none;"></div>

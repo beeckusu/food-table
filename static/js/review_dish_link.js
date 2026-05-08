@@ -46,6 +46,33 @@ document.addEventListener('DOMContentLoaded', function() {
     let parentSearchTimeout = null;
     let selectedIndex = -1;
     let selectedParentId = null;
+    let dishLinkFormQuills = null;
+
+    function initDishLinkFormQuills() {
+        if (dishLinkFormQuills) return;
+        dishLinkFormQuills = {
+            description: initQuillEditor(
+                document.getElementById('entryDescriptionEditor'),
+                entryDescriptionInput,
+                { placeholder: 'Describe this dish...' }
+            ),
+            culturalSignificance: initQuillEditor(
+                document.getElementById('entryCulturalSignificanceEditor'),
+                entryCulturalSignificanceInput,
+                { placeholder: 'Describe the cultural importance or traditions...' }
+            ),
+            popularExamples: initQuillEditor(
+                document.getElementById('entryPopularExamplesEditor'),
+                entryPopularExamplesInput,
+                { placeholder: 'List well-known examples or variations...' }
+            ),
+            history: initQuillEditor(
+                document.getElementById('entryHistoryEditor'),
+                entryHistoryInput,
+                { placeholder: 'Describe the historical background...' }
+            )
+        };
+    }
 
     // Attach click handlers to unlinked badges (link)
     function attachUnlinkedHandlers() {
@@ -343,21 +370,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Pre-populate name with dish name
         entryNameInput.value = currentDishName || '';
-        entryDescriptionInput.value = '';
         entryCuisineTypeInput.value = '';
         entryDishCategoryInput.value = '';
         entryRegionInput.value = '';
-        entryCulturalSignificanceInput.value = '';
-        entryPopularExamplesInput.value = '';
-        entryHistoryInput.value = '';
         entryParentSearchInput.value = '';
         selectedParentId = null;
         selectedParentDiv.style.display = 'none';
         parentSearchResults.style.display = 'none';
         createFormError.style.display = 'none';
 
-        // Focus on description field since name is pre-filled
-        setTimeout(() => entryDescriptionInput.focus(), 100);
+        // Initialize Quill editors (lazy — section must be visible first)
+        initDishLinkFormQuills();
+        dishLinkFormQuills.description.setContents([]);
+        dishLinkFormQuills.culturalSignificance.setContents([]);
+        dishLinkFormQuills.popularExamples.setContents([]);
+        dishLinkFormQuills.history.setContents([]);
+
+        setTimeout(() => dishLinkFormQuills.description.focus(), 100);
     }
 
     function resetToSearchView() {
@@ -365,6 +394,12 @@ document.addEventListener('DOMContentLoaded', function() {
         createEntrySection.style.display = 'none';
         searchFooter.style.display = 'block';
         createFooter.style.display = 'none';
+        if (dishLinkFormQuills) {
+            dishLinkFormQuills.description.setContents([]);
+            dishLinkFormQuills.culturalSignificance.setContents([]);
+            dishLinkFormQuills.popularExamples.setContents([]);
+            dishLinkFormQuills.history.setContents([]);
+        }
         selectedParentId = null;
     }
 

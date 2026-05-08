@@ -1,4 +1,5 @@
 {% load review_tags %}
+{% load rtf_tags %}
 
 {# Component: Review Card #}
 {# Parameters: review (required) #}
@@ -32,7 +33,7 @@
         </div>
         {% if review.notes %}
         <p class="card-text">
-            {{ review.notes|truncatewords:15 }}
+            {{ review.notes|striptags|truncatewords:15 }}
         </p>
         {% endif %}
     </div>
