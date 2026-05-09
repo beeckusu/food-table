@@ -61,8 +61,8 @@ class ReviewDishListView(ListView):
             'cost_asc': ['cost'],
             'name_asc': ['dish_name'],
             'name_desc': ['-dish_name'],
-            'restaurant_asc': ['review__restaurant_name'],
-            'restaurant_desc': ['-review__restaurant_name'],
+            'restaurant_asc': ['review__restaurant__name'],
+            'restaurant_desc': ['-review__restaurant__name'],
             'link_asc': ['encyclopedia_entry__name'],  # Nulls last for asc (unlinked at bottom)
             'link_desc': ['-encyclopedia_entry__name'],  # Nulls first for desc (unlinked at bottom after reversing)
         }
@@ -262,7 +262,7 @@ class ReviewDishListView(ListView):
         if cleaned_data.get('restaurant_search'):
             restaurant_term = cleaned_data['restaurant_search']
             queryset = queryset.filter(
-                review__restaurant_name__icontains=restaurant_term
+                review__restaurant__name__icontains=restaurant_term
             )
 
         # Link status filter

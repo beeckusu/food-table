@@ -184,7 +184,7 @@
                                 </div>
                                 <!-- Mobile-only: Show restaurant name -->
                                 <div class="d-md-none small text-muted">
-                                    <i class="bi bi-shop"></i> {{ dish.review.restaurant_name }}
+                                    <i class="bi bi-shop"></i> {{ dish.review.restaurant.name }}
                                 </div>
                                 <!-- Mobile-only: Show cost and visit date -->
                                 <div class="d-lg-none small text-muted">
@@ -240,7 +240,7 @@
 
                             <!-- Restaurant (Desktop only) -->
                             <td class="d-none d-md-table-cell">
-                                {{ dish.review.restaurant_name }}
+                                {{ dish.review.restaurant.name }}
                             </td>
 
                             <!-- Rating -->

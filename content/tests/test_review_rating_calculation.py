@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from datetime import date, time
+from content.models.restaurant import Restaurant
 from content.models.review import Review
 from content.models.review_dish import ReviewDish
 
@@ -18,11 +19,12 @@ class ReviewRatingCalculationTestCase(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        self.restaurant = Restaurant.objects.create(name="Test Restaurant")
 
     def test_new_review_without_rating_defaults_to_50(self):
         """Test that a new review without rating gets default value of 50"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -34,7 +36,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_new_review_with_explicit_rating_is_preserved(self):
         """Test that a new review with explicit rating keeps that rating"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -46,7 +48,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_calculated_from_single_dish(self):
         """Test rating calculation with a single dish"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -68,7 +70,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_calculated_from_multiple_dishes(self):
         """Test rating calculation as average of multiple dish ratings"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -89,7 +91,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_rounds_correctly(self):
         """Test that rating calculation rounds to nearest integer"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -109,7 +111,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_ignores_unrated_dishes(self):
         """Test that dishes without ratings are ignored in calculation"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -129,7 +131,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_with_no_rated_dishes_defaults_to_50(self):
         """Test that review with only unrated dishes defaults to 50"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -147,7 +149,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_updates_when_dish_rating_changes(self):
         """Test that overall rating updates when dish rating is modified"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -174,7 +176,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_updates_when_dish_deleted(self):
         """Test that overall rating updates when a dish is deleted"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -197,7 +199,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_review_rating_reverts_to_50_when_all_dishes_deleted(self):
         """Test that overall rating reverts to 50 when all dishes are deleted"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -219,7 +221,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_explicit_rating_not_overwritten_by_dish_addition(self):
         """Test that explicitly set rating is NOT overwritten when dishes are added"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -240,7 +242,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_rating_with_extreme_values(self):
         """Test rating calculation with boundary values (0 and 100)"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -259,7 +261,7 @@ class ReviewRatingCalculationTestCase(TestCase):
         """Test that metadata flag is set when rating is auto-calculated"""
         # Review with no rating (0) should be auto-calculated
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,
@@ -273,7 +275,7 @@ class ReviewRatingCalculationTestCase(TestCase):
     def test_metadata_flag_not_set_for_explicit_rating(self):
         """Test that metadata flag is NOT set when rating is explicitly provided"""
         review = Review.objects.create(
-            restaurant_name="Test Restaurant",
+            restaurant=self.restaurant,
             visit_date=date(2025, 10, 31),
             entry_time=time(18, 30),
             party_size=2,

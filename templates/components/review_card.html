@@ -9,7 +9,7 @@
         {% if display_image %}
         <img src="{{ display_image.image.url }}"
              class="card-img-top"
-             alt="{{ review.restaurant_name }}"
+             alt="{{ review.restaurant.name }}"
              style="height: 200px; object-fit: cover;">
         {% else %}
         <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
@@ -20,11 +20,11 @@
     {% endwith %}
 
     <div class="card-body">
-        <h5 class="card-title">{{ review.restaurant_name }}</h5>
+        <h5 class="card-title">{{ review.restaurant.name }}</h5>
         <p class="card-text text-muted mb-2">
             <small>{{ review.visit_date|date:"F d, Y" }}</small>
-            {% if review.location %}
-            <br><small>{{ review.location }}</small>
+            {% if review.restaurant.city %}
+            <br><small>{{ review.restaurant.city }}{% if review.restaurant.country %}, {{ review.restaurant.country }}{% endif %}</small>
             {% endif %}
         </p>
         <div class="mb-2">

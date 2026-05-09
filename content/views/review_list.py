@@ -2,7 +2,7 @@ from django.views.generic import ListView
 from django.http import QueryDict
 from django.db.models import Count, F
 from django.contrib.postgres.search import SearchQuery, SearchRank
-from content.models import Review, ReviewTag
+from content.models import Restaurant, Review, ReviewTag
 from content.forms import ReviewFilterForm
 
 
@@ -66,8 +66,8 @@ class ReviewListView(ListView):
             'rating_asc': ['rating'],
             'date_desc': ['-visit_date', '-entry_time'],
             'date_asc': ['visit_date', 'entry_time'],
-            'name_asc': ['restaurant_name'],
-            'name_desc': ['-restaurant_name'],
+            'name_asc': ['restaurant__name'],
+            'name_desc': ['-restaurant__name'],
             'relevance': ['-rank'],  # Only available when search is active
         }
 
@@ -260,7 +260,7 @@ class ReviewListView(ListView):
 
         # Restaurant filter
         if cleaned_data.get('restaurant'):
-            queryset = queryset.filter(restaurant_name__iexact=cleaned_data['restaurant'])
+            queryset = queryset.filter(restaurant__name__iexact=cleaned_data['restaurant'])
 
         # Rating range filters (validated by form)
         if cleaned_data.get('rating_min') is not None:
@@ -294,15 +294,14 @@ class ReviewListView(ListView):
 
     def _get_restaurant_options(self):
         """
-        Get distinct restaurant names for dropdown.
-        Returns sorted list of unique restaurant names, excluding empty values.
+        Get restaurant names for dropdown from the Restaurant model.
         """
-        restaurants = Review.objects.filter(
-            is_private=False
-        ).values_list('restaurant_name', flat=True).distinct().order_by('restaurant_name')
-
-        # Filter out None and empty strings
-        return [r for r in restaurants if r]
+        return list(
+            Restaurant.objects.filter(reviews__is_private=False)
+            .values_list('name', flat=True)
+            .distinct()
+            .order_by('name')
+        )
 
     def _get_tag_options(self):
         """
