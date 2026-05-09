@@ -14,7 +14,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 from django.conf import settings
 
-from content.models import Review, ReviewDish, Image
+from content.models import Restaurant, Review, ReviewDish, Image
 from content.utils.importers import ConfluenceAPIImporter, JSONFileImporter
 from content.utils.parsers import ConfluenceStorageParser, ConfluenceMarkdownParser
 from content.utils.confluence_api import ConfluenceClient
@@ -156,14 +156,29 @@ class Command(BaseCommand):
         if not parsed_data.dishes:
             self.stdout.write(self.style.WARNING(f'  No dishes found in {restaurant_name}'))
 
+        # Parse location string ("City, Country" or "City, Province, Country")
+        location_parts = [p.strip() for p in parsed_data.location.split(',') if p.strip()]
+        city = location_parts[0] if len(location_parts) >= 1 else ''
+        province = ', '.join(location_parts[1:-1]) if len(location_parts) >= 3 else ''
+        country = location_parts[-1] if len(location_parts) >= 2 else ''
+
+        # Get or create the Restaurant record
+        restaurant, _ = Restaurant.objects.get_or_create(
+            name=restaurant_name,
+            street_address=parsed_data.address,
+            defaults={
+                'city': city,
+                'province': province,
+                'country': country,
+            },
+        )
+
         # Build review data for Django model
         review_data = {
-            'restaurant_name': restaurant_name,
+            'restaurant': restaurant,
             'visit_date': parsed_data.visit_date,
             'entry_time': parsed_data.entry_time,
             'party_size': parsed_data.party_size,
-            'address': parsed_data.address,
-            'location': parsed_data.location,
             'rating': parsed_data.rating,
             'notes': parsed_data.notes,
             'created_by': self.user,
@@ -188,9 +203,9 @@ class Command(BaseCommand):
                 self.stdout.write(f'      - {dish_name}: {dish.rating}/100 (${dish.cost})')
             return
 
-        # Check if review already exists (by restaurant name + visit date)
+        # Check if review already exists (by restaurant + visit date)
         existing = Review.objects.filter(
-            restaurant_name=restaurant_name,
+            restaurant=restaurant,
             visit_date=parsed_data.visit_date
         ).first()
 
@@ -263,7 +278,7 @@ class Command(BaseCommand):
                 if filename in downloaded_images:
                     Image.objects.create(
                         image=downloaded_images[filename],
-                        caption=f'{review.restaurant_name} - Restaurant',
+                        caption=f'{review.restaurant.name} - Restaurant',
                         content_object=review,
                         uploaded_by=self.user,
                         order=0

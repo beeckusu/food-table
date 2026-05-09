@@ -14,7 +14,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.contenttypes.models import ContentType
 
-from content.models import Review, ReviewDish, ReviewDraft, Encyclopedia, Image
+from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image
 
 
 class ReviewCreateApiView(LoginRequiredMixin, View):
@@ -86,7 +86,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
         # Validate basic info
         basic_info = data.get('basicInfo', {})
         if not basic_info.get('restaurantName'):
-            errors['restaurant_name'] = 'Restaurant name is required'
+            errors['restaurant'] = 'Restaurant name is required'
 
         if not basic_info.get('visitDate'):
             errors['visit_date'] = 'Visit date is required'
@@ -140,13 +140,17 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             # Default to noon if not provided
             entry_time = '12:00'
 
-        # Build location string from city and country
-        location_parts = []
-        if location_info.get('city'):
-            location_parts.append(location_info['city'])
-        if location_info.get('country'):
-            location_parts.append(location_info['country'])
-        location = ', '.join(location_parts) if location_parts else ''
+        # Get or create the Restaurant record
+        restaurant, _ = Restaurant.objects.get_or_create(
+            name=basic_info['restaurantName'],
+            street_address=location_info.get('address', ''),
+            defaults={
+                'city': location_info.get('city', ''),
+                'province': location_info.get('province', ''),
+                'country': location_info.get('country', ''),
+                'postal_code': location_info.get('postalCode', ''),
+            },
+        )
 
         # Create metadata
         metadata = {}
@@ -156,12 +160,10 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             metadata['neighborhood'] = location_info['neighborhood']
 
         review = Review.objects.create(
-            restaurant_name=basic_info['restaurantName'],
+            restaurant=restaurant,
             visit_date=basic_info['visitDate'],
             entry_time=entry_time,
             party_size=int(basic_info['partySize']),
-            location=location,
-            address=location_info.get('address', ''),
             rating=int(rating_data['overall']),
             title=rating_data.get('title', ''),
             notes=rating_data.get('notes', ''),

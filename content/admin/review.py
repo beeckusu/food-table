@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.core.management import call_command
 from django.contrib import messages
-from content.models import Review, ReviewDish, ReviewTag, Image
+from content.models import Restaurant, Review, ReviewDish, ReviewTag, Image
 from .inlines import ImageInline
 
 
@@ -48,16 +48,17 @@ import_reviews_from_confluence.short_description = "Import reviews from Confluen
 class ReviewAdmin(admin.ModelAdmin):
     """Admin interface for Review model"""
 
-    list_display = ['restaurant_name', 'visit_date', 'rating', 'created_at']
-    list_filter = ['rating', 'visit_date', 'location']
-    search_fields = ['restaurant_name', 'location', 'notes']
+    list_display = ['get_restaurant_name', 'visit_date', 'rating', 'created_at']
+    list_filter = ['rating', 'visit_date', 'restaurant__city', 'restaurant__country']
+    search_fields = ['restaurant__name', 'restaurant__city', 'restaurant__country', 'notes']
     date_hierarchy = 'visit_date'
     readonly_fields = ['created_at', 'updated_at', 'created_by']
+    autocomplete_fields = ['restaurant']
     actions = ['import_reviews_from_confluence']
 
     fieldsets = (
-        ('Restaurant Information', {
-            'fields': ('restaurant_name', 'location', 'address')
+        ('Restaurant', {
+            'fields': ('restaurant',)
         }),
         ('Visit Details', {
             'fields': ('visit_date', 'entry_time', 'party_size')
@@ -74,6 +75,10 @@ class ReviewAdmin(admin.ModelAdmin):
         }),
     )
 
+    @admin.display(description='Restaurant', ordering='restaurant__name')
+    def get_restaurant_name(self, obj):
+        return obj.restaurant.name if obj.restaurant_id else '—'
+
     inlines = [ReviewDishInline, ImageInline, ReviewTagInline]
 
     def save_model(self, request, obj, form, change):
@@ -89,7 +94,7 @@ class ReviewDishAdmin(admin.ModelAdmin):
 
     list_display = ['dish_name', 'review', 'dish_rating', 'cost']
     list_filter = ['dish_rating', 'review__visit_date']
-    search_fields = ['dish_name', 'notes', 'review__restaurant_name']
+    search_fields = ['dish_name', 'notes', 'review__restaurant__name']
     autocomplete_fields = ['encyclopedia_entry', 'review']
 
     fieldsets = (

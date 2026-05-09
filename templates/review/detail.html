@@ -3,14 +3,14 @@
 {% load admin_tags %}
 {% load static %}
 
-{% block title %}{{ review.restaurant_name }} - Reviews - Food Table{% endblock %}
+{% block title %}{{ review.restaurant.name }} - Reviews - Food Table{% endblock %}
 
 {% block content %}
 <!-- Breadcrumb Navigation -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'content:review_list' %}">Reviews</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ review.restaurant_name }}</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ review.restaurant.name }}</li>
     </ol>
 </nav>
 
@@ -18,7 +18,7 @@
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h1 class="mb-0">{{ review.restaurant_name }}</h1>
+            <h1 class="mb-0">{{ review.restaurant.name }}</h1>
             {% admin_edit_button review %}
         </div>
         {% if review.title %}
@@ -35,18 +35,18 @@
             <span class="me-3">
                 <strong>Visited:</strong> {{ review.visit_date|date:"F d, Y" }}
             </span>
-            {% if review.location %}
+            {% if review.restaurant.city %}
             <span class="me-3">
-                <strong>Location:</strong> {{ review.location }}
+                <strong>Location:</strong> {{ review.restaurant.city }}{% if review.restaurant.province %}, {{ review.restaurant.province }}{% endif %}{% if review.restaurant.country %}, {{ review.restaurant.country }}{% endif %}
             </span>
             {% endif %}
             <span class="me-3">
                 <strong>Party Size:</strong> {{ review.party_size }}
             </span>
         </div>
-        {% if review.address %}
+        {% if review.restaurant.street_address %}
         <div class="mb-2">
-            <strong>Address:</strong> {{ review.address }}
+            <strong>Address:</strong> {{ review.restaurant.street_address }}{% if review.restaurant.postal_code %} {{ review.restaurant.postal_code }}{% endif %}
         </div>
         {% endif %}
         <div class="mb-3">
@@ -208,7 +208,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title">Other Reviews at {{ review.restaurant_name }}</h4>
+                <h4 class="card-title">Other Reviews at {{ review.restaurant.name }}</h4>
                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
                     {% for related in related_reviews %}
                     <div class="col">
