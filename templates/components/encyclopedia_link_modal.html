@@ -49,6 +49,18 @@
                             <textarea class="form-control" id="entryDescription" rows="3" required></textarea>
                         </div>
                         <div class="mb-3">
+                            <label for="entrySimilarDishesSearch" class="form-label">Similar Dishes Globally (Optional)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="entrySimilarDishesSearch" placeholder="Search or type a name and press Add...">
+                                <button type="button" class="btn btn-outline-secondary" id="addSimilarDishBtn">Add</button>
+                            </div>
+                            <div class="form-text">Link to existing encyclopedia entries, or type a name and press Enter to create a new placeholder entry.</div>
+                            <div id="similarDishesSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                            <div id="selectedSimilarDishes" class="mt-2" style="display: none;">
+                                <div id="similarDishesChips" class="d-flex flex-column gap-1"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label for="entryCuisineType" class="form-label">Cuisine Type</label>
                             <input type="text" class="form-control" id="entryCuisineType" placeholder="e.g., Thai, Italian, Chinese">
                         </div>
@@ -82,20 +94,6 @@
                             <div id="selectedParent" class="alert alert-info mt-2" style="display: none;">
                                 <strong>Selected:</strong> <span id="selectedParentName"></span>
                                 <button type="button" class="btn-close float-end" id="clearParent" aria-label="Clear"></button>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="entrySimilarDishesSearch" class="form-label">Similar Dishes Globally (Optional)</label>
-                            <input type="text" class="form-control" id="entrySimilarDishesSearch" placeholder="Search for similar dishes...">
-                            <div class="form-text">Link to similar dishes from other cuisines</div>
-                            <div id="similarDishesSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
-                                <!-- Similar dishes search results will be populated here -->
-                            </div>
-                            <div id="selectedSimilarDishes" class="mt-2" style="display: none;">
-                                <strong class="d-block mb-2">Selected Similar Dishes:</strong>
-                                <div id="similarDishesChips" class="d-flex flex-wrap gap-2">
-                                    <!-- Selected similar dishes chips will be populated here -->
-                                </div>
                             </div>
                         </div>
                         <div id="createFormError" class="alert alert-danger" style="display: none;"></div>

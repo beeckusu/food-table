@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.db import models
 from django.utils.html import format_html
 from django.contrib import messages
 from content.models import Encyclopedia
+from content.widgets import QuillWidget
 from .inlines import ImageInline, EncyclopediaTagInline
 
 
@@ -39,6 +41,10 @@ class EncyclopediaAdmin(admin.ModelAdmin):
 
     filter_horizontal = ['similar_dishes']
     inlines = [ImageInline, EncyclopediaTagInline]
+
+    formfield_overrides = {
+        models.TextField: {'widget': QuillWidget},
+    }
 
     def placeholder_status(self, obj):
         """Display placeholder status with visual indicator"""

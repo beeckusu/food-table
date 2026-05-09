@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load admin_tags %}
+{% load rtf_tags %}
 
 {% block title %}{{ recipe.name }} - Recipes - Food Table{% endblock %}
 
@@ -98,7 +99,7 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h3 class="card-title">Description</h3>
-                <p class="card-text" style="white-space: pre-line;">{{ recipe.description }}</p>
+                <div class="card-text">{{ recipe.description|rtf }}</div>
             </div>
         </div>
         {% endif %}
@@ -149,7 +150,7 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h3 class="card-title">Tips</h3>
-                <p class="card-text" style="white-space: pre-line;">{{ recipe.tips }}</p>
+                <div class="card-text">{{ recipe.tips|rtf }}</div>
             </div>
         </div>
         {% endif %}

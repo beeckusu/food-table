@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.db import models
 from content.models import Recipe, RecipeTag
+from content.widgets import QuillWidget
 from .inlines import ImageInline
 
 
@@ -44,6 +46,10 @@ class RecipeAdmin(admin.ModelAdmin):
     )
 
     inlines = [RecipeTagInline, ImageInline]
+
+    formfield_overrides = {
+        models.TextField: {'widget': QuillWidget},
+    }
 
     def save_model(self, request, obj, form, change):
         """Auto-populate created_by from request.user on first save"""
