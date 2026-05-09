@@ -529,7 +529,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     summaryHtml += '<div class="col-12">';
                 }
-                summaryHtml += `<h6 class="mb-1">${index + 1}. ${dish.name} <span class="badge bg-primary">${dish.rating}/100</span></h6>`;
+                const costBadge = dish.cost ? ` <span class="badge bg-success">$${parseFloat(dish.cost).toFixed(2)}</span>` : '';
+                summaryHtml += `<h6 class="mb-1">${index + 1}. ${dish.name} <span class="badge bg-primary">${dish.rating}/100</span>${costBadge}</h6>`;
                 // Show encyclopedia link if any (only one allowed per dish)
                 if (dish.encyclopedia_ids && dish.encyclopedia_ids.length > 0) {
                     const entry = dish.encyclopedia_ids[0];
@@ -898,6 +899,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dishCard.querySelector('.dish-rating').value = dishData.rating || 50;
             dishCard.querySelector('.dish-rating-value').textContent = dishData.rating || 50;
             dishCard.querySelector('.dish-notes').value = dishData.notes || '';
+            if (dishData.cost) dishCard.querySelector('.dish-cost').value = dishData.cost;
 
             // Pre-fill encyclopedia links if provided
             if (dishData.encyclopedia_ids && dishData.encyclopedia_ids.length > 0) {
@@ -934,6 +936,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         dishCard.querySelector('.dish-notes').addEventListener('input', function() {
+            saveDishes();
+        });
+
+        dishCard.querySelector('.dish-cost').addEventListener('input', function() {
             saveDishes();
         });
 
@@ -1105,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const name = card.querySelector('.dish-name').value.trim();
                 const rating = card.querySelector('.dish-rating').value;
                 const notes = card.querySelector('.dish-notes').value.trim();
+                const cost = card.querySelector('.dish-cost').value.trim() || null;
                 const imagePreview = card.querySelector('.dish-preview-img');
                 const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
                 // Read encyclopediaIds from parent element (the wrapper div where it's actually stored)
@@ -1121,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         name,
                         rating,
                         notes,
+                        cost,
                         image: imageSrc,
                         encyclopedia_ids: encyclopediaIds
                     });
