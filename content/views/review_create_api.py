@@ -204,12 +204,14 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                     pass
 
             # Create the review dish
+            cost = dish_data.get('cost')
             review_dish = ReviewDish.objects.create(
                 review=review,
                 encyclopedia_entry=encyclopedia_entry,
                 dish_name=dish_data['name'],
                 dish_rating=int(dish_data.get('rating', 50)),
-                notes=dish_data.get('notes', '')
+                notes=dish_data.get('notes', ''),
+                cost=cost if cost else None
             )
 
             # Handle image if provided (base64 data)
