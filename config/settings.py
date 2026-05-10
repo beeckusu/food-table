@@ -138,6 +138,9 @@ MEDIA_URL = '/media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Allow larger request bodies to accommodate base64-encoded dish images in review submission
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
+
 # Confluence API settings
 CONFLUENCE_EMAIL = env('CONFLUENCE_EMAIL', default=None)
 CONFLUENCE_API_TOKEN = env('CONFLUENCE_API_TOKEN', default=None)
