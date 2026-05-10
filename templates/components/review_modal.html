@@ -27,7 +27,7 @@
                         <div class="mb-3">
                             <label for="reviewVisitDate" class="form-label">Visit Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="reviewVisitDate" required>
-                            <div class="form-text">Date must not be in the future</div>
+                            <div class="form-text" id="dateValidationError" style="display: none; color: var(--bs-danger);">Date must not be in the future</div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
