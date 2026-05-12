@@ -14,7 +14,11 @@ class Review(models.Model):
     # Core Identity Fields
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255, blank=True, null=True)
-    restaurant_name = models.CharField(max_length=255)
+    restaurant = models.ForeignKey(
+        'Restaurant',
+        on_delete=models.PROTECT,
+        related_name='reviews',
+    )
 
     # Visit Information
     visit_date = models.DateField()
@@ -23,10 +27,6 @@ class Review(models.Model):
         validators=[MinValueValidator(1)],
         help_text="Number of people in the party"
     )
-
-    # Location Information
-    location = models.CharField(max_length=255, blank=True)
-    address = models.TextField(blank=True)
 
     # Rating and Content
     rating = models.IntegerField(
@@ -59,14 +59,14 @@ class Review(models.Model):
         verbose_name_plural = 'Reviews'
         indexes = [
             models.Index(fields=['-visit_date']),
-            models.Index(fields=['restaurant_name']),
             models.Index(fields=['created_by']),
         ]
 
     def __str__(self):
+        restaurant_name = self.restaurant.name if self.restaurant_id else ''
         if self.title:
-            return f"{self.title} - {self.restaurant_name}"
-        return f"{self.restaurant_name} ({self.visit_date})"
+            return f"{self.title} - {restaurant_name}"
+        return f"{restaurant_name} ({self.visit_date})"
 
     def save(self, *args, **kwargs):
         """
@@ -158,14 +158,15 @@ class Review(models.Model):
 def update_review_search_vector(sender, instance, **kwargs):
     """
     Signal handler to automatically update search_vector field when Review is saved.
-    Updates the search vector with restaurant_name, title, notes, and related dish information.
+    Updates the search vector with restaurant name, title, notes, and related dish information.
     """
     # Avoid infinite recursion by checking if we're already updating
     if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
         return
 
-    # Build search vector with restaurant_name (A), title (B), and notes (C)
-    search_vector_expr = SearchVector('restaurant_name', weight='A')
+    # Build search vector with restaurant name (A), title (B), and notes (C)
+    restaurant_name = instance.restaurant.name if instance.restaurant_id else ''
+    search_vector_expr = SearchVector(models.Value(restaurant_name), weight='A')
 
     # Add title if it exists
     if instance.title:

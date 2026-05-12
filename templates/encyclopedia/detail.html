@@ -219,7 +219,7 @@
                             {% if dish.images.all.0 %}
                             <img src="{{ dish.images.all.0.image.url }}" class="card-img-top" alt="{{ dish.dish_name }}" style="height: 200px; object-fit: cover;">
                             {% elif dish.review.images.all.0 %}
-                            <img src="{{ dish.review.images.all.0.image.url }}" class="card-img-top" alt="{{ dish.review.restaurant_name }}" style="height: 200px; object-fit: cover;">
+                            <img src="{{ dish.review.images.all.0.image.url }}" class="card-img-top" alt="{{ dish.review.restaurant.name }}" style="height: 200px; object-fit: cover;">
                             {% else %}
                             <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
                                 <i class="bi bi-utensils text-white" style="font-size: 3rem;"></i>
@@ -227,7 +227,7 @@
                             {% endif %}
                             <div class="card-body d-flex flex-column">
                                 <h5 class="card-title">
-                                    <a href="{% url 'content:review_detail' dish.review.id %}" class="text-decoration-none">{{ dish.review.restaurant_name }}</a>
+                                    <a href="{% url 'content:review_detail' dish.review.id %}" class="text-decoration-none">{{ dish.review.restaurant.name }}</a>
                                 </h5>
                                 <p class="card-text text-muted small mb-2">
                                     <i class="bi bi-calendar3"></i> {{ dish.review.visit_date|date:"M d, Y" }}

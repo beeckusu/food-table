@@ -14,11 +14,11 @@ print(f'Total Confluence reviews: {reviews.count()}\n')
 print('Imported Reviews:\n')
 
 for review in reviews:
-    print(f'{review.restaurant_name}')
+    print(f'{review.restaurant.name}')
     print(f'  -> Visit Date: {review.visit_date}')
     print(f'  -> Entry Time: {review.entry_time}')
     print(f'  -> Party Size: {review.party_size}')
-    print(f'  -> Location: {review.location}')
+    print(f'  -> City: {review.restaurant.city}, {review.restaurant.country}')
     print(f'  -> Overall Rating: {review.rating}/100')
 
     dishes = review.review_dishes.all()

@@ -31,7 +31,7 @@ class ReviewDetailView(DetailView):
 
         # Add related reviews at the same restaurant (excluding current review)
         context['related_reviews'] = Review.objects.filter(
-            restaurant_name__iexact=review.restaurant_name,
+            restaurant=review.restaurant,
             is_private=False
         ).exclude(
             id=review.id

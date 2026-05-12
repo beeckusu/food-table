@@ -80,6 +80,12 @@ class ReviewDraftManager {
      * @param {object} data - Form data to save
      */
     async saveDraft(step, data) {
+        // Strip base64 image data from dishes — images must be re-uploaded on submission
+        const draftData = { ...data };
+        if (draftData.dishes) {
+            draftData.dishes = draftData.dishes.map(({ image, ...rest }) => rest);
+        }
+
         try {
             const response = await fetch('/api/reviews/draft/', {
                 method: 'POST',
@@ -90,7 +96,7 @@ class ReviewDraftManager {
                 body: JSON.stringify({
                     draft_id: this.draftId,
                     step: step,
-                    data: data
+                    data: draftData
                 })
             });
 

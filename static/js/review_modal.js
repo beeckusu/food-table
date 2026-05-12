@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (formData.location) {
             document.getElementById('reviewAddress').value = formData.location.address || '';
             document.getElementById('reviewCity').value = formData.location.city || '';
+            document.getElementById('reviewProvince').value = formData.location.province || '';
             document.getElementById('reviewCountry').value = formData.location.country || '';
             document.getElementById('reviewNeighborhood').value = formData.location.neighborhood || '';
         }
@@ -310,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.location = {
                     address: document.getElementById('reviewAddress').value.trim(),
                     city: document.getElementById('reviewCity').value.trim(),
+                    province: document.getElementById('reviewProvince').value.trim(),
                     country: document.getElementById('reviewCountry').value.trim(),
                     neighborhood: document.getElementById('reviewNeighborhood').value.trim()
                 };
@@ -490,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '</div></div>';
 
         // Location Section (if provided)
-        if (formData.location.address || formData.location.city || formData.location.country || formData.location.neighborhood) {
+        if (formData.location.address || formData.location.city || formData.location.province || formData.location.country || formData.location.neighborhood) {
             summaryHtml += '<div class="card mb-3">';
             summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
             summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Location</h6>';
@@ -500,6 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
             summaryHtml += '<div class="card-body">';
             if (formData.location.address) summaryHtml += `<p class="mb-2"><strong>Address:</strong> ${formData.location.address}</p>`;
             if (formData.location.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${formData.location.city}</p>`;
+            if (formData.location.province) summaryHtml += `<p class="mb-2"><strong>Province/State:</strong> ${formData.location.province}</p>`;
             if (formData.location.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${formData.location.country}</p>`;
             if (formData.location.neighborhood) summaryHtml += `<p class="mb-0"><strong>Neighborhood:</strong> ${formData.location.neighborhood}</p>`;
             summaryHtml += '</div></div>';
@@ -551,7 +554,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     summaryHtml += '<div class="col-12">';
                 }
-                summaryHtml += `<h6 class="mb-1">${index + 1}. ${dish.name} <span class="badge bg-primary">${dish.rating}/100</span></h6>`;
+                const costBadge = dish.cost ? ` <span class="badge bg-success">$${parseFloat(dish.cost).toFixed(2)}</span>` : '';
+                summaryHtml += `<h6 class="mb-1">${index + 1}. ${dish.name} <span class="badge bg-primary">${dish.rating}/100</span>${costBadge}</h6>`;
                 // Show encyclopedia link if any (only one allowed per dish)
                 if (dish.encyclopedia_ids && dish.encyclopedia_ids.length > 0) {
                     const entry = dish.encyclopedia_ids[0];
@@ -920,6 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dishCard.querySelector('.dish-rating').value = dishData.rating || 50;
             dishCard.querySelector('.dish-rating-value').textContent = dishData.rating || 50;
             dishCard.querySelector('.dish-notes').value = dishData.notes || '';
+            if (dishData.cost) dishCard.querySelector('.dish-cost').value = dishData.cost;
 
             // Pre-fill encyclopedia links if provided
             if (dishData.encyclopedia_ids && dishData.encyclopedia_ids.length > 0) {
@@ -961,6 +966,15 @@ document.addEventListener('DOMContentLoaded', function() {
             saveDishes();
             validateCurrentStep();
         });
+
+        dishCard.querySelector('.dish-notes').addEventListener('input', function() {
+            saveDishes();
+        });
+
+        dishCard.querySelector('.dish-cost').addEventListener('input', function() {
+            saveDishes();
+        });
+
 
         dishCard.querySelector('.remove-dish-btn').addEventListener('click', function() {
             console.log('Remove button clicked for dish:', dishCard.id);
@@ -1130,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const name = card.querySelector('.dish-name').value.trim();
                 const rating = card.querySelector('.dish-rating').value;
                 const notes = card.querySelector('.dish-notes').value.trim();
+                const cost = card.querySelector('.dish-cost').value.trim() || null;
                 const imagePreview = card.querySelector('.dish-preview-img');
                 const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
                 // Read encyclopediaIds from parent element (the wrapper div where it's actually stored)
@@ -1146,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         name,
                         rating,
                         notes,
+                        cost,
                         image: imageSrc,
                         encyclopedia_ids: encyclopediaIds
                     });
