@@ -1,0 +1,86 @@
+<!-- Lightbox Modal -->
+<div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark border-0">
+            <div class="modal-body p-0 position-relative text-center">
+                <!-- Close -->
+                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2 z-1" data-bs-dismiss="modal" aria-label="Close"></button>
+                <!-- Prev -->
+                <button id="lightboxPrev" type="button" class="btn btn-dark position-absolute start-0 top-50 translate-middle-y ms-2 z-1" style="opacity: 0.75;" aria-label="Previous">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <!-- Image -->
+                <img id="lightboxImage" src="" alt="" class="img-fluid" style="max-height: 85vh; object-fit: contain;">
+                <!-- Next -->
+                <button id="lightboxNext" type="button" class="btn btn-dark position-absolute end-0 top-50 translate-middle-y me-2 z-1" style="opacity: 0.75;" aria-label="Next">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+                <!-- Caption + counter -->
+                <div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-50 text-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span id="lightboxCaption" class="small"></span>
+                    <span id="lightboxCounter" class="small text-muted"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    let gallery = [];
+    let currentIndex = 0;
+
+    const modal = document.getElementById('imageLightboxModal');
+    const lightboxImg = document.getElementById('lightboxImage');
+    const lightboxCaption = document.getElementById('lightboxCaption');
+    const lightboxCounter = document.getElementById('lightboxCounter');
+    const prevBtn = document.getElementById('lightboxPrev');
+    const nextBtn = document.getElementById('lightboxNext');
+
+    function show(index) {
+        currentIndex = (index + gallery.length) % gallery.length;
+        const item = gallery[currentIndex];
+        lightboxImg.src = item.url || item.src;
+        lightboxImg.alt = item.caption || '';
+        lightboxCaption.textContent = item.caption || '';
+        lightboxCounter.textContent = gallery.length > 1 ? `${currentIndex + 1} / ${gallery.length}` : '';
+        prevBtn.style.display = gallery.length > 1 ? '' : 'none';
+        nextBtn.style.display = gallery.length > 1 ? '' : 'none';
+    }
+
+    document.querySelectorAll('.lightbox-trigger').forEach(function (el) {
+        el.addEventListener('click', function () {
+            // Card mode: full gallery embedded as JSON
+            if (el.dataset.lightboxGallery) {
+                try {
+                    gallery = JSON.parse(el.dataset.lightboxGallery);
+                } catch (e) {
+                    gallery = [{ url: el.dataset.lightboxSrc, caption: el.dataset.lightboxCaption || '' }];
+                }
+                // Start at the clicked image
+                const clickedUrl = el.dataset.lightboxSrc;
+                const startIndex = gallery.findIndex(function (item) { return item.url === clickedUrl; });
+                show(startIndex >= 0 ? startIndex : 0);
+            } else {
+                // Detail mode: gather siblings with same data-lightbox-set
+                const set = el.dataset.lightboxSet;
+                gallery = Array.from(document.querySelectorAll(`.lightbox-trigger[data-lightbox-set="${set}"]`))
+                    .map(function (item) { return { url: item.dataset.lightboxSrc, caption: item.dataset.lightboxCaption || '' }; });
+                const clickedUrl = el.dataset.lightboxSrc;
+                const startIndex = gallery.findIndex(function (item) { return item.url === clickedUrl; });
+                show(startIndex >= 0 ? startIndex : 0);
+            }
+            new bootstrap.Modal(modal).show();
+        });
+    });
+
+    prevBtn.addEventListener('click', function () { show(currentIndex - 1); });
+    nextBtn.addEventListener('click', function () { show(currentIndex + 1); });
+
+    document.addEventListener('keydown', function (e) {
+        if (!modal.classList.contains('show')) return;
+        if (e.key === 'ArrowLeft') show(currentIndex - 1);
+        if (e.key === 'ArrowRight') show(currentIndex + 1);
+    });
+})();
+</script>

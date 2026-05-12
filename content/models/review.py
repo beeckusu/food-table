@@ -111,6 +111,20 @@ class Review(models.Model):
         # Default to neutral rating if no rated dishes
         return 50
 
+    def get_all_images_ordered(self):
+        """
+        Return all images for this review in display order:
+        review-level images first, then each dish's images in dish id order.
+        Each item is a dict with 'url' and 'caption'.
+        """
+        result = []
+        for img in self.images.all():
+            result.append({'url': img.image.url, 'caption': img.caption or ''})
+        for dish in self.review_dishes.prefetch_related('images').all():
+            for img in dish.images.all():
+                result.append({'url': img.image.url, 'caption': img.caption or ''})
+        return result
+
     def get_display_image(self):
         """
         Get the best image to display for this review.
