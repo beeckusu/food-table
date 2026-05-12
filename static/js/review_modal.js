@@ -1379,4 +1379,81 @@ document.addEventListener('DOMContentLoaded', function() {
         currentDishCard = null;
         encyclopediaSelectedIndex = -1;
     });
+
+    // AI Rewrite
+    const aiRewriteBtn = document.getElementById('aiRewriteBtn');
+    if (aiRewriteBtn) {
+        const aiRewriteModalEl = document.getElementById('aiRewriteModal');
+        const aiRewriteModal = new bootstrap.Modal(aiRewriteModalEl);
+        const originalPanel = document.getElementById('aiRewriteOriginal');
+        const resultPanel = document.getElementById('aiRewriteResult');
+        const aiErrorDiv = document.getElementById('aiRewriteError');
+        const acceptBtn = document.getElementById('aiRewriteAcceptBtn');
+        const rejectBtn = document.getElementById('aiRewriteRejectBtn');
+        let pendingRewrite = '';
+
+        aiRewriteBtn.addEventListener('click', async function () {
+            if (!reviewNotesQuill) return;
+            const text = reviewNotesQuill.getText().trim();
+            if (!text) return;
+
+            originalPanel.textContent = text;
+            resultPanel.innerHTML = '<div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm"></div> Rewriting…</div>';
+            aiErrorDiv.style.display = 'none';
+            acceptBtn.disabled = true;
+            pendingRewrite = '';
+
+            aiRewriteBtn.disabled = true;
+            aiRewriteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Rewriting…';
+
+            aiRewriteModal.show();
+
+            try {
+                const response = await fetch('/api/review/ai-rewrite/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': draftManager.getCsrfToken(),
+                    },
+                    body: JSON.stringify({ text }),
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) throw new Error(data.error || 'Unexpected error');
+                pendingRewrite = data.rewritten;
+                resultPanel.textContent = pendingRewrite;
+                acceptBtn.disabled = false;
+            } catch (err) {
+                resultPanel.textContent = '';
+                aiErrorDiv.textContent = err.message === 'AI service unavailable'
+                    ? 'AI rewrite is currently unavailable. Please try again later.'
+                    : 'Rewrite failed. Please try again.';
+                aiErrorDiv.style.display = 'block';
+            } finally {
+                aiRewriteBtn.disabled = false;
+                aiRewriteBtn.innerHTML = '<i class="bi bi-stars"></i> Rewrite with AI';
+            }
+        });
+
+        acceptBtn.addEventListener('click', function () {
+            if (pendingRewrite && reviewNotesQuill) {
+                reviewNotesQuill.clipboard.dangerouslyPasteHTML(
+                    pendingRewrite.replace(/\n/g, '<br>')
+                );
+                document.getElementById('reviewNotes').value = reviewNotesQuill.root.innerHTML;
+                draftManager.markUnsaved();
+            }
+            aiRewriteModal.hide();
+        });
+
+        rejectBtn.addEventListener('click', function () {
+            aiRewriteModal.hide();
+        });
+
+        aiRewriteModalEl.addEventListener('hidden.bs.modal', function () {
+            pendingRewrite = '';
+            resultPanel.textContent = '';
+            aiErrorDiv.style.display = 'none';
+            acceptBtn.disabled = true;
+        });
+    }
 });

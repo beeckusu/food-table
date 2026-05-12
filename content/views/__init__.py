@@ -19,6 +19,7 @@ from .review_draft_api import ReviewDraftSaveApiView, ReviewDraftRetrieveApiView
 from .recipe_list import RecipeListView
 from .recipe_detail import RecipeDetailView
 from .global_search import GlobalSearchView
+from .review_ai_rewrite_api import ReviewAIRewriteApiView
 
 __all__ = [
     'HomeView',
@@ -44,4 +45,5 @@ __all__ = [
     'RecipeListView',
     'RecipeDetailView',
     'GlobalSearchView',
+    'ReviewAIRewriteApiView',
 ]

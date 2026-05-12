@@ -30,4 +30,5 @@ urlpatterns = [
     path('api/reviews/draft/', ReviewDraftSaveApiView.as_view(), name='api_review_draft_save'),
     path('api/reviews/draft/retrieve/', ReviewDraftRetrieveApiView.as_view(), name='api_review_draft_retrieve'),
     path('api/reviews/draft/<str:draft_id>/delete/', ReviewDraftDeleteApiView.as_view(), name='api_review_draft_delete'),
+    path('api/review/ai-rewrite/', views.ReviewAIRewriteApiView.as_view(), name='api_review_ai_rewrite'),
 ]
