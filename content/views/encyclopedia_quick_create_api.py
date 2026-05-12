@@ -36,11 +36,14 @@ class EncyclopediaQuickCreateApiView(View):
 
             # Extract fields
             name = data.get('name', '').strip()
+            region = data.get('region', '').strip()
             source_entry_id = data.get('source_entry_id')
 
-            # Validate required field
+            # Validate required fields
             if not name:
                 return JsonResponse({'error': 'Name is required'}, status=400)
+            if not region:
+                return JsonResponse({'error': 'Region is required'}, status=400)
 
             # Check for duplicate name
             if Encyclopedia.objects.filter(name__iexact=name).exists():
@@ -64,6 +67,7 @@ class EncyclopediaQuickCreateApiView(View):
                 slug=slug,
                 description='',  # Empty description for placeholder
                 is_placeholder=True,  # Mark as placeholder
+                region=region,
                 created_by=request.user
             )
 

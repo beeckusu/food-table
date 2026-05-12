@@ -363,6 +363,9 @@
                                     {% if similar_dish.dish_category %}
                                     <span class="badge bg-info">{{ similar_dish.dish_category }}</span>
                                     {% endif %}
+                                    {% if similar_dish.region %}
+                                    <span class="badge bg-success">{{ similar_dish.region }}</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

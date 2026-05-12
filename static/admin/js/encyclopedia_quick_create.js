@@ -94,6 +94,11 @@
                             <textarea id="quick-create-names" name="names" required rows="8" autocomplete="off" style="font-family: monospace;"></textarea>
                             <p class="help-text">Enter one placeholder name per line. All will be linked as similar dishes.</p>
                         </div>
+                        <div class="form-group">
+                            <label for="quick-create-region">Country / Region <span class="required">*</span></label>
+                            <input type="text" id="quick-create-region" name="region" required autocomplete="off" placeholder="e.g., Japan, Northern Thailand">
+                            <p class="help-text">Country or region these dishes are from. Applied to all entries above.</p>
+                        </div>
                         <div class="error-message" style="display: none;"></div>
                         <div class="progress-bar" style="display: none;">
                             <div class="progress-fill"></div>
@@ -112,6 +117,7 @@
         var $modal = $('#quick-create-modal');
         var $form = $('#quick-create-form');
         var $namesInput = $('#quick-create-names');
+        var $regionInput = $('#quick-create-region');
         var $errorMessage = $modal.find('.error-message');
         var $progressBar = $modal.find('.progress-bar');
         var $progressFill = $modal.find('.progress-fill');
@@ -121,6 +127,7 @@
         function showModal() {
             $modal.fadeIn(200);
             $namesInput.val('').focus();
+            $regionInput.val('');
             $errorMessage.hide().text('');
             $progressBar.hide();
         }
@@ -129,6 +136,7 @@
         function hideModal() {
             $modal.css('display', 'none');
             $namesInput.val('');
+            $regionInput.val('');
             $errorMessage.hide().text('');
             $progressBar.hide();
         }
@@ -228,6 +236,13 @@
                 return;
             }
 
+            var region = $regionInput.val().trim();
+            if (!region) {
+                showError('Please enter a country or region');
+                $regionInput.focus();
+                return;
+            }
+
             // Parse lines (split by newline, filter empty lines, trim each)
             var names = input
                 .split('\n')
@@ -260,7 +275,8 @@
                 var percent = Math.round(((i + 1) / names.length) * 100);
 
                 var requestData = {
-                    name: name
+                    name: name,
+                    region: region
                 };
 
                 // If we're editing an existing entry, link it as a similar dish
