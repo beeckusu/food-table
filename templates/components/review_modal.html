@@ -28,6 +28,7 @@
                             <label for="reviewVisitDate" class="form-label">Visit Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="reviewVisitDate" required>
                             <div class="form-text">Date must not be in the future</div>
+                            <div id="dateValidationError" class="text-danger small" style="display: none;">Date cannot be in the future</div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -100,8 +101,9 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="reviewNotes" class="form-label">Notes/Comments</label>
-                            <textarea class="form-control" id="reviewNotes" rows="5" placeholder="Share your thoughts about the experience..."></textarea>
+                            <label class="form-label">Notes/Comments</label>
+                            <div id="reviewNotesEditor"></div>
+                            <input type="hidden" id="reviewNotes">
                         </div>
                         <div class="mb-3">
                             <label for="reviewAmbiance" class="form-label">Ambiance Rating</label>
@@ -192,7 +194,8 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Notes <span class="badge bg-secondary">Optional</span></label>
-                                    <textarea class="form-control dish-notes" rows="2" placeholder="Optional notes about this dish..."></textarea>
+                                    <div class="dish-notes-editor"></div>
+                                    <input type="hidden" class="dish-notes">
                                 </div>
                             </div>
                         </div>

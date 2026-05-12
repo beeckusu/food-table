@@ -51,7 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedIndex = -1;
     let selectedParentId = null;
     let similarDishesSearchTimeout = null;
-    let selectedSimilarDishes = []; // Array of {id, name} objects
+    let selectedSimilarDishes = []; // Array of {rowId, id, name, linked}
+    let similarDishRowCounter = 0;
+    let similarDishesSelectedIndex = -1;
 
     // Open modal when "Link to Encyclopedia" button is clicked
     function attachLinkHandlers() {
@@ -121,6 +123,8 @@ document.addEventListener('DOMContentLoaded', function() {
         parentSearchResults.style.display = 'none';
         entrySimilarDishesSearchInput.value = '';
         selectedSimilarDishes = [];
+        similarDishRowCounter = 0;
+        similarDishesSelectedIndex = -1;
         selectedSimilarDishesDiv.style.display = 'none';
         similarDishesSearchResults.style.display = 'none';
         createFormError.style.display = 'none';
@@ -143,6 +147,9 @@ document.addEventListener('DOMContentLoaded', function() {
     showCreateFormBtn.addEventListener('click', showCreateForm);
     backToSearchBtn.addEventListener('click', resetToSearchView);
     cancelCreateBtn.addEventListener('click', resetToSearchView);
+
+    // Prevent Enter from submitting the form (save is handled by the button click)
+    createEntryForm.addEventListener('submit', function(e) { e.preventDefault(); });
 
     // Debounced search
     searchInput.addEventListener('input', function() {
@@ -467,8 +474,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Similar dishes search autocomplete
-    entrySimilarDishesSearchInput.addEventListener('input', function() {
+    if (entrySimilarDishesSearchInput) entrySimilarDishesSearchInput.addEventListener('input', function() {
         clearTimeout(similarDishesSearchTimeout);
+        similarDishesSelectedIndex = -1;
         const query = this.value.trim();
 
         if (query.length < 2) {
@@ -501,19 +509,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </button>
                     `).join('');
 
-                    // Add click handlers to similar dish results
                     document.querySelectorAll('.similar-dish-result').forEach(item => {
                         item.addEventListener('click', function() {
-                            const similarId = this.dataset.similarId;
-                            const similarName = this.dataset.similarName;
-
-                            // Check if already selected
-                            if (!selectedSimilarDishes.find(d => d.id === similarId)) {
-                                selectedSimilarDishes.push({ id: similarId, name: similarName });
-                                renderSimilarDishesChips();
-                            }
-
+                            addSimilarDishRow({ id: this.dataset.similarId, name: this.dataset.similarName, linked: true });
                             similarDishesSearchResults.style.display = 'none';
+                            similarDishesSelectedIndex = -1;
                             entrySimilarDishesSearchInput.value = '';
                         });
                     });
@@ -523,38 +523,207 @@ document.addEventListener('DOMContentLoaded', function() {
                     similarDishesSearchResults.style.display = 'none';
                 });
         }, 300);
+    }); // end input listener
+
+    function commitSimilarDishInput() {
+        const items = similarDishesSearchResults.querySelectorAll('.similar-dish-result');
+        if (similarDishesSelectedIndex >= 0 && items[similarDishesSelectedIndex]) {
+            const item = items[similarDishesSelectedIndex];
+            addSimilarDishRow({ id: item.dataset.similarId, name: item.dataset.similarName, linked: true });
+        } else {
+            const text = entrySimilarDishesSearchInput.value.trim().replace(/,+$/, '');
+            if (text) addSimilarDishRow({ id: null, name: text, linked: false });
+        }
+        similarDishesSearchResults.style.display = 'none';
+        similarDishesSelectedIndex = -1;
+        entrySimilarDishesSearchInput.value = '';
+    }
+
+    modalElement.addEventListener('click', function(e) {
+        if (e.target.id === 'addSimilarDishBtn') commitSimilarDishInput();
     });
 
-    // Render selected similar dishes as chips
-    function renderSimilarDishesChips() {
+    if (entrySimilarDishesSearchInput) entrySimilarDishesSearchInput.addEventListener('keydown', function(e) {
+        const items = similarDishesSearchResults.querySelectorAll('.similar-dish-result');
+
+        if (e.key === 'ArrowDown' || e.keyCode === 40) {
+            e.preventDefault();
+            similarDishesSelectedIndex = Math.min(similarDishesSelectedIndex + 1, items.length - 1);
+            updateSimilarDishSelection(items);
+            return;
+        }
+        if (e.key === 'ArrowUp' || e.keyCode === 38) {
+            e.preventDefault();
+            similarDishesSelectedIndex = Math.max(similarDishesSelectedIndex - 1, -1);
+            updateSimilarDishSelection(items);
+            return;
+        }
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            commitSimilarDishInput();
+        }
+        if (e.key === ',' || e.keyCode === 188) {
+            e.preventDefault();
+            commitSimilarDishInput();
+        }
+    });
+
+    if (entrySimilarDishesSearchInput) entrySimilarDishesSearchInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        const names = text.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+        if (names.length === 0) return;
+
+        const apiUrl = document.getElementById('encyclopediaLinkModal').dataset.searchUrl;
+        Promise.all(names.map(name =>
+            fetch(`${apiUrl}?q=${encodeURIComponent(name)}`)
+                .then(r => r.json())
+                .then(data => {
+                    const match = data.results && data.results[0];
+                    const isClose = match && match.name.toLowerCase() === name.toLowerCase();
+                    return isClose
+                        ? { id: match.id, name: match.name, linked: true }
+                        : { id: null, name, linked: false };
+                })
+                .catch(() => ({ id: null, name, linked: false }))
+        )).then(rows => {
+            rows.forEach(row => addSimilarDishRow(row));
+            this.value = '';
+        });
+    });
+
+    function updateSimilarDishSelection(items) {
+        items.forEach((item, index) => {
+            if (index === similarDishesSelectedIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    function addSimilarDishRow({ id, name, linked }) {
+        if (linked && selectedSimilarDishes.find(d => d.linked && d.id === id)) return;
+        selectedSimilarDishes.push({ rowId: similarDishRowCounter++, id, name, linked });
+        renderSimilarDishRows();
+    }
+
+    function renderSimilarDishRows() {
         if (selectedSimilarDishes.length === 0) {
             selectedSimilarDishesDiv.style.display = 'none';
             return;
         }
 
         selectedSimilarDishesDiv.style.display = 'block';
-        similarDishesChips.innerHTML = selectedSimilarDishes.map(dish => `
-            <span class="badge bg-primary d-flex align-items-center gap-2" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
-                ${dish.name}
-                <button type="button" class="btn-close btn-close-white"
-                        data-remove-similar-id="${dish.id}"
-                        style="font-size: 0.6rem;"
-                        aria-label="Remove"></button>
-            </span>
-        `).join('');
+        similarDishesChips.innerHTML = selectedSimilarDishes.map(dish => {
+            const removeBtn = `<button type="button" class="btn-close btn-sm" data-remove-row-id="${dish.rowId}" aria-label="Remove" style="font-size:0.6rem;"></button>`;
+            if (dish.linked) {
+                return `
+                    <div class="d-flex align-items-center gap-2 mb-1" data-row-id="${dish.rowId}">
+                        <span class="badge bg-success d-flex align-items-center gap-1" style="font-size:0.85rem;padding:0.4rem 0.65rem;">
+                            <i class="bi bi-book"></i> ${dish.name}
+                        </span>
+                        ${removeBtn}
+                    </div>`;
+            } else {
+                return `
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap" data-row-id="${dish.rowId}">
+                        <span class="badge bg-warning text-dark" style="font-size:0.85rem;padding:0.4rem 0.65rem;">
+                            <i class="bi bi-plus-circle"></i> New placeholder
+                        </span>
+                        <span>${dish.name}</span>
+                        <button type="button" class="badge bg-secondary border-0 link-similar-row-btn text-white"
+                                data-row-id="${dish.rowId}"
+                                style="font-size:0.75rem;padding:0.3rem 0.5rem;cursor:pointer;">
+                            <i class="bi bi-link-45deg"></i> Link existing
+                        </button>
+                        ${removeBtn}
+                        <div class="inline-similar-search w-100 mt-1" data-row-id="${dish.rowId}" style="display:none;">
+                            <input type="text" class="form-control form-control-sm inline-similar-input" placeholder="Search to link existing entry...">
+                            <div class="list-group mt-1 inline-similar-results" style="max-height:150px;overflow-y:auto;display:none;"></div>
+                        </div>
+                    </div>`;
+            }
+        }).join('');
 
-        // Add click handlers to remove buttons
-        document.querySelectorAll('[data-remove-similar-id]').forEach(btn => {
+        document.querySelectorAll('[data-remove-row-id]').forEach(btn => {
             btn.addEventListener('click', function() {
-                const idToRemove = this.dataset.removeSimilarId;
-                selectedSimilarDishes = selectedSimilarDishes.filter(d => d.id !== idToRemove);
-                renderSimilarDishesChips();
+                const rowId = parseInt(this.dataset.removeRowId, 10);
+                selectedSimilarDishes = selectedSimilarDishes.filter(d => d.rowId !== rowId);
+                renderSimilarDishRows();
+            });
+        });
+
+        document.querySelectorAll('.link-similar-row-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const rowId = parseInt(this.dataset.rowId, 10);
+                const searchDiv = similarDishesChips.querySelector(`.inline-similar-search[data-row-id="${rowId}"]`);
+                if (searchDiv) {
+                    searchDiv.style.display = searchDiv.style.display === 'none' ? 'block' : 'none';
+                    const input = searchDiv.querySelector('.inline-similar-input');
+                    if (input && searchDiv.style.display === 'block') input.focus();
+                }
+            });
+        });
+
+        document.querySelectorAll('.inline-similar-input').forEach(input => {
+            let inlineTimeout = null;
+            input.addEventListener('input', function() {
+                clearTimeout(inlineTimeout);
+                const query = this.value.trim();
+                const resultsEl = this.closest('.inline-similar-search').querySelector('.inline-similar-results');
+                const rowId = parseInt(this.closest('.inline-similar-search').dataset.rowId, 10);
+
+                if (query.length < 2) {
+                    resultsEl.style.display = 'none';
+                    resultsEl.innerHTML = '';
+                    return;
+                }
+
+                const apiUrl = document.getElementById('encyclopediaLinkModal').dataset.searchUrl;
+                inlineTimeout = setTimeout(() => {
+                    fetch(`${apiUrl}?q=${encodeURIComponent(query)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.results || data.results.length === 0) {
+                                resultsEl.style.display = 'none';
+                                return;
+                            }
+                            resultsEl.style.display = 'block';
+                            resultsEl.innerHTML = data.results.map(entry => `
+                                <button type="button" class="list-group-item list-group-item-action inline-similar-result"
+                                        data-row-id="${rowId}"
+                                        data-entry-id="${entry.id}"
+                                        data-entry-name="${entry.name}">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <span>${entry.name}</span>
+                                        ${entry.cuisine_type ? `<small class="badge bg-info">${entry.cuisine_type}</small>` : ''}
+                                    </div>
+                                </button>
+                            `).join('');
+
+                            resultsEl.querySelectorAll('.inline-similar-result').forEach(item => {
+                                item.addEventListener('click', function() {
+                                    const targetRowId = parseInt(this.dataset.rowId, 10);
+                                    const row = selectedSimilarDishes.find(d => d.rowId === targetRowId);
+                                    if (row) {
+                                        row.id = this.dataset.entryId;
+                                        row.name = this.dataset.entryName;
+                                        row.linked = true;
+                                    }
+                                    renderSimilarDishRows();
+                                });
+                            });
+                        })
+                        .catch(() => { resultsEl.style.display = 'none'; });
+                }, 300);
             });
         });
     }
 
     // Save & Link button handler
-    saveAndLinkBtn.addEventListener('click', function() {
+    saveAndLinkBtn.addEventListener('click', async function() {
         // Validate form
         const name = entryNameInput.value.trim();
         const description = entryDescriptionInput.value.trim();
@@ -575,6 +744,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
                          getCookie('csrftoken');
 
+        // Resolve similar dishes: create placeholders for unlinked rows
+        let resolvedSimilarIds = [];
+        if (selectedSimilarDishes.length > 0) {
+            try {
+                resolvedSimilarIds = await Promise.all(selectedSimilarDishes.map(async dish => {
+                    if (dish.linked) return dish.id;
+                    const resp = await fetch('/api/encyclopedia/create-placeholder/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ name: dish.name })
+                    });
+                    const result = await resp.json();
+                    return result.entry.id;
+                }));
+            } catch (err) {
+                console.error('Placeholder creation error:', err);
+                createFormError.textContent = 'Failed to create placeholder entries for unlinked dishes';
+                createFormError.style.display = 'block';
+                saveAndLinkBtn.disabled = false;
+                saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+                return;
+            }
+        }
+
         // Prepare data
         const data = {
             name: name,
@@ -592,8 +785,8 @@ document.addEventListener('DOMContentLoaded', function() {
             data.parent_id = selectedParentId;
         }
 
-        if (selectedSimilarDishes.length > 0) {
-            data.similar_dishes_ids = selectedSimilarDishes.map(d => d.id);
+        if (resolvedSimilarIds.length > 0) {
+            data.similar_dishes_ids = resolvedSimilarIds;
         }
 
         // Call create API

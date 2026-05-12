@@ -35,6 +35,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let currentPlaceholderId = null;
     let currentPlaceholderName = null;
+    let placeholderFormQuills = null;
+
+    function initPlaceholderFormQuills() {
+        if (placeholderFormQuills) return;
+        placeholderFormQuills = {
+            description: initQuillEditor(
+                document.getElementById('convertEntryDescriptionEditor'),
+                convertEntryDescription,
+                { placeholder: 'Provide a detailed description of this dish...' }
+            ),
+            culturalSignificance: initQuillEditor(
+                document.getElementById('convertEntryCulturalSignificanceEditor'),
+                convertEntryCulturalSignificance,
+                { placeholder: 'Describe the cultural importance or traditions...' }
+            ),
+            popularExamples: initQuillEditor(
+                document.getElementById('convertEntryPopularExamplesEditor'),
+                convertEntryPopularExamples,
+                { placeholder: 'List well-known examples or variations...' }
+            ),
+            history: initQuillEditor(
+                document.getElementById('convertEntryHistoryEditor'),
+                convertEntryHistory,
+                { placeholder: 'Describe the historical background...' }
+            )
+        };
+    }
 
     // Get CSRF token for API calls
     function getCsrfToken() {
@@ -49,16 +76,19 @@ document.addEventListener('DOMContentLoaded', function() {
         choiceFooter.style.display = 'block';
         convertFooter.style.display = 'none';
 
-        // Clear form
-        convertEntryDescription.value = '';
+        // Clear form fields
         convertEntryCuisineType.value = '';
         convertEntryDishCategory.value = '';
         convertEntryRegion.value = '';
-        convertEntryCulturalSignificance.value = '';
-        convertEntryPopularExamples.value = '';
-        convertEntryHistory.value = '';
         convertFormError.style.display = 'none';
         convertFormSuccess.style.display = 'none';
+
+        if (placeholderFormQuills) {
+            placeholderFormQuills.description.setContents([]);
+            placeholderFormQuills.culturalSignificance.setContents([]);
+            placeholderFormQuills.popularExamples.setContents([]);
+            placeholderFormQuills.history.setContents([]);
+        }
     }
 
     // Show convert form
@@ -71,8 +101,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Populate name field (readonly)
         convertEntryName.value = currentPlaceholderName;
 
-        // Focus on description
-        setTimeout(() => convertEntryDescription.focus(), 100);
+        // Initialize Quill editors (lazy — section must be visible first)
+        initPlaceholderFormQuills();
+        placeholderFormQuills.description.setContents([]);
+        placeholderFormQuills.culturalSignificance.setContents([]);
+        placeholderFormQuills.popularExamples.setContents([]);
+        placeholderFormQuills.history.setContents([]);
+
+        setTimeout(() => placeholderFormQuills.description.focus(), 100);
     }
 
     // Attach click handlers to placeholder entries in Similar Dishes section
@@ -126,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!description) {
             convertFormError.textContent = 'Description is required to convert placeholder';
             convertFormError.style.display = 'block';
-            convertEntryDescription.focus();
+            if (placeholderFormQuills) placeholderFormQuills.description.focus();
             return;
         }
 

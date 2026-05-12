@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let hasUnsavedChanges = false;
     let restaurantSearchTimeout = null;
 
+    // Quill editor for review notes — initialized lazily when Step 3 becomes visible
+    let reviewNotesQuill = null;
+
     // Draft manager
     const draftManager = new ReviewDraftManager();
 
@@ -147,6 +150,21 @@ document.addEventListener('DOMContentLoaded', function() {
             stepElement.style.display = 'block';
         }
 
+        // Initialize Quill editors now that their container is visible
+        if (REVIEW_STEPS[stepIndex].id === 'rating') {
+            if (!reviewNotesQuill) {
+                reviewNotesQuill = initQuillEditor(
+                    document.getElementById('reviewNotesEditor'),
+                    document.getElementById('reviewNotes'),
+                    { placeholder: 'Share your thoughts about the experience...' }
+                );
+            } else {
+                // Re-sync from hidden input (e.g., after draft restore + reset cycle)
+                const saved = document.getElementById('reviewNotes').value;
+                reviewNotesQuill.clipboard.dangerouslyPasteHTML(saved || '');
+            }
+        }
+
         // Update progress indicator
         const stepNumber = stepIndex + 1;
         const totalSteps = REVIEW_STEPS.length;
@@ -161,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Focus management
         setTimeout(() => {
-            const firstInput = stepElement.querySelector('input, textarea, select');
+            const firstInput = stepElement.querySelector('input:not([type="hidden"]), textarea, select');
             if (firstInput) {
                 firstInput.focus();
             }
@@ -424,6 +442,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('basicInfoForm').reset();
         document.getElementById('locationForm').reset();
         document.getElementById('ratingForm').reset();
+        document.getElementById('reviewNotes').value = '';
+        if (reviewNotesQuill) {
+            reviewNotesQuill.setContents([]);
+        }
         document.getElementById('dishesContainer').innerHTML = '';
 
         // Reset rating displays
@@ -505,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += `<strong>Service:</strong> <span class="badge bg-secondary">${formData.rating.service}/100</span>`;
         summaryHtml += '</div></div>';
         if (formData.rating.notes) {
-            summaryHtml += `<div class="mt-3"><strong>Notes:</strong><div class="border-start border-3 border-primary ps-3 mt-2">${formData.rating.notes.replace(/\n/g, '<br>')}</div></div>`;
+            summaryHtml += `<div class="mt-3"><strong>Notes:</strong><div class="border-start border-3 border-primary ps-3 mt-2">${formData.rating.notes}</div></div>`;
         }
         summaryHtml += '</div></div>';
 
@@ -919,6 +941,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add to container
         document.getElementById('dishesContainer').appendChild(dishCard);
 
+        // Initialize Quill for dish notes after appending to DOM
+        initQuillEditor(
+            dishCard.querySelector('.dish-notes-editor'),
+            dishCard.querySelector('.dish-notes'),
+            { placeholder: 'Optional notes about this dish...', onChange: saveDishes }
+        );
+
         // Attach event listeners
         const ratingSlider = dishCard.querySelector('.dish-rating');
         const ratingValue = dishCard.querySelector('.dish-rating-value');
@@ -931,10 +960,6 @@ document.addEventListener('DOMContentLoaded', function() {
         dishCard.querySelector('.dish-name').addEventListener('input', function() {
             saveDishes();
             validateCurrentStep();
-        });
-
-        dishCard.querySelector('.dish-notes').addEventListener('input', function() {
-            saveDishes();
         });
 
         dishCard.querySelector('.remove-dish-btn').addEventListener('click', function() {

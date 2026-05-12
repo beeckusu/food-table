@@ -14,6 +14,8 @@ from .dish_image_api import DishImageUploadApiView
 from .review_list import ReviewListView
 from .review_detail import ReviewDetailView
 from .review_dish_list import ReviewDishListView
+from .review_create_api import ReviewCreateApiView
+from .review_draft_api import ReviewDraftSaveApiView, ReviewDraftRetrieveApiView, ReviewDraftDeleteApiView
 from .recipe_list import RecipeListView
 from .recipe_detail import RecipeDetailView
 from .global_search import GlobalSearchView
@@ -35,6 +37,10 @@ __all__ = [
     'ReviewListView',
     'ReviewDetailView',
     'ReviewDishListView',
+    'ReviewCreateApiView',
+    'ReviewDraftSaveApiView',
+    'ReviewDraftRetrieveApiView',
+    'ReviewDraftDeleteApiView',
     'RecipeListView',
     'RecipeDetailView',
     'GlobalSearchView',
