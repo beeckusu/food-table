@@ -722,6 +722,71 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // AI prefill button handler
+    const aiPrefillBtn = document.getElementById('aiPrefillBtn');
+    if (aiPrefillBtn) {
+        aiPrefillBtn.addEventListener('click', async function() {
+            if (!currentDishName) {
+                createFormError.textContent = 'No dish name set — please close and reopen the modal.';
+                createFormError.style.display = 'block';
+                return;
+            }
+
+            aiPrefillBtn.disabled = true;
+            aiPrefillBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Asking Claude...';
+            createFormError.style.display = 'none';
+
+            // Show an in-form notice so the user knows to wait
+            const waitNotice = document.createElement('div');
+            waitNotice.id = 'aiWaitNotice';
+            waitNotice.className = 'alert alert-info py-2 mt-2';
+            waitNotice.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Claude is writing the entry — this usually takes 15–30 seconds.';
+            aiPrefillBtn.closest('.d-flex').after(waitNotice);
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
+            try {
+                const resp = await fetch('/api/encyclopedia/ai-prefill/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ dish_name: currentDishName })
+                });
+                const data = await resp.json();
+
+                if (!resp.ok || !data.success) {
+                    createFormError.textContent = data.error || 'AI prefill failed. Please try again.';
+                    createFormError.style.display = 'block';
+                    return;
+                }
+
+                const f = data.fields;
+                if (f.name) entryNameInput.value = f.name;
+                if (f.description) entryDescriptionInput.value = f.description;
+                if (f.cuisine_type) entryCuisineTypeInput.value = f.cuisine_type;
+                if (f.dish_category) entryDishCategoryInput.value = f.dish_category;
+                if (f.region) entryRegionInput.value = f.region;
+                if (f.cultural_significance) entryCulturalSignificanceInput.value = f.cultural_significance;
+                if (f.popular_examples) entryPopularExamplesInput.value = f.popular_examples;
+                if (f.history) entryHistoryInput.value = f.history;
+
+                if (f.similar_dishes_globally) {
+                    const names = f.similar_dishes_globally.split(',').map(s => s.trim()).filter(Boolean);
+                    selectedSimilarDishes = [];
+                    similarDishRowCounter = 0;
+                    names.forEach(name => addSimilarDishRow({ id: null, name, linked: false }));
+                }
+            } catch (err) {
+                console.error('AI prefill error:', err);
+                createFormError.textContent = 'AI prefill failed. Please try again.';
+                createFormError.style.display = 'block';
+            } finally {
+                aiPrefillBtn.disabled = false;
+                aiPrefillBtn.innerHTML = '<i class="bi bi-stars"></i> Fill with Claude';
+                document.getElementById('aiWaitNotice')?.remove();
+            }
+        });
+    }
+
     // Save & Link button handler
     saveAndLinkBtn.addEventListener('click', async function() {
         // Validate form

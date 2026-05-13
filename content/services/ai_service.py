@@ -47,10 +47,14 @@ def generate_text(system_prompt: str, user_content: str, model: str = None) -> s
         )
         return response_text
     except anthropic.AuthenticationError as e:
+        logger.error("Anthropic auth error: %s", e)
         raise AIServiceError("Invalid Anthropic API key") from e
     except anthropic.RateLimitError as e:
+        logger.error("Anthropic rate limit: %s", e)
         raise AIServiceError("Anthropic rate limit exceeded") from e
     except anthropic.APITimeoutError as e:
+        logger.error("Anthropic timeout: %s", e)
         raise AIServiceError("Anthropic API request timed out") from e
     except Exception as e:
+        logger.error("Anthropic API error: %s", e)
         raise AIServiceError(f"Anthropic API error: {e}") from e
