@@ -749,7 +749,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const resp = await fetch('/api/encyclopedia/ai-prefill/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                    body: JSON.stringify({ dish_name: currentDishName })
+                    body: JSON.stringify({ dish_name: entryNameInput.value.trim() || currentDishName })
                 });
                 const data = await resp.json();
 
