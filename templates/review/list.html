@@ -258,7 +258,7 @@ document.getElementById('filterForm').addEventListener('submit', function() {
 <script src="{% static 'js/review_draft.js' %}"></script>
 <script src="{% static 'js/quill-editor.js' %}"></script>
 {% endif %}
-<script src="{% static 'js/review_modal.js' %}"></script>
+<script src="{% static 'js/review_modal.js' %}?v={% now "U" %}"></script>
 
 <!-- Mobile button handler for review modal -->
 <script>

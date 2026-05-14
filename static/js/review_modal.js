@@ -1387,6 +1387,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const aiRewriteModal = new bootstrap.Modal(aiRewriteModalEl);
         const originalPanel = document.getElementById('aiRewriteOriginal');
         const resultPanel = document.getElementById('aiRewriteResult');
+        const editablePanel = document.getElementById('aiRewriteEditable');
+        const copyOriginalBtn = document.getElementById('aiCopyOriginalBtn');
+        const copyResultBtn = document.getElementById('aiCopyResultBtn');
         const aiErrorDiv = document.getElementById('aiRewriteError');
         const acceptBtn = document.getElementById('aiRewriteAcceptBtn');
         const rejectBtn = document.getElementById('aiRewriteRejectBtn');
@@ -1421,6 +1424,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!response.ok || data.error) throw new Error(data.error || 'Unexpected error');
                 pendingRewrite = data.rewritten;
                 resultPanel.textContent = pendingRewrite;
+                copyResultBtn.disabled = false;
+                editablePanel.value = pendingRewrite;
                 acceptBtn.disabled = false;
             } catch (err) {
                 resultPanel.textContent = '';
@@ -1434,10 +1439,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        copyOriginalBtn.addEventListener('click', function () {
+            editablePanel.value = originalPanel.textContent;
+        });
+
+        copyResultBtn.addEventListener('click', function () {
+            editablePanel.value = resultPanel.textContent;
+        });
+
         acceptBtn.addEventListener('click', function () {
-            if (pendingRewrite && reviewNotesQuill) {
+            const text = editablePanel.value.trim() || pendingRewrite;
+            if (text && reviewNotesQuill) {
                 reviewNotesQuill.clipboard.dangerouslyPasteHTML(
-                    pendingRewrite.replace(/\n/g, '<br>')
+                    text.replace(/\n/g, '<br>')
                 );
                 document.getElementById('reviewNotes').value = reviewNotesQuill.root.innerHTML;
                 draftManager.markUnsaved();
@@ -1452,6 +1466,8 @@ document.addEventListener('DOMContentLoaded', function() {
         aiRewriteModalEl.addEventListener('hidden.bs.modal', function () {
             pendingRewrite = '';
             resultPanel.textContent = '';
+            editablePanel.value = '';
+            copyResultBtn.disabled = true;
             aiErrorDiv.style.display = 'none';
             acceptBtn.disabled = true;
         });
