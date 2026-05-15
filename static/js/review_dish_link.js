@@ -386,11 +386,12 @@ document.addEventListener('DOMContentLoaded', function() {
     backToSearchBtn.addEventListener('click', resetToSearchView);
     cancelCreateBtn.addEventListener('click', resetToSearchView);
 
-    // AI prefill button handler
+    // AI prefill button
     const aiPrefillBtn = document.getElementById('aiPrefillBtn');
     if (aiPrefillBtn) {
         aiPrefillBtn.addEventListener('click', async function() {
-            if (!currentDishName) {
+            const dishName = entryNameInput.value.trim() || currentDishName;
+            if (!dishName) {
                 createFormError.textContent = 'No dish name set — please close and reopen the modal.';
                 createFormError.style.display = 'block';
                 return;
@@ -406,13 +407,11 @@ document.addEventListener('DOMContentLoaded', function() {
             waitNotice.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Claude is writing the entry — this usually takes 15–30 seconds.';
             aiPrefillBtn.closest('.d-flex').after(waitNotice);
 
-            const csrfToken = getCookie('csrftoken');
-
             try {
                 const resp = await fetch('/api/encyclopedia/ai-prefill/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                    body: JSON.stringify({ dish_name: entryNameInput.value.trim() || currentDishName })
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ dish_name: dishName })
                 });
                 const data = await resp.json();
 
