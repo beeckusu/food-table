@@ -23,7 +23,7 @@ class EncyclopediaListView(ListView):
 
         roots, max_depth = build_encyclopedia_tree()
         context['entries'] = roots
-        context['total_entries'] = Encyclopedia.objects.count()
+        context['total_entries'] = Encyclopedia.objects.filter(is_placeholder=False).count()
         context['max_depth'] = max_depth + 1  # +1 because depth is 0-indexed
 
         return context
