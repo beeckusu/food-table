@@ -40,7 +40,7 @@
          id="children-{{ entry.id }}"
          role="group">
         <ul>
-            {% for child in entry.children.all %}
+            {% for child in entry.tree_children %}
                 {% include 'encyclopedia/tree_node.html' with entry=child %}
             {% endfor %}
         </ul>

@@ -1,5 +1,6 @@
 from django.views.generic import DetailView
 from content.models import Encyclopedia
+from content.utils.encyclopedia import build_encyclopedia_tree
 
 
 class EncyclopediaDetailView(DetailView):
@@ -53,26 +54,7 @@ class EncyclopediaDetailView(DetailView):
         # Convert to list to prevent recursion issues with symmetrical ManyToMany relationship
         context['similar_dishes'] = list(entry.similar_dishes.all().order_by('name'))
 
-        # Add tree entries for sidebar navigation with full tree structure
-        root_entries = (
-            Encyclopedia.objects
-            .filter(parent__isnull=True)
-            .prefetch_related('children')
-            .order_by('name')
-        )
-
-        # Recursively annotate all entries with computed properties
-        def annotate_entry(entry_obj):
-            entry_obj.depth = entry_obj.get_depth()
-            entry_obj.has_children = entry_obj.children.exists()
-            # Recursively annotate children
-            for child in entry_obj.children.all():
-                annotate_entry(child)
-
-        # Annotate root entries and all their descendants
-        for root_entry in root_entries:
-            annotate_entry(root_entry)
-
-        context['entries'] = root_entries
+        roots, _ = build_encyclopedia_tree()
+        context['entries'] = roots
 
         return context
