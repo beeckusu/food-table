@@ -46,33 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let parentSearchTimeout = null;
     let selectedIndex = -1;
     let selectedParentId = null;
-    let dishLinkFormQuills = null;
-
-    function initDishLinkFormQuills() {
-        if (dishLinkFormQuills) return;
-        dishLinkFormQuills = {
-            description: initQuillEditor(
-                document.getElementById('entryDescriptionEditor'),
-                entryDescriptionInput,
-                { placeholder: 'Describe this dish...' }
-            ),
-            culturalSignificance: initQuillEditor(
-                document.getElementById('entryCulturalSignificanceEditor'),
-                entryCulturalSignificanceInput,
-                { placeholder: 'Describe the cultural importance or traditions...' }
-            ),
-            popularExamples: initQuillEditor(
-                document.getElementById('entryPopularExamplesEditor'),
-                entryPopularExamplesInput,
-                { placeholder: 'List well-known examples or variations...' }
-            ),
-            history: initQuillEditor(
-                document.getElementById('entryHistoryEditor'),
-                entryHistoryInput,
-                { placeholder: 'Describe the historical background...' }
-            )
-        };
-    }
 
     // Attach click handlers to unlinked badges (link)
     function attachUnlinkedHandlers() {
@@ -370,23 +343,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Pre-populate name with dish name
         entryNameInput.value = currentDishName || '';
+        entryDescriptionInput.value = '';
         entryCuisineTypeInput.value = '';
         entryDishCategoryInput.value = '';
         entryRegionInput.value = '';
+        entryCulturalSignificanceInput.value = '';
+        entryPopularExamplesInput.value = '';
+        entryHistoryInput.value = '';
         entryParentSearchInput.value = '';
         selectedParentId = null;
         selectedParentDiv.style.display = 'none';
         parentSearchResults.style.display = 'none';
         createFormError.style.display = 'none';
 
-        // Initialize Quill editors (lazy — section must be visible first)
-        initDishLinkFormQuills();
-        dishLinkFormQuills.description.setContents([]);
-        dishLinkFormQuills.culturalSignificance.setContents([]);
-        dishLinkFormQuills.popularExamples.setContents([]);
-        dishLinkFormQuills.history.setContents([]);
-
-        setTimeout(() => dishLinkFormQuills.description.focus(), 100);
+        setTimeout(() => entryDescriptionInput.focus(), 100);
     }
 
     function resetToSearchView() {
@@ -394,12 +364,6 @@ document.addEventListener('DOMContentLoaded', function() {
         createEntrySection.style.display = 'none';
         searchFooter.style.display = 'block';
         createFooter.style.display = 'none';
-        if (dishLinkFormQuills) {
-            dishLinkFormQuills.description.setContents([]);
-            dishLinkFormQuills.culturalSignificance.setContents([]);
-            dishLinkFormQuills.popularExamples.setContents([]);
-            dishLinkFormQuills.history.setContents([]);
-        }
         selectedParentId = null;
     }
 
@@ -407,6 +371,62 @@ document.addEventListener('DOMContentLoaded', function() {
     showCreateFormBtn.addEventListener('click', showCreateForm);
     backToSearchBtn.addEventListener('click', resetToSearchView);
     cancelCreateBtn.addEventListener('click', resetToSearchView);
+
+    // AI prefill button
+    const aiPrefillBtn = document.getElementById('aiPrefillBtn');
+    if (aiPrefillBtn) {
+        aiPrefillBtn.addEventListener('click', async function() {
+            const dishName = entryNameInput.value.trim() || currentDishName;
+            if (!dishName) {
+                createFormError.textContent = 'No dish name set — please close and reopen the modal.';
+                createFormError.style.display = 'block';
+                return;
+            }
+
+            aiPrefillBtn.disabled = true;
+            aiPrefillBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Asking Claude...';
+            createFormError.style.display = 'none';
+
+            const waitNotice = document.createElement('div');
+            waitNotice.id = 'aiWaitNotice';
+            waitNotice.className = 'alert alert-info py-2 mt-2';
+            waitNotice.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Claude is writing the entry — this usually takes 15–30 seconds.';
+            aiPrefillBtn.closest('.d-flex').after(waitNotice);
+
+            try {
+                const resp = await fetch('/api/encyclopedia/ai-prefill/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ dish_name: dishName })
+                });
+                const data = await resp.json();
+
+                if (!resp.ok || !data.success) {
+                    createFormError.textContent = data.error || 'AI prefill failed. Please try again.';
+                    createFormError.style.display = 'block';
+                    return;
+                }
+
+                const f = data.fields;
+                if (f.name) entryNameInput.value = f.name;
+                if (f.description) entryDescriptionInput.value = f.description;
+                if (f.cuisine_type) entryCuisineTypeInput.value = f.cuisine_type;
+                if (f.dish_category) entryDishCategoryInput.value = f.dish_category;
+                if (f.region) entryRegionInput.value = f.region;
+                if (f.cultural_significance) entryCulturalSignificanceInput.value = f.cultural_significance;
+                if (f.popular_examples) entryPopularExamplesInput.value = f.popular_examples;
+                if (f.history) entryHistoryInput.value = f.history;
+            } catch (err) {
+                console.error('AI prefill error:', err);
+                createFormError.textContent = 'AI prefill failed. Please try again.';
+                createFormError.style.display = 'block';
+            } finally {
+                aiPrefillBtn.disabled = false;
+                aiPrefillBtn.innerHTML = '<i class="bi bi-stars"></i> Fill with Claude';
+                document.getElementById('aiWaitNotice')?.remove();
+            }
+        });
+    }
 
     // Parent search autocomplete
     entryParentSearchInput.addEventListener('input', function() {
