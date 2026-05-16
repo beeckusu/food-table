@@ -72,6 +72,15 @@ class EncyclopediaEditApiView(View):
         except ValidationError as e:
             return JsonResponse({'error': str(e)}, status=400)
 
+        if 'similar_dishes_ids' in data:
+            ids = data['similar_dishes_ids']
+            if not isinstance(ids, list):
+                return JsonResponse({'error': 'similar_dishes_ids must be a list'}, status=400)
+            similar = Encyclopedia.objects.filter(id__in=ids)
+            if similar.count() != len(ids):
+                return JsonResponse({'error': 'One or more similar dish IDs are invalid'}, status=400)
+            entry.similar_dishes.set(similar)
+
         return JsonResponse({
             'success': True,
             'encyclopedia': {

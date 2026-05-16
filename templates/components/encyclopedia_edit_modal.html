@@ -52,6 +52,18 @@
                         <label for="editEntryHistory" class="form-label">History</label>
                         <textarea class="form-control" id="editEntryHistory" rows="3" placeholder="Describe the historical background..."></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Similar Dishes Globally</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="editSimilarDishesSearch" placeholder="Search or type a name and press Add...">
+                            <button type="button" class="btn btn-outline-secondary" id="editAddSimilarDishBtn">Add</button>
+                        </div>
+                        <div class="form-text">Link to existing encyclopedia entries, or type a name to create a new placeholder.</div>
+                        <div id="editSimilarDishesSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                        <div id="editSelectedSimilarDishes" style="display: none;">
+                            <div id="editSimilarDishesChips" class="d-flex flex-column gap-1 mt-2"></div>
+                        </div>
+                    </div>
                     <div id="editFormError" class="alert alert-danger" style="display: none;"></div>
                 </form>
             </div>

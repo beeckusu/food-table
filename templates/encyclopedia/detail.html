@@ -418,6 +418,8 @@
      data-entry-name="{{ entry.name }}"
      data-entry-slug="{{ entry.slug }}"
      data-set-parent-url="{% url 'content:api_encyclopedia_set_parent' entry.id %}"
+     data-search-url="{% url 'content:api_encyclopedia_search' %}"
+     data-similar-dishes='[{% for d in similar_dishes %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
      style="display: none;">
 </div>
 {% endif %}
