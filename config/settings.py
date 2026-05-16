@@ -31,6 +31,8 @@ SECRET_KEY = env('SECRET_KEY')
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY', default='')
 ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-4-6'
 
+GOOGLE_MAPS_API_KEY = env('GOOGLE_MAPS_API_KEY', default='')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG', default=True)
 

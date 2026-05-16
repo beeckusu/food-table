@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Restaurant - Food Table{% endblock %}
+
+{% block extra_css %}
+<style>
+.dish-table th { font-size: 0.8rem; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: .04em; padding: 6px 8px; white-space: nowrap; }
+.dish-table td { padding: 4px 8px; vertical-align: middle; }
+.dish-table .form-control, .dish-table .form-select { font-size: 0.875rem; }
+.dish-table tr.empty-row { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'content:restaurant_list' %}">Restaurants</a></li>
+                <li class="breadcrumb-item active">Add Restaurant</li>
+            </ol>
+        </nav>
+        <h1>Add Restaurant</h1>
+    </div>
+</div>
+
+<form method="post" id="restaurant-form">
+    {% csrf_token %}
+
+    <!-- Restaurant details -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-shop"></i> Restaurant Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                    {{ restaurant_form.name }}
+                    {% if restaurant_form.name.errors %}<div class="text-danger small mt-1">{{ restaurant_form.name.errors }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Street Address</label>
+                    {{ restaurant_form.street_address }}
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label">City</label>
+                    {{ restaurant_form.city }}
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label">Province / State</label>
+                    {{ restaurant_form.province }}
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label">Country</label>
+                    {{ restaurant_form.country }}
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label">Postal Code</label>
+                    {{ restaurant_form.postal_code }}
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ restaurant_form.visited }}
+                        <label class="form-check-label">I've been here</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dishes Had -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-check2-circle text-success"></i> Dishes I've Had <span class="text-muted fw-normal small ms-1">(optional)</span></h5>
+        </div>
+        <div class="card-body p-0">
+            {{ had_formset.management_form }}
+            <div class="table-responsive">
+                <table class="table table-sm dish-table mb-0" id="had-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:40%">Dish Name</th>
+                            <th>Notes</th>
+                            <th style="width:32px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="had-rows">
+                        {% for form in had_formset %}
+                        <tr class="dish-row">
+                            <td>{{ form.dish_name }}{{ form.id }}</td>
+                            <td>{{ form.notes }}</td>
+                            <td>
+                                {% if form.can_delete %}{{ form.DELETE }}{% endif %}
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-row" title="Remove"><i class="bi bi-x-lg"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- Empty template row (hidden, cloned by JS) -->
+                    <tbody id="had-empty-template" class="d-none">
+                        <tr class="dish-row">
+                            <td><input type="text" name="had-__prefix__-dish_name" class="form-control form-control-sm" placeholder="Dish name"></td>
+                            <td><textarea name="had-__prefix__-notes" class="form-control form-control-sm" rows="1" placeholder="Notes"></textarea></td>
+                            <td><button type="button" class="btn btn-sm btn-link text-danger p-0 remove-row" title="Remove"><i class="bi bi-x-lg"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-3 pb-3 pt-2">
+                <button type="button" class="btn btn-sm btn-outline-success add-row" data-prefix="had" data-target="had-rows" data-template="had-empty-template">
+                    <i class="bi bi-plus"></i> Add dish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dishes Wishlist -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bookmark-fill text-primary"></i> Dishes I Want to Try <span class="text-muted fw-normal small ms-1">(optional)</span></h5>
+        </div>
+        <div class="card-body p-0">
+            {{ wishlist_formset.management_form }}
+            <div class="table-responsive">
+                <table class="table table-sm dish-table mb-0" id="wishlist-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:35%">Dish Name</th>
+                            <th style="width:20%">Source</th>
+                            <th>Notes</th>
+                            <th style="width:32px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="wishlist-rows">
+                        {% for form in wishlist_formset %}
+                        <tr class="dish-row">
+                            <td>{{ form.dish_name }}{{ form.id }}</td>
+                            <td>{{ form.source }}</td>
+                            <td>{{ form.notes }}</td>
+                            <td>
+                                {% if form.can_delete %}{{ form.DELETE }}{% endif %}
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-row" title="Remove"><i class="bi bi-x-lg"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- Empty template row (hidden, cloned by JS) -->
+                    <tbody id="wishlist-empty-template" class="d-none">
+                        <tr class="dish-row">
+                            <td><input type="text" name="wishlist-__prefix__-dish_name" class="form-control form-control-sm" placeholder="Dish name"></td>
+                            <td><input type="text" name="wishlist-__prefix__-source" class="form-control form-control-sm" placeholder="e.g. friend, article"></td>
+                            <td><textarea name="wishlist-__prefix__-notes" class="form-control form-control-sm" rows="1" placeholder="Notes"></textarea></td>
+                            <td><button type="button" class="btn btn-sm btn-link text-danger p-0 remove-row" title="Remove"><i class="bi bi-x-lg"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-3 pb-3 pt-2">
+                <button type="button" class="btn btn-sm btn-outline-primary add-row" data-prefix="wishlist" data-target="wishlist-rows" data-template="wishlist-empty-template">
+                    <i class="bi bi-plus"></i> Add dish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-circle"></i> Create Restaurant
+        </button>
+        <a href="{% url 'content:restaurant_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.add-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const prefix = btn.dataset.prefix;
+        const tbody = document.getElementById(btn.dataset.target);
+        const template = document.getElementById(btn.dataset.template);
+        const totalInput = document.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
+
+        const newIndex = parseInt(totalInput.value);
+        const clone = template.querySelector('tr').cloneNode(true);
+
+        // Replace __prefix__ with the actual index in all name/id attrs
+        clone.querySelectorAll('[name]').forEach(el => {
+            el.name = el.name.replace('__prefix__', newIndex);
+            if (el.id) el.id = el.id.replace('__prefix__', newIndex);
+        });
+
+        // Wire up the remove button in the clone
+        clone.querySelector('.remove-row')?.addEventListener('click', () => removeRow(clone, prefix));
+
+        tbody.appendChild(clone);
+        totalInput.value = newIndex + 1;
+    });
+});
+
+function removeRow(row, prefix) {
+    // If the row has a DELETE checkbox (existing Django form), check it and hide
+    const deleteBox = row.querySelector('input[type=checkbox][name*=DELETE]');
+    if (deleteBox) {
+        deleteBox.checked = true;
+        row.style.display = 'none';
+    } else {
+        // New row added by JS — just remove it from DOM and decrement total
+        const totalInput = document.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
+        row.remove();
+        totalInput.value = parseInt(totalInput.value) - 1;
+    }
+}
+
+// Wire up remove buttons on existing (server-rendered) rows
+document.querySelectorAll('.dish-row').forEach(row => {
+    const btn = row.querySelector('.remove-row');
+    if (!btn) return;
+    // Determine prefix from any named input in the row
+    const anyInput = row.querySelector('[name]');
+    if (!anyInput) return;
+    const prefix = anyInput.name.split('-')[0];
+    btn.addEventListener('click', () => removeRow(row, prefix));
+});
+
+// Hide DELETE checkboxes (they're managed by removeRow)
+document.querySelectorAll('input[name*="-DELETE"]').forEach(cb => {
+    cb.closest('td, div')?.classList.add('d-none');
+});
+</script>
+{% endblock %}
