@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Restaurants - Food Table{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-2">Restaurants</h1>
+                <p class="lead mb-0">
+                    {{ visited_count }} visited &middot; {{ wishlist_count }} on the list
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="btn-group" role="group" aria-label="View toggle">
+                    <button type="button" class="btn btn-outline-secondary" id="list-view-btn">
+                        <i class="bi bi-grid-3x3-gap"></i> List
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary active" id="map-view-btn">
+                        <i class="bi bi-map"></i> Map
+                    </button>
+                </div>
+                {% if user.is_staff %}
+                <a href="{% url 'content:restaurant_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Restaurant
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status filter tabs -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if visited_filter == '' %}active{% endif %}" href="{% url 'content:restaurant_list' %}">
+            All <span class="badge bg-secondary ms-1">{{ total_count }}</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if visited_filter == '1' %}active{% endif %}" href="{% url 'content:restaurant_list' %}?visited=1">
+            <i class="bi bi-check-circle-fill text-success"></i> Been There <span class="badge bg-secondary ms-1">{{ visited_count }}</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if visited_filter == '0' %}active{% endif %}" href="{% url 'content:restaurant_list' %}?visited=0">
+            <i class="bi bi-bookmark-fill text-primary"></i> Want to Go <span class="badge bg-secondary ms-1">{{ wishlist_count }}</span>
+        </a>
+    </li>
+</ul>
+
+<!-- List view -->
+<div id="list-section" style="display:none;">
+{% if restaurants %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for restaurant in restaurants %}
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">
+                        <a href="{% url 'content:restaurant_detail' pk=restaurant.pk %}" class="text-decoration-none text-dark stretched-link">
+                            {{ restaurant.name }}
+                        </a>
+                    </h5>
+                    {% if restaurant.visited %}
+                    <span class="badge bg-success ms-2 flex-shrink-0"><i class="bi bi-check-circle"></i> Visited</span>
+                    {% else %}
+                    <span class="badge bg-primary ms-2 flex-shrink-0"><i class="bi bi-bookmark"></i> Wishlist</span>
+                    {% endif %}
+                </div>
+                {% if restaurant.city or restaurant.country %}
+                <p class="card-text text-muted small mb-2">
+                    <i class="bi bi-geo-alt"></i>
+                    {% if restaurant.city %}{{ restaurant.city }}{% if restaurant.country %}, {% endif %}{% endif %}
+                    {{ restaurant.country }}
+                </p>
+                {% endif %}
+                <div class="d-flex gap-3 text-muted small">
+                    <span><i class="bi bi-egg-fried"></i> {{ restaurant.dishes.count }} dish{{ restaurant.dishes.count|pluralize:"es" }}</span>
+                    <span><i class="bi bi-journal-text"></i> {{ restaurant.reviews.count }} review{{ restaurant.reviews.count|pluralize }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+<nav class="mt-4" aria-label="Restaurant pagination">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-shop display-1 text-muted"></i>
+    <h3 class="mt-3 text-muted">No restaurants found</h3>
+    {% if user.is_staff %}
+    <a href="{% url 'content:restaurant_create' %}" class="btn btn-primary mt-3">
+        <i class="bi bi-plus-circle"></i> Add your first restaurant
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+</div>
+
+<!-- Map view -->
+<div id="map-section">
+{% if map_restaurants %}
+<div class="d-flex gap-3 mb-2 small text-muted align-items-center">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#198754;"></span> Visited</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;"></span> Want to Go</span>
+    <span class="ms-auto">{{ map_restaurants|length }} restaurant{{ map_restaurants|length|pluralize }} on map</span>
+</div>
+<div class="border rounded overflow-hidden d-flex" style="height:calc(100vh - 300px);min-height:420px;">
+    <div id="map-sidebar" class="overflow-auto flex-shrink-0 border-end" style="width:260px;">
+    </div>
+    <div class="flex-grow-1">
+        <div id="restaurants-map" style="height:100%;width:100%;"></div>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-map display-1 text-muted"></i>
+    <h3 class="mt-3 text-muted">No restaurants with location data</h3>
+    <p class="text-muted">Restaurants need a saved address to appear on the map.</p>
+</div>
+{% endif %}
+</div>
+
+{{ map_restaurants|json_script:"restaurant-map-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const MAPS_API_KEY = '{{ google_maps_api_key }}';
+    const restaurants = JSON.parse(document.getElementById('restaurant-map-data').textContent);
+    const markers = [];
+    let mapInstance = null;
+    let infoWindow = null;
+    let apiLoading = false;
+
+    function buildSidebar() {
+        const sidebar = document.getElementById('map-sidebar');
+        restaurants.forEach(function (r, i) {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action border-0 border-bottom py-2 px-3';
+            a.dataset.idx = i;
+            a.innerHTML =
+                '<div class="d-flex align-items-start gap-2">' +
+                '<span class="flex-shrink-0 mt-1" style="width:8px;height:8px;border-radius:50%;background:' +
+                (r.visited ? '#198754' : '#0d6efd') + ';display:inline-block;"></span>' +
+                '<div><div class="small fw-medium lh-sm">' + r.name + '</div>' +
+                (r.city ? '<div class="text-muted" style="font-size:.75em">' + r.city + '</div>' : '') +
+                '</div></div>';
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                activateMarker(i);
+            });
+            sidebar.appendChild(a);
+        });
+    }
+
+    function activateMarker(i) {
+        if (!mapInstance) return;
+        const r = restaurants[i];
+        mapInstance.panTo({ lat: r.lat, lng: r.lng });
+        mapInstance.setZoom(15);
+        const location = [r.city, r.country].filter(Boolean).join(', ');
+        infoWindow.setContent(
+            '<div style="min-width:140px;padding:2px 0">' +
+            '<strong><a href="' + r.url + '" style="text-decoration:none;color:inherit">' + r.name + '</a></strong>' +
+            (location ? '<br><span style="font-size:.85em;color:#6c757d">' + location + '</span>' : '') +
+            '</div>'
+        );
+        infoWindow.open(mapInstance, markers[i]);
+        highlightSidebarItem(i);
+    }
+
+    function highlightSidebarItem(i) {
+        const sidebar = document.getElementById('map-sidebar');
+        sidebar.querySelectorAll('a').forEach(function (el, idx) {
+            el.classList.toggle('active', idx === i);
+        });
+        const active = sidebar.querySelector('a.active');
+        if (active) active.scrollIntoView({ block: 'nearest' });
+    }
+
+    function initMap() {
+        if (mapInstance) return;
+        mapInstance = new google.maps.Map(document.getElementById('restaurants-map'), {
+            zoom: 11,
+            center: { lat: 43.76, lng: -79.41 },
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: true,
+        });
+        infoWindow = new google.maps.InfoWindow();
+        restaurants.forEach(function (r, i) {
+            const marker = new google.maps.Marker({
+                position: { lat: r.lat, lng: r.lng },
+                map: mapInstance,
+                title: r.name,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: r.visited ? '#198754' : '#0d6efd',
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2,
+                },
+            });
+            markers.push(marker);
+            marker.addListener('click', function () { activateMarker(i); });
+        });
+        buildSidebar();
+    }
+
+    function loadMapsAndInit() {
+        if (typeof google !== 'undefined') { initMap(); return; }
+        if (apiLoading) return;
+        apiLoading = true;
+        window._mapsReady = initMap;
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + MAPS_API_KEY + '&callback=_mapsReady';
+        script.async = true;
+        document.head.appendChild(script);
+    }
+
+    document.getElementById('list-view-btn').addEventListener('click', function () {
+        document.getElementById('list-section').style.display = '';
+        document.getElementById('map-section').style.display = 'none';
+        this.classList.add('active');
+        document.getElementById('map-view-btn').classList.remove('active');
+    });
+
+    document.getElementById('map-view-btn').addEventListener('click', function () {
+        document.getElementById('list-section').style.display = 'none';
+        document.getElementById('map-section').style.display = '';
+        this.classList.add('active');
+        document.getElementById('list-view-btn').classList.remove('active');
+        loadMapsAndInit();
+    });
+
+    loadMapsAndInit();
+}());
+</script>
+{% endblock %}

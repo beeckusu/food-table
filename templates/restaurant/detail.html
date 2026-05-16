@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ restaurant.name }} - Food Table{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'content:restaurant_list' %}">Restaurants</a></li>
+                <li class="breadcrumb-item active">{{ restaurant.name }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="mb-1">{{ restaurant.name }}</h1>
+                {% if restaurant.city or restaurant.country %}
+                <p class="text-muted mb-2">
+                    <i class="bi bi-geo-alt"></i>
+                    {% if restaurant.street_address %}{{ restaurant.street_address }}, {% endif %}
+                    {% if restaurant.city %}{{ restaurant.city }}{% if restaurant.province %}, {{ restaurant.province }}{% endif %}{% if restaurant.country %}, {{ restaurant.country }}{% endif %}{% else %}{{ restaurant.country }}{% endif %}
+                    {% if restaurant.postal_code %} {{ restaurant.postal_code }}{% endif %}
+                </p>
+                {% endif %}
+            </div>
+            {% if user.is_staff %}
+            <form method="post" action="{% url 'content:restaurant_toggle_visited' pk=restaurant.pk %}">
+                {% csrf_token %}
+                {% if restaurant.visited %}
+                <button type="submit" class="btn btn-outline-success">
+                    <i class="bi bi-check-circle-fill"></i> Been Here
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="bi bi-circle"></i> Mark as Visited
+                </button>
+                {% endif %}
+            </form>
+            {% else %}
+                {% if restaurant.visited %}
+                <span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Visited</span>
+                {% else %}
+                <span class="badge bg-primary fs-6"><i class="bi bi-bookmark"></i> Want to Go</span>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left column: dishes -->
+    <div class="col-lg-7">
+
+        <!-- Dishes Had -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-check2-circle text-success"></i> Dishes I've Had</h5>
+                <span class="badge bg-success">{{ dishes_had.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if dishes_had %}
+                <ul class="list-group list-group-flush mb-3">
+                    {% for dish in dishes_had %}
+                    <li class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ dish.dish_name }}</strong>
+                                {% if dish.review %}
+                                <a href="{% url 'content:review_detail' pk=dish.review.pk %}" class="ms-2 badge bg-light text-dark text-decoration-none border">
+                                    <i class="bi bi-journal-text"></i> Review
+                                </a>
+                                {% endif %}
+                                {% if dish.notes %}
+                                <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
+                                {% endif %}
+                            </div>
+                            {% if user.is_staff %}
+                            <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal" data-bs-target="#editDishModal{{ dish.pk }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form method="post" action="{% url 'content:restaurant_dish_delete' pk=restaurant.pk dish_pk=dish.pk %}"
+                                    onsubmit="return confirm('Delete this dish?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </li>
+
+                    {% if user.is_staff %}
+                    <div class="modal fade" id="editDishModal{{ dish.pk }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Edit Dish</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="post" action="{% url 'content:restaurant_dish_update' pk=restaurant.pk dish_pk=dish.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Dish Name</label>
+                                            <input type="text" name="dish_name" class="form-control" value="{{ dish.dish_name }}" required>
+                                        </div>
+                                        <input type="hidden" name="status" value="{{ dish.status }}">
+                                        <input type="hidden" name="source" value="{{ dish.source }}">
+                                        <div class="mb-3">
+                                            <label class="form-label">Notes</label>
+                                            <textarea name="notes" class="form-control" rows="2">{{ dish.notes }}</textarea>
+                                        </div>
+                                        {% if reviews %}
+                                        <div class="mb-3">
+                                            <label class="form-label">Link to Review</label>
+                                            <select name="review" class="form-select">
+                                                <option value="">— No review linked —</option>
+                                                {% for review in reviews %}
+                                                <option value="{{ review.pk }}" {% if dish.review_id == review.pk %}selected{% endif %}>
+                                                    {{ review.visit_date }} — {{ review.title|default:"Untitled" }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-3">No dishes recorded yet.</p>
+                {% endif %}
+
+                {% if user.is_staff %}
+                <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#addHadForm">
+                    <i class="bi bi-plus"></i> Add Dish Had
+                </button>
+                <div class="collapse mt-3" id="addHadForm">
+                    <form method="post" action="{% url 'content:restaurant_dish_create' pk=restaurant.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="had">
+                        <div class="mb-2">
+                            <input type="text" name="dish_name" class="form-control form-control-sm" placeholder="Dish name" required>
+                        </div>
+                        <div class="mb-2">
+                            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
+                        </div>
+                        {% if reviews %}
+                        <div class="mb-2">
+                            <select name="review" class="form-select form-select-sm">
+                                <option value="">— Link to a review (optional) —</option>
+                                {% for review in reviews %}
+                                <option value="{{ review.pk }}">{{ review.visit_date }} — {{ review.title|default:"Untitled" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <button type="submit" class="btn btn-sm btn-success">Add</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Dishes Wishlist -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-bookmark-fill text-primary"></i> Dishes I Want to Try</h5>
+                <span class="badge bg-primary">{{ dishes_wishlist.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if dishes_wishlist %}
+                <ul class="list-group list-group-flush mb-3">
+                    {% for dish in dishes_wishlist %}
+                    <li class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ dish.dish_name }}</strong>
+                                {% if dish.source %}
+                                <span class="badge bg-light text-dark border ms-2 small">via {{ dish.source }}</span>
+                                {% endif %}
+                                {% if dish.notes %}
+                                <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
+                                {% endif %}
+                            </div>
+                            {% if user.is_staff %}
+                            <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                                <button type="button" class="btn btn-sm btn-outline-success"
+                                    data-bs-toggle="modal" data-bs-target="#markTriedModal{{ dish.pk }}"
+                                    title="Mark as tried">
+                                    <i class="bi bi-check2"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal" data-bs-target="#editWishlistModal{{ dish.pk }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form method="post" action="{% url 'content:restaurant_dish_delete' pk=restaurant.pk dish_pk=dish.pk %}"
+                                    onsubmit="return confirm('Delete this dish?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </li>
+
+                    {% if user.is_staff %}
+                    <div class="modal fade" id="markTriedModal{{ dish.pk }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Mark "{{ dish.dish_name }}" as Tried</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="post" action="{% url 'content:restaurant_dish_mark_tried' pk=restaurant.pk dish_pk=dish.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        {% if reviews %}
+                                        <div class="mb-3">
+                                            <label class="form-label">Link to a review (optional)</label>
+                                            <select name="review_id" class="form-select">
+                                                <option value="">— No review —</option>
+                                                {% for review in reviews %}
+                                                <option value="{{ review.pk }}">{{ review.visit_date }} — {{ review.title|default:"Untitled" }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-success">Mark as Tried</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="editWishlistModal{{ dish.pk }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Edit Wishlist Dish</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="post" action="{% url 'content:restaurant_dish_update' pk=restaurant.pk dish_pk=dish.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Dish Name</label>
+                                            <input type="text" name="dish_name" class="form-control" value="{{ dish.dish_name }}" required>
+                                        </div>
+                                        <input type="hidden" name="status" value="{{ dish.status }}">
+                                        <div class="mb-3">
+                                            <label class="form-label">Source</label>
+                                            <input type="text" name="source" class="form-control" value="{{ dish.source }}" placeholder="e.g. friend, article, Instagram">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Notes</label>
+                                            <textarea name="notes" class="form-control" rows="2">{{ dish.notes }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-3">Nothing on the wishlist yet.</p>
+                {% endif %}
+
+                {% if user.is_staff %}
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#addWishlistForm">
+                    <i class="bi bi-plus"></i> Add to Wishlist
+                </button>
+                <div class="collapse mt-3" id="addWishlistForm">
+                    <form method="post" action="{% url 'content:restaurant_dish_create' pk=restaurant.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="wishlist">
+                        <div class="mb-2">
+                            <input type="text" name="dish_name" class="form-control form-control-sm" placeholder="Dish name" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" name="source" class="form-control form-control-sm" placeholder="Source (e.g. friend, article, Instagram)">
+                        </div>
+                        <div class="mb-2">
+                            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Add to Wishlist</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: reviews -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-journal-text"></i> Reviews</h5>
+                <span class="badge bg-secondary">{{ reviews.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if reviews %}
+                <ul class="list-group list-group-flush">
+                    {% for review in reviews %}
+                    <li class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <a href="{% url 'content:review_detail' pk=review.pk %}" class="text-decoration-none fw-semibold">
+                                    {{ review.title|default:"Untitled review" }}
+                                </a>
+                                <div class="text-muted small">{{ review.visit_date }}</div>
+                                {% if review.review_dishes.exists %}
+                                <div class="text-muted small mt-1">
+                                    {% for rd in review.review_dishes.all %}
+                                        {{ rd.dish_name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if review.rating %}
+                            <span class="badge bg-dark ms-2">{{ review.rating }}</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No reviews yet for this restaurant.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

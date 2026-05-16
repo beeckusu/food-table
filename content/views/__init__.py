@@ -1,4 +1,14 @@
 from .home import HomeView
+from .restaurant_list import RestaurantListView
+from .restaurant_detail import (
+    RestaurantDetailView,
+    RestaurantToggleVisitedView,
+    RestaurantDishCreateView,
+    RestaurantDishUpdateView,
+    RestaurantDishDeleteView,
+    RestaurantDishMarkTriedView,
+)
+from .restaurant_create import RestaurantCreateView
 from .encyclopedia_list import EncyclopediaListView
 from .encyclopedia_detail import EncyclopediaDetailView
 from .encyclopedia_search import EncyclopediaSearchView
@@ -24,6 +34,14 @@ from .encyclopedia_ai_prefill_api import EncyclopediaAIPrefillApiView
 
 __all__ = [
     'HomeView',
+    'RestaurantListView',
+    'RestaurantDetailView',
+    'RestaurantToggleVisitedView',
+    'RestaurantDishCreateView',
+    'RestaurantDishUpdateView',
+    'RestaurantDishDeleteView',
+    'RestaurantDishMarkTriedView',
+    'RestaurantCreateView',
     'EncyclopediaListView',
     'EncyclopediaDetailView',
     'EncyclopediaSearchView',
