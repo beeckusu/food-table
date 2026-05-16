@@ -26,4 +26,13 @@ class EncyclopediaListView(ListView):
         context['total_entries'] = Encyclopedia.objects.filter(is_placeholder=False).count()
         context['max_depth'] = max_depth + 1  # +1 because depth is 0-indexed
 
+        if self.request.user.is_staff:
+            context['placeholder_entries'] = (
+                Encyclopedia.objects
+                .filter(is_placeholder=True)
+                .order_by('name')
+                .only('id', 'name', 'slug', 'region', 'cuisine_type')
+            )
+            context['placeholder_count'] = context['placeholder_entries'].count()
+
         return context

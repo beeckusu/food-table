@@ -40,4 +40,5 @@ urlpatterns = [
     path('api/reviews/draft/<str:draft_id>/delete/', ReviewDraftDeleteApiView.as_view(), name='api_review_draft_delete'),
     path('api/review/ai-rewrite/', views.ReviewAIRewriteApiView.as_view(), name='api_review_ai_rewrite'),
     path('api/encyclopedia/ai-prefill/', views.EncyclopediaAIPrefillApiView.as_view(), name='api_encyclopedia_ai_prefill'),
+    path('api/encyclopedia/<int:entry_id>/edit/', views.EncyclopediaEditApiView.as_view(), name='api_encyclopedia_edit'),
 ]
