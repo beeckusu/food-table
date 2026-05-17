@@ -11,7 +11,7 @@
         <img src="{{ display_image.image.url }}"
              class="card-img-top lightbox-trigger"
              alt="{{ review.restaurant.name }}"
-             style="height: 200px; object-fit: cover; cursor: pointer;"
+             style="height: 200px; object-fit: cover; cursor: pointer; position: relative; z-index: 2;"
              data-lightbox-src="{{ display_image.image.url }}"
              data-lightbox-gallery="{{ review.get_all_images_ordered|to_json }}">
         {% else %}
@@ -41,6 +41,6 @@
     </div>
 
     <div class="card-footer">
-        <a href="{% url 'content:review_detail' review.pk %}" class="btn btn-primary btn-sm">View Details</a>
+        <a href="{% url 'content:review_detail' review.pk %}" class="btn btn-primary btn-sm stretched-link">View Details</a>
     </div>
 </div>

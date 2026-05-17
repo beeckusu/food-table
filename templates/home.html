@@ -26,26 +26,32 @@
 <div class="row mb-5">
     <div class="col-md-4 mb-3">
         <div class="card text-center border-primary">
-            <div class="card-body">
-                <h5 class="card-title text-primary">Encyclopedia Entries</h5>
-                <p class="display-4">{{ stats.encyclopedia_count }}</p>
-            </div>
+            <a href="{% url 'content:encyclopedia_list' %}" class="stretched-link text-decoration-none">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Encyclopedia Entries</h5>
+                    <p class="display-4 text-dark">{{ stats.encyclopedia_count }}</p>
+                </div>
+            </a>
         </div>
     </div>
     <div class="col-md-4 mb-3">
         <div class="card text-center border-success">
-            <div class="card-body">
-                <h5 class="card-title text-success">Reviews</h5>
-                <p class="display-4">{{ stats.review_count }}</p>
-            </div>
+            <a href="{% url 'content:review_list' %}" class="stretched-link text-decoration-none">
+                <div class="card-body">
+                    <h5 class="card-title text-success">Reviews</h5>
+                    <p class="display-4 text-dark">{{ stats.review_count }}</p>
+                </div>
+            </a>
         </div>
     </div>
     <div class="col-md-4 mb-3">
         <div class="card text-center border-warning">
-            <div class="card-body">
-                <h5 class="card-title text-warning">Recipes</h5>
-                <p class="display-4">{{ stats.recipe_count }}</p>
-            </div>
+            <a href="{% url 'content:recipe_list' %}" class="stretched-link text-decoration-none">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">Recipes</h5>
+                    <p class="display-4 text-dark">{{ stats.recipe_count }}</p>
+                </div>
+            </a>
         </div>
     </div>
 </div>
