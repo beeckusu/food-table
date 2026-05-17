@@ -1,10 +1,11 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F
 from content.models import Encyclopedia
 
 
-class EncyclopediaSearchView(ListView):
+class EncyclopediaSearchView(LoginRequiredMixin, ListView):
     """
     Search view for encyclopedia entries.
     Searches name and description fields with relevance ranking.

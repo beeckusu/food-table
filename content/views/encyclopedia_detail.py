@@ -1,9 +1,10 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
 from content.models import Encyclopedia
 from content.utils.encyclopedia import build_encyclopedia_tree
 
 
-class EncyclopediaDetailView(DetailView):
+class EncyclopediaDetailView(LoginRequiredMixin, DetailView):
     """
     Detail view for a single encyclopedia entry.
     Displays full entry details including hierarchy, images, and tags.

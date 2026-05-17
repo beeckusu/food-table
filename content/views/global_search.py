@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F, Value, CharField, Q
@@ -6,7 +7,7 @@ from operator import attrgetter
 from content.models import Encyclopedia, Recipe, Review
 
 
-class GlobalSearchView(ListView):
+class GlobalSearchView(LoginRequiredMixin, ListView):
     """
     Global search view that searches across Encyclopedia, Recipe, and Review models.
     Supports query parameter (?q=...) and type filter (?type=encyclopedia|recipe|review).

@@ -7,7 +7,7 @@ from content.models import Restaurant, RestaurantDish
 from content.forms import RestaurantDishForm
 
 
-class RestaurantDetailView(DetailView):
+class RestaurantDetailView(LoginRequiredMixin, DetailView):
     model = Restaurant
     template_name = 'restaurant/detail.html'
     context_object_name = 'restaurant'

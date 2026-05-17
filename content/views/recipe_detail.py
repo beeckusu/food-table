@@ -1,8 +1,9 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
 from content.models import Recipe
 
 
-class RecipeDetailView(DetailView):
+class RecipeDetailView(LoginRequiredMixin, DetailView):
     """
     Detail view for a single recipe.
     Displays full recipe details including ingredients, steps, images, tags, and related recipes.

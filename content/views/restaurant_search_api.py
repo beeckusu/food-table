@@ -1,9 +1,10 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.views import View
 from content.models import Restaurant
 
 
-class RestaurantSearchApiView(View):
+class RestaurantSearchApiView(LoginRequiredMixin, View):
     """
     API endpoint for searching restaurant names.
     Returns JSON with autocomplete suggestions based on existing Restaurant records.

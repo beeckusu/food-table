@@ -1,9 +1,10 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from content.models import Encyclopedia
 from content.utils.encyclopedia import build_encyclopedia_tree
 
 
-class EncyclopediaListView(ListView):
+class EncyclopediaListView(LoginRequiredMixin, ListView):
     """
     Tree view for encyclopedia entries.
     Shows root-level encyclopedia entries with hierarchical structure.

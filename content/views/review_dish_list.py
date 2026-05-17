@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.http import QueryDict
 from django.db.models import Q, Case, When, Value, IntegerField
@@ -5,7 +6,7 @@ from content.models import ReviewDish
 from content.forms import ReviewDishFilterForm
 
 
-class ReviewDishListView(ListView):
+class ReviewDishListView(LoginRequiredMixin, ListView):
     """
     List view for review dishes.
     Shows all dishes from public reviews with filtering, sorting, and search.

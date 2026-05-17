@@ -1,8 +1,9 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from content.models import Review, Encyclopedia, Recipe
 
 
-class HomeView(TemplateView):
+class HomeView(LoginRequiredMixin, TemplateView):
     """
     Home page view displaying recent reviews, quick links, and stats.
     """

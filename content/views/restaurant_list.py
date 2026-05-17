@@ -1,10 +1,11 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.conf import settings
 from django.urls import reverse
 from content.models import Restaurant
 
 
-class RestaurantListView(ListView):
+class RestaurantListView(LoginRequiredMixin, ListView):
     model = Restaurant
     template_name = 'restaurant/list.html'
     context_object_name = 'restaurants'

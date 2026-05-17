@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.http import QueryDict
 from django.db.models import Count, F
@@ -6,7 +7,7 @@ from content.models import Restaurant, Review, ReviewTag
 from content.forms import ReviewFilterForm
 
 
-class ReviewListView(ListView):
+class ReviewListView(LoginRequiredMixin, ListView):
     """
     List view for restaurant reviews.
     Shows all public reviews ordered by visit date (newest first) with pagination.
