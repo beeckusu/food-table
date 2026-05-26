@@ -1,9 +1,10 @@
 from django.views import View
 from django.shortcuts import render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.forms import formset_factory
-from content.models import RestaurantDish
+from content.models import RestaurantDish, ApiUsageLog
 from content.forms import RestaurantForm, RestaurantDishInlineForm
 
 
@@ -19,6 +20,7 @@ class RestaurantCreateView(LoginRequiredMixin, View):
             'restaurant_form': restaurant_form or RestaurantForm(),
             'had_formset': had_formset or HadDishFormSet(prefix='had'),
             'wishlist_formset': wishlist_formset or WishlistDishFormSet(prefix='wishlist'),
+            'google_maps_api_key': getattr(settings, 'GOOGLE_MAPS_API_KEY', ''),
         }
 
     def get(self, request):
@@ -37,6 +39,9 @@ class RestaurantCreateView(LoginRequiredMixin, View):
             restaurant = restaurant_form.save(commit=False)
             restaurant.created_by = request.user
             restaurant.save()
+
+            if request.POST.get('places_session_used') == '1':
+                ApiUsageLog.objects.create(endpoint='places')
 
             for form in had_formset:
                 if form.cleaned_data.get('dish_name'):

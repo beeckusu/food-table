@@ -40,6 +40,14 @@
                     {{ restaurant_form.name }}
                     {% if restaurant_form.name.errors %}<div class="text-danger small mt-1">{{ restaurant_form.name.errors }}</div>{% endif %}
                 </div>
+                {% if google_maps_api_key %}
+                <div class="col-12">
+                    <label class="form-label">Search address</label>
+                    <input type="text" id="id-address-search" class="form-control" placeholder="Start typing an address…" autocomplete="off">
+                    <div class="form-text text-muted">Select a suggestion to fill the fields below automatically.</div>
+                </div>
+                <input type="hidden" name="places_session_used" id="id-places-session-used" value="0">
+                {% endif %}
                 <div class="col-12">
                     <label class="form-label">Street Address</label>
                     {{ restaurant_form.street_address }}
@@ -175,6 +183,10 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if google_maps_api_key %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initAutocomplete&loading=async" async defer></script>
+<script src="{% static 'js/address_autocomplete.js' %}"></script>
+{% endif %}
 <script>
 document.querySelectorAll('.add-row').forEach(btn => {
     btn.addEventListener('click', () => {

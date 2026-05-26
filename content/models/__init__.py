@@ -1,3 +1,4 @@
+from .api_usage_log import ApiUsageLog
 from .encyclopedia import Encyclopedia
 from .encyclopedia_tag import EncyclopediaTag
 from .encyclopedia_version import EncyclopediaVersion
@@ -12,5 +13,6 @@ from .review_dish import ReviewDish
 from .review_draft import ReviewDraft
 from .review_tag import ReviewTag
 from .tag import Tag
+from .wishlist_inbox import WishlistInboxItem
 
-__all__ = ['Encyclopedia', 'EncyclopediaTag', 'EncyclopediaVersion', 'Image', 'Recipe', 'RecipeTag', 'RecipeVersion', 'Restaurant', 'RestaurantDish', 'Review', 'ReviewDish', 'ReviewDraft', 'ReviewTag', 'Tag']
+__all__ = ['ApiUsageLog', 'Encyclopedia', 'EncyclopediaTag', 'EncyclopediaVersion', 'Image', 'Recipe', 'RecipeTag', 'RecipeVersion', 'Restaurant', 'RestaurantDish', 'Review', 'ReviewDish', 'ReviewDraft', 'ReviewTag', 'Tag', 'WishlistInboxItem']
