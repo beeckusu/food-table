@@ -821,6 +821,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         body: JSON.stringify({ name: dish.name })
                     });
                     const result = await resp.json();
+                    if (!resp.ok) throw new Error(result.error || 'Failed to create placeholder');
                     return result.entry.id;
                 }));
             } catch (err) {

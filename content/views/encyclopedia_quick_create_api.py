@@ -42,8 +42,6 @@ class EncyclopediaQuickCreateApiView(View):
             # Validate required fields
             if not name:
                 return JsonResponse({'error': 'Name is required'}, status=400)
-            if not region:
-                return JsonResponse({'error': 'Region is required'}, status=400)
 
             # Check for duplicate name
             if Encyclopedia.objects.filter(name__iexact=name).exists():
