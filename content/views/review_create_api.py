@@ -3,6 +3,7 @@ import base64
 import uuid
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from decimal import Decimal, InvalidOperation
 
 from django.http import JsonResponse
@@ -100,7 +101,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             # Validate date format and not in future
             try:
                 visit_date = datetime.strptime(basic_info['visitDate'], '%Y-%m-%d').date()
-                if visit_date > datetime.now().date():
+                if visit_date > datetime.now(tz=ZoneInfo('America/New_York')).date():
                     errors['visit_date'] = 'Visit date cannot be in the future'
             except ValueError:
                 errors['visit_date'] = 'Invalid date format'
