@@ -1,6 +1,7 @@
 import json
 import base64
 import uuid
+import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -15,6 +16,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.contenttypes.models import ContentType
 
 from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image
+
+logger = logging.getLogger(__name__)
 
 
 class ReviewCreateApiView(LoginRequiredMixin, View):
@@ -55,7 +58,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 review = self._create_review(data, request.user)
 
                 # Create review dishes
-                self._create_dishes(review, data.get('dishes', []), request.user)
+                image_errors = self._create_dishes(review, data.get('dishes', []), request.user)
 
                 # Delete draft if provided
                 draft_id = data.get('draft_id')
@@ -66,12 +69,15 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                     except ReviewDraft.DoesNotExist:
                         pass  # Draft already deleted or doesn't exist
 
-            # Return success response
-            return JsonResponse({
+            # Return success response (with warnings if any images failed)
+            response = {
                 'success': True,
                 'review_id': review.id,
                 'review_url': reverse('content:review_detail', kwargs={'pk': review.id})
-            })
+            }
+            if image_errors:
+                response['image_warnings'] = image_errors
+            return JsonResponse(response)
 
         except Exception as e:
             return JsonResponse({
@@ -181,29 +187,19 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
         return review
 
     def _create_dishes(self, review, dishes_data, user):
-        """Create ReviewDish instances with images."""
+        """Create ReviewDish instances with images. Returns list of image save errors."""
+        image_errors = []
         for dish_data in dishes_data:
-            # Get or find encyclopedia entry
             encyclopedia_entry = None
             encyclopedia_ids = dish_data.get('encyclopedia_ids', [])
 
-            print(f"Processing dish: {dish_data.get('name')}")
-            print(f"Encyclopedia IDs received: {encyclopedia_ids}")
-
             if encyclopedia_ids:
-                # Use first encyclopedia link (only one allowed per dish)
                 try:
-                    # Convert id to int in case it's a string
                     entry_id = int(encyclopedia_ids[0]['id'])
-                    print(f"Trying to find encyclopedia entry with ID: {entry_id}")
                     encyclopedia_entry = Encyclopedia.objects.get(id=entry_id)
-                    print(f"Found encyclopedia entry: {encyclopedia_entry.name}")
                 except (Encyclopedia.DoesNotExist, ValueError, KeyError, IndexError) as e:
-                    # Log but don't fail - just skip the encyclopedia link
-                    print(f"Failed to link encyclopedia entry: {e}")
-                    pass
+                    logger.warning("Failed to link encyclopedia entry: %s", e)
 
-            # Create the review dish
             cost = dish_data.get('cost')
             review_dish = ReviewDish.objects.create(
                 review=review,
@@ -214,27 +210,27 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 cost=cost if cost else None
             )
 
-            # Handle image if provided (base64 data)
             image_data = dish_data.get('image')
             if image_data and image_data.startswith('data:image/'):
-                self._save_dish_image(review_dish, image_data, user)
+                error = self._save_dish_image(review_dish, image_data, user)
+                if error:
+                    image_errors.append(error)
+
+        return image_errors
 
     def _save_dish_image(self, review_dish, image_data, user):
-        """Convert base64 image to Image model and attach to dish."""
+        """Convert base64 image to Image model and attach to dish. Returns error string or None."""
         try:
-            # Parse data URL: data:image/jpeg;base64,/9j/4AAQ...
             format_type, imgstr = image_data.split(';base64,')
             ext = format_type.split('/')[-1]  # jpeg, png, webp
 
-            # Decode base64
             image_file = ContentFile(
                 base64.b64decode(imgstr),
                 name=f'dish_{uuid.uuid4()}.{ext}'
             )
 
-            # Create Image instance
             content_type = ContentType.objects.get_for_model(ReviewDish)
-            image = Image.objects.create(
+            Image.objects.create(
                 image=image_file,
                 content_type=content_type,
                 object_id=review_dish.id,
@@ -242,7 +238,8 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 caption=review_dish.dish_name,
                 alt_text=f'Photo of {review_dish.dish_name}'
             )
+            return None
 
         except Exception as e:
-            # Log error but don't fail the whole submission
-            print(f"Error saving dish image: {e}")
+            logger.error("Error saving dish image for dish %s: %s", review_dish.id, e, exc_info=True)
+            return f"Image for '{review_dish.dish_name}' failed to save: {e}"

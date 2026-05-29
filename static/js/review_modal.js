@@ -640,8 +640,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Success! Reset draft manager
                 draftManager.reset();
 
-                // Show success message
-                showSuccessToast('Review submitted successfully!');
+                const toastMsg = result.image_warnings
+                    ? `Review submitted, but some images failed to upload: ${result.image_warnings.join('; ')}`
+                    : 'Review submitted successfully!';
+                showSuccessToast(toastMsg);
 
                 // Close modal
                 modal.hide();

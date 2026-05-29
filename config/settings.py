@@ -55,6 +55,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'content.context_processors.inbox_pending_count',
             ],
         },
     },
@@ -62,8 +63,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database — prefer DATABASE_URL (Neon/Render); fall back to individual DB_* vars for local dev
-if env('DATABASE_URL', default=None):
+# Database — use DATABASE_URL (Neon) only in production; always use local DB_* vars in dev
+if env('DATABASE_URL', default=None) and not DEBUG:
     DATABASES = {'default': env.db('DATABASE_URL')}
 else:
     DATABASES = {
@@ -97,13 +98,14 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files — use Cloudflare R2 when configured, local filesystem for dev
 _r2_bucket = env('CLOUDFLARE_R2_BUCKET_NAME', default='')
-if _r2_bucket:
+if _r2_bucket and not DEBUG:
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     AWS_STORAGE_BUCKET_NAME = _r2_bucket
     AWS_S3_ENDPOINT_URL = env('CLOUDFLARE_R2_ENDPOINT_URL', default='')
     AWS_ACCESS_KEY_ID = env('CLOUDFLARE_R2_ACCESS_KEY_ID', default='')
     AWS_SECRET_ACCESS_KEY = env('CLOUDFLARE_R2_SECRET_ACCESS_KEY', default='')
     AWS_S3_CUSTOM_DOMAIN = env('CLOUDFLARE_R2_CUSTOM_DOMAIN', default='')
+    AWS_QUERYSTRING_AUTH = False  # Use public URLs, not presigned URLs
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/' if AWS_S3_CUSTOM_DOMAIN else f'{AWS_S3_ENDPOINT_URL}/{_r2_bucket}/'
 else:
     MEDIA_ROOT = BASE_DIR / 'media'
