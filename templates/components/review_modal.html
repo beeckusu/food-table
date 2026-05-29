@@ -7,9 +7,9 @@
                 <div class="w-100">
                     <h5 class="modal-title" id="reviewModalLabel">Create New Review</h5>
                     <div class="progress mt-2" style="height: 4px;">
-                        <div class="progress-bar" id="reviewProgressBar" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="progress-bar" id="reviewProgressBar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
-                    <small class="text-muted" id="reviewStepIndicator">Step 1 of 5</small>
+                    <small class="text-muted" id="reviewStepIndicator">Step 1 of 4</small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -52,13 +52,15 @@
                                 <option value="snack">Snack</option>
                             </select>
                         </div>
-                    </form>
-                </div>
-
-                <!-- Step 2: Location -->
-                <div id="step-location" class="review-step" data-step="2" style="display: none;">
-                    <h6 class="mb-3">Location <span class="badge bg-secondary">Optional</span></h6>
-                    <form id="locationForm">
+                        <hr>
+                        <h6 class="mb-3">Location <span class="badge bg-secondary">Optional</span></h6>
+                        {% if google_maps_api_key %}
+                        <div class="mb-3">
+                            <label for="reviewAddressSearch" class="form-label">Search address</label>
+                            <input type="text" id="reviewAddressSearch" class="form-control" placeholder="Start typing an address or restaurant name…" autocomplete="off">
+                            <div class="form-text text-muted">Select a suggestion to fill the fields below automatically.</div>
+                        </div>
+                        {% endif %}
                         <div class="mb-3">
                             <label for="reviewAddress" class="form-label">Address</label>
                             <input type="text" class="form-control" id="reviewAddress" placeholder="Street address">
@@ -73,19 +75,21 @@
                                 <input type="text" class="form-control" id="reviewProvince">
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="reviewCountry" class="form-label">Country</label>
-                            <input type="text" class="form-control" id="reviewCountry">
-                        </div>
-                        <div class="mb-3">
-                            <label for="reviewNeighborhood" class="form-label">Neighborhood/Area</label>
-                            <input type="text" class="form-control" id="reviewNeighborhood">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reviewCountry" class="form-label">Country</label>
+                                <input type="text" class="form-control" id="reviewCountry">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="reviewPostalCode" class="form-label">Postal Code</label>
+                                <input type="text" class="form-control" id="reviewPostalCode">
+                            </div>
                         </div>
                     </form>
                 </div>
 
-                <!-- Step 3: Rating & Notes -->
-                <div id="step-rating" class="review-step" data-step="3" style="display: none;">
+                <!-- Step 2: Rating & Notes -->
+                <div id="step-rating" class="review-step" data-step="2" style="display: none;">
                     <h6 class="mb-3">Rating & Notes</h6>
                     <form id="ratingForm">
                         <div class="mb-3">
@@ -130,8 +134,8 @@
                     </form>
                 </div>
 
-                <!-- Step 4: Dishes -->
-                <div id="step-dishes" class="review-step" data-step="4" style="display: none;">
+                <!-- Step 3: Dishes -->
+                <div id="step-dishes" class="review-step" data-step="3" style="display: none;">
                     <h6 class="mb-3">Dishes</h6>
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i> Add dishes you tried during your visit. You can add multiple dishes.
@@ -217,8 +221,8 @@
                     </div>
                 </div>
 
-                <!-- Step 5: Review & Confirm -->
-                <div id="step-confirm" class="review-step" data-step="5" style="display: none;">
+                <!-- Step 4: Review & Confirm -->
+                <div id="step-confirm" class="review-step" data-step="4" style="display: none;">
                     <h6 class="mb-3">Review & Confirm</h6>
                     <div class="alert alert-secondary">
                         <i class="bi bi-eye"></i> Please review your information before submitting

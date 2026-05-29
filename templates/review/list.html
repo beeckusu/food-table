@@ -257,6 +257,51 @@ document.getElementById('filterForm').addEventListener('submit', function() {
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script src="{% static 'js/review_draft.js' %}"></script>
 <script src="{% static 'js/quill-editor.js' %}"></script>
+{% if google_maps_api_key %}
+<script>
+function initReviewAddressAutocomplete() {
+    const searchInput = document.getElementById('reviewAddressSearch');
+    if (!searchInput || typeof google === 'undefined') return;
+
+    let sessionToken = new google.maps.places.AutocompleteSessionToken();
+
+    const autocomplete = new google.maps.places.Autocomplete(searchInput, {
+        types: ['establishment'],
+        componentRestrictions: { country: ['ca', 'us'] },
+        fields: ['address_components', 'name'],
+        sessionToken: sessionToken,
+    });
+
+    autocomplete.addListener('place_changed', function () {
+        const place = autocomplete.getPlace();
+        if (!place.address_components) return;
+
+        const get = (types, nameType) => {
+            const component = place.address_components.find(c =>
+                types.some(t => c.types.includes(t))
+            );
+            return component ? component[nameType] : '';
+        };
+
+        const streetNumber = get(['street_number'], 'long_name');
+        const route = get(['route'], 'long_name');
+        const streetAddress = [streetNumber, route].filter(Boolean).join(' ');
+
+        const nameField = document.getElementById('reviewRestaurantName');
+        if (nameField && !nameField.value && place.name) nameField.value = place.name;
+
+        document.getElementById('reviewAddress').value = streetAddress;
+        document.getElementById('reviewCity').value = get(['locality', 'sublocality_level_1'], 'long_name');
+        document.getElementById('reviewProvince').value = get(['administrative_area_level_1'], 'short_name');
+        document.getElementById('reviewCountry').value = get(['country'], 'long_name');
+        document.getElementById('reviewPostalCode').value = get(['postal_code'], 'long_name');
+
+        sessionToken = new google.maps.places.AutocompleteSessionToken();
+    });
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initReviewAddressAutocomplete&loading=async" async defer></script>
+{% endif %}
 {% endif %}
 <script src="{% static 'js/review_modal.js' %}?v={% now "U" %}"></script>
 

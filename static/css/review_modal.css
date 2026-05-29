@@ -75,6 +75,11 @@
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
+/* Google Places autocomplete dropdown must float above the Bootstrap modal */
+.pac-container {
+    z-index: 10000 !important;
+}
+
 /* Restaurant search results */
 #restaurantSearchResults {
     max-height: 300px;

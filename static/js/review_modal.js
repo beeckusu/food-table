@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Step configuration
     const REVIEW_STEPS = [
         { id: 'basic-info', title: 'Basic Information', required: true },
-        { id: 'location', title: 'Location', required: false },
         { id: 'rating', title: 'Rating & Notes', required: true },
         { id: 'dishes', title: 'Dishes', required: true },
         { id: 'confirm', title: 'Review & Confirm', required: true }
@@ -109,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('reviewCity').value = formData.location.city || '';
             document.getElementById('reviewProvince').value = formData.location.province || '';
             document.getElementById('reviewCountry').value = formData.location.country || '';
-            document.getElementById('reviewNeighborhood').value = formData.location.neighborhood || '';
+            document.getElementById('reviewPostalCode').value = formData.location.postalCode || '';
         }
 
         // Restore rating
@@ -305,15 +304,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     entryTime: document.getElementById('reviewEntryTime').value.trim(),
                     mealType: document.getElementById('reviewMealType').value
                 };
-                break;
-
-            case 'location':
                 formData.location = {
                     address: document.getElementById('reviewAddress').value.trim(),
                     city: document.getElementById('reviewCity').value.trim(),
                     province: document.getElementById('reviewProvince').value.trim(),
                     country: document.getElementById('reviewCountry').value.trim(),
-                    neighborhood: document.getElementById('reviewNeighborhood').value.trim()
+                    postalCode: document.getElementById('reviewPostalCode').value.trim()
                 };
                 break;
 
@@ -442,7 +438,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Clear all form fields
         document.getElementById('basicInfoForm').reset();
-        document.getElementById('locationForm').reset();
         document.getElementById('ratingForm').reset();
         document.getElementById('reviewNotes').value = '';
         if (reviewNotesQuill) {
@@ -492,11 +487,11 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '</div></div>';
 
         // Location Section (if provided)
-        if (formData.location.address || formData.location.city || formData.location.province || formData.location.country || formData.location.neighborhood) {
+        if (formData.location.address || formData.location.city || formData.location.province || formData.location.country || formData.location.postalCode) {
             summaryHtml += '<div class="card mb-3">';
             summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
             summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Location</h6>';
-            summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="1">';
+            summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="0">';
             summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
             summaryHtml += '</div>';
             summaryHtml += '<div class="card-body">';
@@ -504,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (formData.location.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${formData.location.city}</p>`;
             if (formData.location.province) summaryHtml += `<p class="mb-2"><strong>Province/State:</strong> ${formData.location.province}</p>`;
             if (formData.location.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${formData.location.country}</p>`;
-            if (formData.location.neighborhood) summaryHtml += `<p class="mb-0"><strong>Neighborhood:</strong> ${formData.location.neighborhood}</p>`;
+            if (formData.location.postalCode) summaryHtml += `<p class="mb-0"><strong>Postal Code:</strong> ${formData.location.postalCode}</p>`;
             summaryHtml += '</div></div>';
         }
 
@@ -512,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '<div class="card mb-3">';
         summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
         summaryHtml += '<h6 class="mb-0"><i class="bi bi-star me-2"></i>Rating & Notes</h6>';
-        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="2">';
+        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="1">';
         summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
         summaryHtml += '</div>';
         summaryHtml += '<div class="card-body">';
@@ -538,7 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '<div class="card mb-3">';
         summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
         summaryHtml += '<h6 class="mb-0"><i class="bi bi-egg-fried me-2"></i>Dishes</h6>';
-        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="3">';
+        summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="2">';
         summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
         summaryHtml += '</div>';
         summaryHtml += '<div class="card-body">';
@@ -863,19 +858,11 @@ document.addEventListener('DOMContentLoaded', function() {
         restaurantResults.innerHTML = '';
         restaurantStatus.textContent = '';
 
-        // Handle data format: "Street Address, City" stored in location field
-        if (restaurant.location) {
-            const locationParts = restaurant.location.split(',').map(p => p.trim());
-
-            if (locationParts.length === 2) {
-                // Format: "Street Address, City"
-                document.getElementById('reviewAddress').value = locationParts[0];
-                document.getElementById('reviewCity').value = locationParts[1];
-            } else if (locationParts.length === 1) {
-                // Just one part - put in City
-                document.getElementById('reviewCity').value = locationParts[0];
-            }
-        }
+        document.getElementById('reviewAddress').value = restaurant.street_address || '';
+        document.getElementById('reviewCity').value = restaurant.city || '';
+        document.getElementById('reviewProvince').value = restaurant.province || '';
+        document.getElementById('reviewCountry').value = restaurant.country || '';
+        document.getElementById('reviewPostalCode').value = restaurant.postal_code || '';
 
         validateCurrentStep();
     }

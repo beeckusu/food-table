@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.http import QueryDict
@@ -340,5 +341,7 @@ class ReviewListView(LoginRequiredMixin, ListView):
 
         # Add total count for "Showing X of Y" indicator
         context['total_reviews'] = Review.objects.filter(is_private=False).count()
+
+        context['google_maps_api_key'] = getattr(settings, 'GOOGLE_MAPS_API_KEY', '')
 
         return context

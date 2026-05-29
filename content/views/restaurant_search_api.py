@@ -23,9 +23,13 @@ class RestaurantSearchApiView(LoginRequiredMixin, View):
 
         results = [
             {
+                'id': r.pk,
                 'name': r.name,
+                'street_address': r.street_address,
                 'city': r.city,
+                'province': r.province,
                 'country': r.country,
+                'postal_code': r.postal_code,
                 'visit_count': r.reviews.count(),
             }
             for r in restaurants
