@@ -148,7 +148,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             entry_time = '12:00'
 
         # Get or create the Restaurant record
-        restaurant, _ = Restaurant.objects.get_or_create(
+        restaurant, created = Restaurant.objects.get_or_create(
             name=basic_info['restaurantName'],
             street_address=location_info.get('address', ''),
             defaults={
@@ -156,8 +156,12 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 'province': location_info.get('province', ''),
                 'country': location_info.get('country', ''),
                 'postal_code': location_info.get('postalCode', ''),
+                'visited': True,
             },
         )
+        if not created and not restaurant.visited:
+            restaurant.visited = True
+            restaurant.save(update_fields=['visited'])
 
         # Create metadata
         metadata = {}
