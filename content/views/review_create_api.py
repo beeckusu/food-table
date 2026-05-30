@@ -16,7 +16,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.contenttypes.models import ContentType
 
-from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image
+from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image, RestaurantDish
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +243,28 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 notes=dish_data.get('notes', ''),
                 cost=cost if cost else None
             )
+
+            # Promote an existing wishlist entry to 'had', or create a new record
+            wishlist_dish = RestaurantDish.objects.filter(
+                restaurant=review.restaurant,
+                dish_name=dish_data['name'],
+                status=RestaurantDish.STATUS_WISHLIST,
+            ).first()
+            if wishlist_dish:
+                wishlist_dish.status = RestaurantDish.STATUS_HAD
+                wishlist_dish.review = review
+                if encyclopedia_entry:
+                    wishlist_dish.encyclopedia_entry = encyclopedia_entry
+                wishlist_dish.save()
+            else:
+                RestaurantDish.objects.create(
+                    restaurant=review.restaurant,
+                    dish_name=dish_data['name'],
+                    encyclopedia_entry=encyclopedia_entry,
+                    status=RestaurantDish.STATUS_HAD,
+                    review=review,
+                    source='review',
+                )
 
             image_data = dish_data.get('image')
             if image_data and image_data.startswith('data:image/'):

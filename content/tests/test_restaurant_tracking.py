@@ -1,3 +1,4 @@
+import json
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -223,3 +224,73 @@ class RestaurantCreateViewTest(TestCase):
         restaurant = Restaurant.objects.get(name='Dish Place')
         self.assertTrue(restaurant.dishes.filter(dish_name='Ramen', status='had').exists())
         self.assertTrue(restaurant.dishes.filter(dish_name='Tonkotsu', status='wishlist', source='friend').exists())
+
+
+def _review_payload(restaurant_name='Test Place', dishes=None):
+    if dishes is None:
+        dishes = [{'name': 'Ramen', 'rating': 80}]
+    return {
+        'basicInfo': {
+            'restaurantName': restaurant_name,
+            'visitDate': '2024-06-01',
+            'entryTime': '18:00',
+            'partySize': '2',
+        },
+        'location': {},
+        'rating': {'overall': 75, 'title': '', 'notes': '', 'images': []},
+        'dishes': dishes,
+    }
+
+
+class ReviewCreateDishTrackingTest(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user('staff', password='pw', is_staff=True)
+        self.client = Client()
+        self.client.login(username='staff', password='pw')
+        self.url = reverse('content:api_review_create')
+
+    def _post(self, payload):
+        return self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type='application/json',
+        )
+
+    def test_creates_had_dish_record(self):
+        response = self._post(_review_payload())
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            RestaurantDish.objects.filter(
+                dish_name='Ramen',
+                status=RestaurantDish.STATUS_HAD,
+            ).exists()
+        )
+
+    def test_creates_had_dish_for_each_review_dish(self):
+        payload = _review_payload(dishes=[
+            {'name': 'Ramen', 'rating': 80},
+            {'name': 'Gyoza', 'rating': 70},
+        ])
+        self._post(payload)
+        restaurant = Restaurant.objects.get(name='Test Place')
+        self.assertEqual(restaurant.dishes.filter(status=RestaurantDish.STATUS_HAD).count(), 2)
+
+    def test_had_dish_linked_to_review(self):
+        response = self._post(_review_payload())
+        data = json.loads(response.content)
+        dish = RestaurantDish.objects.get(dish_name='Ramen', status=RestaurantDish.STATUS_HAD)
+        self.assertEqual(dish.review_id, data['review_id'])
+
+    def test_promotes_existing_wishlist_dish(self):
+        restaurant = Restaurant.objects.create(name='Test Place', visited=True)
+        wishlist_dish = RestaurantDish.objects.create(
+            restaurant=restaurant,
+            dish_name='Ramen',
+            status=RestaurantDish.STATUS_WISHLIST,
+        )
+        self._post(_review_payload())
+        wishlist_dish.refresh_from_db()
+        self.assertEqual(wishlist_dish.status, RestaurantDish.STATUS_HAD)
+        self.assertIsNotNone(wishlist_dish.review_id)
+        # No duplicate created
+        self.assertEqual(RestaurantDish.objects.filter(dish_name='Ramen').count(), 1)
