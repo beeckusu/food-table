@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load review_tags %}
 {% load admin_tags %}
+{% load rtf_tags %}
 {% load static %}
 
 {% block title %}{{ review.restaurant.name }} - Reviews - Food Table{% endblock %}
@@ -167,7 +168,7 @@
                                 </div>
                                 {% endif %}
                                 {% if dish.notes %}
-                                <p class="mb-1">{{ dish.notes }}</p>
+                                <div class="mb-1">{{ dish.notes|rtf }}</div>
                                 {% endif %}
                             </div>
                             {% if dish.cost %}
@@ -188,7 +189,7 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h3 class="card-title">Notes</h3>
-                <p class="card-text" style="white-space: pre-line;">{{ review.notes }}</p>
+                <div class="card-text">{{ review.notes|rtf }}</div>
             </div>
         </div>
         {% endif %}
