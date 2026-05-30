@@ -131,6 +131,18 @@
                                 <span class="badge bg-secondary" id="serviceValue" style="min-width: 50px;">50</span>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Photos <span class="badge bg-secondary">Optional</span></label>
+                            <div id="reviewImageUploadContainer">
+                                <div id="reviewImageDropZone" class="review-image-drop-zone" style="cursor: pointer; border: 2px dashed #dee2e6; border-radius: 0.375rem; padding: 1rem; text-align: center;">
+                                    <input type="file" id="reviewImageInput" accept="image/jpeg,image/png,image/webp" multiple style="display: none;">
+                                    <i class="bi bi-cloud-upload fs-4 text-muted"></i>
+                                    <p class="mb-0 text-muted">Click to select or drag &amp; drop photos</p>
+                                    <small class="text-muted">JPEG, PNG, WebP (max 10MB each)</small>
+                                </div>
+                                <div id="reviewImagePreviews" class="d-flex flex-wrap gap-2 mt-2"></div>
+                            </div>
+                        </div>
                     </form>
                 </div>
 

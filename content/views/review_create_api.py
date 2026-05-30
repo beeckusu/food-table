@@ -58,8 +58,12 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 # Create the review
                 review = self._create_review(data, request.user)
 
+                # Save review-level images
+                review_images_data = data.get('rating', {}).get('images', [])
+                image_errors = self._save_review_images(review, review_images_data, request.user)
+
                 # Create review dishes
-                image_errors = self._create_dishes(review, data.get('dishes', []), request.user)
+                image_errors.extend(self._create_dishes(review, data.get('dishes', []), request.user))
 
                 # Delete draft if provided
                 draft_id = data.get('draft_id')
@@ -188,6 +192,33 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
         review.save()
 
         return review
+
+    def _save_review_images(self, review, images_data, user):
+        """Save base64-encoded images attached to the review itself. Returns list of error strings."""
+        errors = []
+        for image_data in images_data:
+            if not (isinstance(image_data, str) and image_data.startswith('data:image/')):
+                continue
+            try:
+                format_type, imgstr = image_data.split(';base64,')
+                ext = format_type.split('/')[-1]
+
+                image_file = ContentFile(
+                    base64.b64decode(imgstr),
+                    name=f'review_{uuid.uuid4()}.{ext}'
+                )
+
+                content_type = ContentType.objects.get_for_model(Review)
+                Image.objects.create(
+                    image=image_file,
+                    content_type=content_type,
+                    object_id=review.id,
+                    uploaded_by=user,
+                )
+            except Exception as e:
+                logger.error("Error saving image for review %s: %s", review.id, e, exc_info=True)
+                errors.append(f"A review photo failed to save: {e}")
+        return errors
 
     def _create_dishes(self, review, dishes_data, user):
         """Create ReviewDish instances with images. Returns list of image save errors."""

@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Quill editor for review notes — initialized lazily when Step 3 becomes visible
     let reviewNotesQuill = null;
 
+    // Review-level images (base64 strings), populated on the rating step
+    let reviewImages = [];
+    let reviewImageHandlersInitialized = false;
+
     // Draft manager
     const draftManager = new ReviewDraftManager();
 
@@ -125,6 +129,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update character count
             const titleLength = (formData.rating.title || '').length;
             document.getElementById('titleCharCount').textContent = titleLength;
+
+            // Restore review images
+            reviewImages = formData.rating.images || [];
+            renderReviewImagePreviews();
         }
 
         // Restore dishes
@@ -163,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const saved = document.getElementById('reviewNotes').value;
                 reviewNotesQuill.clipboard.dangerouslyPasteHTML(saved || '');
             }
+            initReviewImageHandlers();
         }
 
         // Update progress indicator
@@ -319,7 +328,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: document.getElementById('reviewTitle').value.trim(),
                     notes: document.getElementById('reviewNotes').value.trim(),
                     ambiance: document.getElementById('reviewAmbiance').value,
-                    service: document.getElementById('reviewService').value
+                    service: document.getElementById('reviewService').value,
+                    images: [...reviewImages]
                 };
                 break;
 
@@ -449,6 +459,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('ratingValue').textContent = '50';
         document.getElementById('ambianceValue').textContent = '50';
         document.getElementById('serviceValue').textContent = '50';
+
+        // Clear review images
+        reviewImages = [];
+        reviewImageHandlersInitialized = false;
+        const previewsDiv = document.getElementById('reviewImagePreviews');
+        if (previewsDiv) previewsDiv.innerHTML = '';
 
         // Reset title character count
         document.getElementById('titleCharCount').textContent = '0';
@@ -1096,6 +1112,89 @@ document.addEventListener('DOMContentLoaded', function() {
             saveDishes();
         };
         reader.readAsDataURL(file);
+    }
+
+    function initReviewImageHandlers() {
+        if (reviewImageHandlersInitialized) return;
+        reviewImageHandlersInitialized = true;
+
+        const dropZone = document.getElementById('reviewImageDropZone');
+        const fileInput = document.getElementById('reviewImageInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function() {
+            Array.from(this.files).forEach(file => addReviewImage(file));
+            this.value = '';
+        });
+
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = '#0d6efd';
+        });
+
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.style.borderColor = '#dee2e6';
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = '#dee2e6';
+            Array.from(e.dataTransfer.files).forEach(file => addReviewImage(file));
+        });
+    }
+
+    function addReviewImage(file) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showError('Invalid file type. Please select a JPEG, PNG, or WebP image.');
+            return;
+        }
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showError('File is too large. Maximum size is 10MB.');
+            return;
+        }
+        hideError();
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            reviewImages.push(e.target.result);
+            renderReviewImagePreviews();
+            saveCurrentStepData();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function renderReviewImagePreviews() {
+        const container = document.getElementById('reviewImagePreviews');
+        if (!container) return;
+        container.innerHTML = '';
+        reviewImages.forEach((src, idx) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'position-relative';
+            wrapper.style.cssText = 'width: 80px; height: 80px;';
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = 'img-thumbnail';
+            img.style.cssText = 'width: 80px; height: 80px; object-fit: cover;';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0';
+            removeBtn.style.cssText = 'width: 20px; height: 20px; font-size: 10px; line-height: 1;';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.addEventListener('click', function() {
+                reviewImages.splice(idx, 1);
+                renderReviewImagePreviews();
+                saveCurrentStepData();
+            });
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(removeBtn);
+            container.appendChild(wrapper);
+        });
     }
 
     function updateDishNumbers() {
