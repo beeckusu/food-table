@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let reviewImages = [];
     let reviewImageHandlersInitialized = false;
 
+    // AI rewrite — populated once the modal element is found
+    let openAiRewriteModal = null;
+
     // Draft manager
     const draftManager = new ReviewDraftManager();
 
@@ -952,11 +955,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('dishesContainer').appendChild(dishCard);
 
         // Initialize Quill for dish notes after appending to DOM
-        initQuillEditor(
+        const dishNotesQuill = initQuillEditor(
             dishCard.querySelector('.dish-notes-editor'),
             dishCard.querySelector('.dish-notes'),
             { placeholder: 'Optional notes about this dish...', onChange: saveDishes }
         );
+
+        // Wire AI rewrite button for this dish's notes
+        const dishRewriteBtn = dishCard.querySelector('.dish-ai-rewrite-btn');
+        if (dishRewriteBtn) {
+            dishRewriteBtn.addEventListener('click', function() {
+                if (openAiRewriteModal) openAiRewriteModal(dishNotesQuill, dishRewriteBtn);
+            });
+        }
 
         // Attach event listeners
         const ratingSlider = dishCard.querySelector('.dish-rating');
@@ -1468,10 +1479,9 @@ document.addEventListener('DOMContentLoaded', function() {
         encyclopediaSelectedIndex = -1;
     });
 
-    // AI Rewrite
-    const aiRewriteBtn = document.getElementById('aiRewriteBtn');
-    if (aiRewriteBtn) {
-        const aiRewriteModalEl = document.getElementById('aiRewriteModal');
+    // AI Rewrite — shared between review notes and all dish notes
+    const aiRewriteModalEl = document.getElementById('aiRewriteModal');
+    if (aiRewriteModalEl) {
         const aiRewriteModal = new bootstrap.Modal(aiRewriteModalEl);
         const originalPanel = document.getElementById('aiRewriteOriginal');
         const resultPanel = document.getElementById('aiRewriteResult');
@@ -1482,11 +1492,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const acceptBtn = document.getElementById('aiRewriteAcceptBtn');
         const rejectBtn = document.getElementById('aiRewriteRejectBtn');
         let pendingRewrite = '';
+        let activeRewriteQuill = null;
+        let activeTriggerBtn = null;
 
-        aiRewriteBtn.addEventListener('click', async function () {
-            if (!reviewNotesQuill) return;
-            const text = reviewNotesQuill.getText().trim();
+        openAiRewriteModal = async function(quill, triggerBtn) {
+            if (!quill) return;
+            const text = quill.getText().trim();
             if (!text) return;
+
+            activeRewriteQuill = quill;
+            activeTriggerBtn = triggerBtn;
 
             originalPanel.textContent = text;
             resultPanel.innerHTML = '<div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm"></div> Rewriting…</div>';
@@ -1494,8 +1509,8 @@ document.addEventListener('DOMContentLoaded', function() {
             acceptBtn.disabled = true;
             pendingRewrite = '';
 
-            aiRewriteBtn.disabled = true;
-            aiRewriteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Rewriting…';
+            triggerBtn.disabled = true;
+            triggerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Rewriting…';
 
             aiRewriteModal.show();
 
@@ -1522,10 +1537,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     : 'Rewrite failed. Please try again.';
                 aiErrorDiv.style.display = 'block';
             } finally {
-                aiRewriteBtn.disabled = false;
-                aiRewriteBtn.innerHTML = '<i class="bi bi-stars"></i> Rewrite with AI';
+                if (activeTriggerBtn) {
+                    activeTriggerBtn.disabled = false;
+                    activeTriggerBtn.innerHTML = '<i class="bi bi-stars"></i> Rewrite with AI';
+                }
             }
-        });
+        };
+
+        // Wire review-level rewrite button
+        const aiRewriteBtn = document.getElementById('aiRewriteBtn');
+        if (aiRewriteBtn) {
+            aiRewriteBtn.addEventListener('click', function() {
+                openAiRewriteModal(reviewNotesQuill, aiRewriteBtn);
+            });
+        }
 
         copyOriginalBtn.addEventListener('click', function () {
             editablePanel.value = originalPanel.textContent;
@@ -1537,11 +1562,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         acceptBtn.addEventListener('click', function () {
             const text = editablePanel.value.trim() || pendingRewrite;
-            if (text && reviewNotesQuill) {
-                reviewNotesQuill.clipboard.dangerouslyPasteHTML(
+            if (text && activeRewriteQuill) {
+                activeRewriteQuill.clipboard.dangerouslyPasteHTML(
                     text.replace(/\n/g, '<br>')
                 );
-                document.getElementById('reviewNotes').value = reviewNotesQuill.root.innerHTML;
                 draftManager.markUnsaved();
             }
             aiRewriteModal.hide();
@@ -1558,6 +1582,8 @@ document.addEventListener('DOMContentLoaded', function() {
             copyResultBtn.disabled = true;
             aiErrorDiv.style.display = 'none';
             acceptBtn.disabled = true;
+            activeRewriteQuill = null;
+            activeTriggerBtn = null;
         });
     }
 });
