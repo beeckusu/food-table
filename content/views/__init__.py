@@ -32,6 +32,7 @@ from .global_search import GlobalSearchView
 from .review_ai_rewrite_api import ReviewAIRewriteApiView
 from .encyclopedia_ai_prefill_api import EncyclopediaAIPrefillApiView
 from .encyclopedia_edit_api import EncyclopediaEditApiView
+from .wishlist_bulk import WishlistBulkCreateApiView
 
 __all__ = [
     'HomeView',
@@ -68,4 +69,5 @@ __all__ = [
     'ReviewAIRewriteApiView',
     'EncyclopediaAIPrefillApiView',
     'EncyclopediaEditApiView',
+    'WishlistBulkCreateApiView',
 ]

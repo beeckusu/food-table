@@ -29,7 +29,7 @@ SYNC_APPS = ['content']
 # Review.restaurant has on_delete=PROTECT, so reviews must be deleted before restaurants.
 CLEAR_SCRIPT = """\
 from content.models import (
-    ReviewDraft, WishlistInboxItem, Image,
+    ReviewDraft, Image,
     ReviewDish, ReviewTag, Review,
     RestaurantDish, Restaurant,
     EncyclopediaVersion, EncyclopediaTag, Encyclopedia,
@@ -37,7 +37,6 @@ from content.models import (
 )
 Image.objects.all().delete()
 ReviewDraft.objects.all().delete()
-WishlistInboxItem.objects.all().delete()
 ReviewDish.objects.all().delete()
 ReviewTag.objects.all().delete()
 Review.objects.all().delete()

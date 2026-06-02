@@ -13,6 +13,4 @@ from .review_dish import ReviewDish
 from .review_draft import ReviewDraft
 from .review_tag import ReviewTag
 from .tag import Tag
-from .wishlist_inbox import WishlistInboxItem
-
-__all__ = ['ApiUsageLog', 'Encyclopedia', 'EncyclopediaTag', 'EncyclopediaVersion', 'Image', 'Recipe', 'RecipeTag', 'RecipeVersion', 'Restaurant', 'RestaurantDish', 'Review', 'ReviewDish', 'ReviewDraft', 'ReviewTag', 'Tag', 'WishlistInboxItem']
+__all__ = ['ApiUsageLog', 'Encyclopedia', 'EncyclopediaTag', 'EncyclopediaVersion', 'Image', 'Recipe', 'RecipeTag', 'RecipeVersion', 'Restaurant', 'RestaurantDish', 'Review', 'ReviewDish', 'ReviewDraft', 'ReviewTag', 'Tag']

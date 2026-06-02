@@ -1,0 +1,506 @@
+<div class="modal fade" id="wishlistBulkModal" tabindex="-1"
+     aria-labelledby="wishlistBulkModalLabel" aria-hidden="true"
+     data-maps-key="{{ google_maps_api_key }}">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="wishlistBulkModalLabel">
+          <i class="bi bi-bookmark-plus me-1"></i>
+          Add Instagram Wishlists
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Step 0: URL input -->
+        <div data-step="0">
+          <p class="text-muted mb-2">Paste Instagram URLs below, one per line.</p>
+          <textarea id="wbUrlInput" class="form-control font-monospace" rows="9"
+            placeholder="https://www.instagram.com/reel/&#10;https://www.instagram.com/p/&#10;..."></textarea>
+          <div id="wbUrlError" class="text-danger small mt-2" style="display:none;"></div>
+        </div>
+
+        <!-- Step 1: per-URL form -->
+        <div data-step="1" style="display:none;">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="progress flex-grow-1" style="height:6px;">
+              <div class="progress-bar" id="wbProgress" role="progressbar" style="width:0%;"></div>
+            </div>
+            <span class="text-muted small text-nowrap" id="wbProgressText">URL 1 of 1</span>
+          </div>
+
+          <div class="row g-3">
+            <!-- Left: link + embed -->
+            <div class="col-md-5">
+              <div id="wbEmbedArea" class="d-flex flex-column gap-2"></div>
+            </div>
+
+            <!-- Right: restaurant + dishes -->
+            <div class="col-md-7">
+
+              <!-- Search existing mode -->
+              <div id="wbRestaurantSearch">
+                <label class="form-label fw-semibold">Restaurant</label>
+                <div class="position-relative">
+                  <input type="text" id="wbRestaurantInput" class="form-control"
+                         placeholder="Type to search or add new…" autocomplete="off">
+                  <input type="hidden" id="wbRestaurantId">
+                  <div id="wbRestaurantSuggestions" class="dropdown-menu w-100"
+                       style="display:none;position:absolute;top:100%;z-index:1050;max-height:240px;overflow-y:auto;"></div>
+                </div>
+                <button type="button" id="wbNewRestaurantBtn" class="btn btn-link btn-sm ps-0 mt-1">
+                  <i class="bi bi-plus-circle"></i> New restaurant
+                </button>
+              </div>
+
+              <!-- New restaurant mode -->
+              <div id="wbNewRestaurantForm" style="display:none;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label class="form-label fw-semibold mb-0">New Restaurant</label>
+                  <button type="button" id="wbBackToSearchBtn" class="btn btn-link btn-sm p-0">
+                    <i class="bi bi-arrow-left"></i> Back to search
+                  </button>
+                </div>
+                {% if google_maps_api_key %}
+                <div class="mb-2">
+                  <input type="text" id="wbPlacesSearch" class="form-control form-control-sm"
+                         placeholder="Search Google Places…" autocomplete="off">
+                  <div class="form-text">Select a result to fill fields below.</div>
+                </div>
+                {% endif %}
+                <div class="mb-2">
+                  <input type="text" id="wbNewName" class="form-control form-control-sm"
+                         placeholder="Restaurant name *">
+                </div>
+                <div class="mb-2">
+                  <input type="text" id="wbNewStreet" class="form-control form-control-sm"
+                         placeholder="Street address">
+                </div>
+                <div class="row g-2 mb-2">
+                  <div class="col">
+                    <input type="text" id="wbNewCity" class="form-control form-control-sm" placeholder="City">
+                  </div>
+                  <div class="col">
+                    <input type="text" id="wbNewProvince" class="form-control form-control-sm" placeholder="Province / State">
+                  </div>
+                </div>
+                <div class="row g-2">
+                  <div class="col">
+                    <input type="text" id="wbNewCountry" class="form-control form-control-sm" placeholder="Country">
+                  </div>
+                  <div class="col">
+                    <input type="text" id="wbNewPostal" class="form-control form-control-sm" placeholder="Postal code">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dishes -->
+              <div class="mb-3 mt-3">
+                <label class="form-label fw-semibold">Dishes to wishlist</label>
+                <div id="wbDishList">
+                  <div class="dish-row">
+                    <input type="text" class="form-control form-control-sm wb-dish" placeholder="Dish name">
+                  </div>
+                </div>
+                <button type="button" id="wbAddDishBtn" class="btn btn-link btn-sm ps-0 mt-1">
+                  <i class="bi bi-plus-circle"></i> Add another dish
+                </button>
+              </div>
+
+              <div id="wbErrorMsg" class="text-danger small" style="display:none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: done -->
+        <div data-step="2" style="display:none;">
+          <div id="wbSummary" class="text-center py-4"></div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer justify-content-between">
+        <div id="wbFooter0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="wbStartBtn" class="btn btn-primary ms-2">
+            Continue <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+        <div id="wbFooter1" style="display:none;">
+          <button type="button" id="wbSkipBtn" class="btn btn-outline-secondary">
+            <i class="bi bi-skip-forward"></i> Skip
+          </button>
+          <button type="button" id="wbAddBtn" class="btn btn-primary ms-2">
+            <i class="bi bi-bookmark-plus"></i> Add to Wishlist
+          </button>
+        </div>
+        <div id="wbFooter2" style="display:none;">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">
+            <i class="bi bi-check-lg"></i> Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script async src="//www.instagram.com/embed.js"></script>
+
+<script>
+(function () {
+  var RESTAURANT_SEARCH_URL = '{% url "content:api_restaurant_search" %}';
+  var BULK_API_URL = '{% url "content:api_wishlist_bulk_create" %}';
+  var MAPS_API_KEY = (document.getElementById('wishlistBulkModal').dataset.mapsKey || '');
+
+  var urls = [];
+  var currentIdx = 0;
+  var addedCount = 0;
+  var skippedCount = 0;
+  var restaurantMode = 'search'; // 'search' | 'new'
+  var placesAutocomplete = null;
+  var placesSessionUsed = false;
+
+  var modal = document.getElementById('wishlistBulkModal');
+
+  modal.addEventListener('hidden.bs.modal', function () {
+    urls = [];
+    currentIdx = 0;
+    addedCount = 0;
+    skippedCount = 0;
+    document.getElementById('wbUrlInput').value = '';
+    document.getElementById('wbUrlError').style.display = 'none';
+    showStep(0);
+  });
+
+  function showStep(n) {
+    modal.querySelectorAll('[data-step]').forEach(function (el) {
+      el.style.display = (el.dataset.step == n) ? '' : 'none';
+    });
+    document.getElementById('wbFooter0').style.display = (n === 0) ? '' : 'none';
+    document.getElementById('wbFooter1').style.display = (n === 1) ? '' : 'none';
+    document.getElementById('wbFooter2').style.display = (n === 2) ? '' : 'none';
+  }
+
+  // ── Step 0 → Continue ──────────────────────────────────────────────────────
+  var INSTAGRAM_RE = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p)\/[A-Za-z0-9_-]+/i;
+
+  document.getElementById('wbStartBtn').addEventListener('click', function () {
+    var text = document.getElementById('wbUrlInput').value;
+    urls = text.split('\n').map(function (u) { return u.trim(); }).filter(function (u) { return INSTAGRAM_RE.test(u); });
+    if (!urls.length) {
+      document.getElementById('wbUrlError').textContent = 'No Instagram URLs found. Paste links to instagram.com/reel/ or instagram.com/p/ posts.';
+      document.getElementById('wbUrlError').style.display = '';
+      return;
+    }
+    document.getElementById('wbUrlError').style.display = 'none';
+    currentIdx = 0;
+    loadUrl(0);
+    showStep(1);
+  });
+
+  function loadUrl(idx) {
+    var url = urls[idx];
+    var total = urls.length;
+    document.getElementById('wbProgress').style.width = Math.round((idx / total) * 100) + '%';
+    document.getElementById('wbProgressText').textContent = 'URL ' + (idx + 1) + ' of ' + total;
+    renderEmbed(url);
+    clearForm();
+  }
+
+  function renderEmbed(url) {
+    var area = document.getElementById('wbEmbedArea');
+    area.innerHTML = '';
+
+    var link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.className = 'btn btn-outline-secondary btn-sm w-100';
+    link.innerHTML = '<i class="bi bi-instagram"></i> Open on Instagram';
+    area.appendChild(link);
+
+    var urlText = document.createElement('p');
+    urlText.className = 'text-muted small text-break mb-0';
+    urlText.textContent = url;
+    area.appendChild(urlText);
+
+    var bq = document.createElement('blockquote');
+    bq.className = 'instagram-media';
+    bq.setAttribute('data-instgrm-permalink', url);
+    bq.setAttribute('data-instgrm-version', '14');
+    bq.style.cssText = 'width:100%;max-width:100%;min-width:0;margin:0;';
+    area.appendChild(bq);
+
+    if (window.instgrm) window.instgrm.Embeds.process();
+  }
+
+  function clearForm() {
+    restaurantMode = 'search';
+    placesSessionUsed = false;
+
+    document.getElementById('wbRestaurantInput').value = '';
+    document.getElementById('wbRestaurantId').value = '';
+    document.getElementById('wbRestaurantSuggestions').style.display = 'none';
+    document.getElementById('wbRestaurantSearch').style.display = '';
+    document.getElementById('wbNewRestaurantForm').style.display = 'none';
+
+    ['wbNewName', 'wbNewStreet', 'wbNewCity', 'wbNewProvince', 'wbNewCountry', 'wbNewPostal'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    var ps = document.getElementById('wbPlacesSearch');
+    if (ps) ps.value = '';
+
+    document.getElementById('wbDishList').innerHTML =
+      '<div class="dish-row"><input type="text" class="form-control form-control-sm wb-dish" placeholder="Dish name"></div>';
+    document.getElementById('wbErrorMsg').style.display = 'none';
+    var btn = document.getElementById('wbAddBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Add to Wishlist';
+  }
+
+  // ── Restaurant mode toggle ─────────────────────────────────────────────────
+  document.getElementById('wbNewRestaurantBtn').addEventListener('click', function () {
+    restaurantMode = 'new';
+    document.getElementById('wbNewName').value = document.getElementById('wbRestaurantInput').value.trim();
+    document.getElementById('wbRestaurantSearch').style.display = 'none';
+    document.getElementById('wbNewRestaurantForm').style.display = '';
+    initPlaces();
+  });
+
+  document.getElementById('wbBackToSearchBtn').addEventListener('click', function () {
+    restaurantMode = 'search';
+    document.getElementById('wbRestaurantSearch').style.display = '';
+    document.getElementById('wbNewRestaurantForm').style.display = 'none';
+  });
+
+  // ── Skip ───────────────────────────────────────────────────────────────────
+  document.getElementById('wbSkipBtn').addEventListener('click', function () {
+    skippedCount++;
+    advance();
+  });
+
+  // ── Add to Wishlist ────────────────────────────────────────────────────────
+  document.getElementById('wbAddBtn').addEventListener('click', function () {
+    var dishes = Array.from(document.querySelectorAll('#wbDishList .wb-dish'))
+      .map(function (i) { return i.value.trim(); })
+      .filter(Boolean);
+
+    var body;
+    if (restaurantMode === 'new') {
+      var newName = document.getElementById('wbNewName').value.trim();
+      if (!newName) {
+        showError('Please enter a restaurant name.');
+        return;
+      }
+      body = {
+        url: urls[currentIdx],
+        restaurant_id: null,
+        restaurant_name: newName,
+        street_address: document.getElementById('wbNewStreet').value.trim(),
+        city: document.getElementById('wbNewCity').value.trim(),
+        province: document.getElementById('wbNewProvince').value.trim(),
+        country: document.getElementById('wbNewCountry').value.trim(),
+        postal_code: document.getElementById('wbNewPostal').value.trim(),
+        places_session_used: placesSessionUsed ? 1 : 0,
+        dishes: dishes,
+      };
+    } else {
+      var restaurantId = document.getElementById('wbRestaurantId').value;
+      var restaurantName = document.getElementById('wbRestaurantInput').value.trim();
+      if (!restaurantName) {
+        showError('Please enter a restaurant name.');
+        return;
+      }
+      body = {
+        url: urls[currentIdx],
+        restaurant_id: restaurantId || null,
+        restaurant_name: restaurantName,
+        dishes: dishes,
+      };
+    }
+
+    var btn = document.getElementById('wbAddBtn');
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
+    fetch(BULK_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+      body: JSON.stringify(body),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.success) {
+        addedCount++;
+        advance();
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Add to Wishlist';
+        showError(data.error || 'Something went wrong.');
+      }
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Add to Wishlist';
+      showError('Network error. Please try again.');
+    });
+  });
+
+  function advance() {
+    currentIdx++;
+    if (currentIdx >= urls.length) {
+      showDone();
+    } else {
+      loadUrl(currentIdx);
+    }
+  }
+
+  function showDone() {
+    var added = addedCount;
+    var skipped = skippedCount;
+    document.getElementById('wbSummary').innerHTML =
+      '<i class="bi bi-check-circle-fill text-success display-3"></i>' +
+      '<h4 class="mt-3">All done!</h4>' +
+      '<p class="text-muted">' + added + ' restaurant' + (added !== 1 ? 's' : '') + ' wishlisted' +
+      (skipped ? ', ' + skipped + ' skipped' : '') + '.</p>';
+    showStep(2);
+  }
+
+  function showError(msg) {
+    var el = document.getElementById('wbErrorMsg');
+    el.textContent = msg;
+    el.style.display = '';
+  }
+
+  // ── Restaurant autocomplete (search existing) ──────────────────────────────
+  var restaurantInput = document.getElementById('wbRestaurantInput');
+  var restaurantSuggestions = document.getElementById('wbRestaurantSuggestions');
+  var searchTimer;
+
+  restaurantInput.addEventListener('input', function () {
+    document.getElementById('wbRestaurantId').value = '';
+    clearTimeout(searchTimer);
+    var q = restaurantInput.value.trim();
+    if (q.length < 2) { restaurantSuggestions.style.display = 'none'; return; }
+    searchTimer = setTimeout(function () {
+      fetch(RESTAURANT_SEARCH_URL + '?q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          restaurantSuggestions.innerHTML = '';
+          var results = data.results || data;
+          if (!results.length) { restaurantSuggestions.style.display = 'none'; return; }
+          results.forEach(function (r) {
+            var a = document.createElement('a');
+            a.className = 'dropdown-item';
+            a.href = '#';
+
+            var location = [r.city, r.province].filter(Boolean).join(', ');
+            a.innerHTML = '<div>' + escHtml(r.name) + '</div>' +
+              (location ? '<div class="text-muted small">' + escHtml(location) + '</div>' : '');
+
+            a.addEventListener('click', function (e) {
+              e.preventDefault();
+              restaurantInput.value = r.name;
+              document.getElementById('wbRestaurantId').value = r.id;
+              restaurantSuggestions.style.display = 'none';
+            });
+            restaurantSuggestions.appendChild(a);
+          });
+          restaurantSuggestions.style.display = '';
+        });
+    }, 250);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!restaurantSuggestions.contains(e.target) && e.target !== restaurantInput) {
+      restaurantSuggestions.style.display = 'none';
+    }
+  });
+
+  // ── Add dish row ───────────────────────────────────────────────────────────
+  document.getElementById('wbAddDishBtn').addEventListener('click', function () {
+    var list = document.getElementById('wbDishList');
+    var row = document.createElement('div');
+    row.className = 'dish-row mt-2';
+    row.innerHTML = '<div class="input-group input-group-sm">' +
+      '<input type="text" class="form-control wb-dish" placeholder="Dish name">' +
+      '<button type="button" class="btn btn-outline-secondary remove-dish-btn"><i class="bi bi-x"></i></button>' +
+      '</div>';
+    row.querySelector('.remove-dish-btn').addEventListener('click', function () { row.remove(); });
+    list.appendChild(row);
+  });
+
+  // ── Google Places autocomplete (new restaurant) ────────────────────────────
+  function initPlaces() {
+    if (placesAutocomplete || !MAPS_API_KEY) return;
+    var placesSearchEl = document.getElementById('wbPlacesSearch');
+    if (!placesSearchEl) return;
+
+    function setupPlaces() {
+      if (placesAutocomplete) return;
+      if (typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+
+      var sessionToken = new google.maps.places.AutocompleteSessionToken();
+
+      placesAutocomplete = new google.maps.places.Autocomplete(placesSearchEl, {
+        types: ['establishment'],
+        componentRestrictions: { country: ['ca', 'us'] },
+        fields: ['address_components', 'name'],
+        sessionToken: sessionToken,
+      });
+
+      placesAutocomplete.addListener('place_changed', function () {
+        var place = placesAutocomplete.getPlace();
+        if (!place.address_components) return;
+
+        function getComponent(types, nameType) {
+          var comp = place.address_components.find(function (c) {
+            return types.some(function (t) { return c.types.includes(t); });
+          });
+          return comp ? comp[nameType] : '';
+        }
+
+        var streetNumber = getComponent(['street_number'], 'long_name');
+        var route = getComponent(['route'], 'long_name');
+
+        if (place.name) document.getElementById('wbNewName').value = place.name;
+        document.getElementById('wbNewStreet').value = [streetNumber, route].filter(Boolean).join(' ');
+        document.getElementById('wbNewCity').value = getComponent(['locality', 'sublocality_level_1'], 'long_name');
+        document.getElementById('wbNewProvince').value = getComponent(['administrative_area_level_1'], 'short_name');
+        document.getElementById('wbNewCountry').value = getComponent(['country'], 'long_name');
+        document.getElementById('wbNewPostal').value = getComponent(['postal_code'], 'long_name');
+
+        placesSessionUsed = true;
+        sessionToken = new google.maps.places.AutocompleteSessionToken();
+      });
+    }
+
+    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+      setupPlaces();
+    } else {
+      var script = document.createElement('script');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(MAPS_API_KEY) + '&libraries=places&loading=async';
+      script.async = true;
+      script.defer = true;
+      script.onload = setupPlaces;
+      document.head.appendChild(script);
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function getCsrf() {
+    var c = document.cookie.split(';').find(function (s) { return s.trim().startsWith('csrftoken='); });
+    return c ? c.split('=')[1] : '';
+  }
+}());
+</script>

@@ -41,4 +41,5 @@ urlpatterns = [
     path('api/review/ai-rewrite/', views.ReviewAIRewriteApiView.as_view(), name='api_review_ai_rewrite'),
     path('api/encyclopedia/ai-prefill/', views.EncyclopediaAIPrefillApiView.as_view(), name='api_encyclopedia_ai_prefill'),
     path('api/encyclopedia/<int:entry_id>/edit/', views.EncyclopediaEditApiView.as_view(), name='api_encyclopedia_edit'),
+    path('api/wishlist/bulk/', views.WishlistBulkCreateApiView.as_view(), name='api_wishlist_bulk_create'),
 ]

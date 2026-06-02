@@ -32,6 +32,13 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'content:recipe_list' %}">Recipes</a>
                     </li>
+                    {% if user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#wishlistBulkModal">
+                            <i class="bi bi-bookmark-plus"></i> Add Wishlist
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <form class="d-flex me-2" method="get" action="{% url 'content:global_search' %}" role="search">
                     <input class="form-control me-2" type="search" name="q" placeholder="Search all content..." aria-label="Search" required>
@@ -62,5 +69,6 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}
+    {% if user.is_staff %}{% include "components/wishlist_bulk_modal.html" %}{% endif %}
 </body>
 </html>
