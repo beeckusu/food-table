@@ -13,7 +13,7 @@
     const autocomplete = new google.maps.places.Autocomplete(searchInput, {
       types: ['establishment'],
       componentRestrictions: { country: ['ca', 'us'] },
-      fields: ['address_components', 'name'],
+      fields: ['address_components', 'name', 'place_id'],
       sessionToken: sessionToken,
     });
 
@@ -47,6 +47,11 @@
         get(['country'], 'long_name');
       document.getElementById('id_postal_code').value =
         get(['postal_code'], 'long_name');
+
+      if (place.place_id) {
+        const placeIdField = document.getElementById('id_google_place_id');
+        if (placeIdField) placeIdField.value = place.place_id;
+      }
 
       document.getElementById('id-places-session-used').value = '1';
 

@@ -33,6 +33,7 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
                     province=(data.get('province') or '').strip(),
                     country=(data.get('country') or '').strip(),
                     postal_code=(data.get('postal_code') or '').strip(),
+                    google_place_id=(data.get('google_place_id') or '').strip(),
                     created_by=request.user,
                 )
                 if data.get('places_session_used'):

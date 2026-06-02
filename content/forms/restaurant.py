@@ -5,9 +5,10 @@ from content.models import Restaurant, RestaurantDish
 class RestaurantForm(forms.ModelForm):
     class Meta:
         model = Restaurant
-        fields = ['name', 'street_address', 'city', 'province', 'country', 'postal_code', 'visited']
+        fields = ['name', 'street_address', 'city', 'province', 'country', 'postal_code', 'visited', 'google_place_id']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Restaurant name'}),
+            'google_place_id': forms.HiddenInput(),
             'street_address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Street address'}),
             'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
             'province': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Province / State'}),

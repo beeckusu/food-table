@@ -26,18 +26,25 @@
                 {% endif %}
             </div>
             {% if user.is_staff %}
-            <form method="post" action="{% url 'content:restaurant_toggle_visited' pk=restaurant.pk %}">
-                {% csrf_token %}
-                {% if restaurant.visited %}
-                <button type="submit" class="btn btn-outline-success">
-                    <i class="bi bi-check-circle-fill"></i> Been Here
-                </button>
-                {% else %}
-                <button type="submit" class="btn btn-outline-secondary">
-                    <i class="bi bi-circle"></i> Mark as Visited
-                </button>
+            <div class="d-flex gap-2 align-items-center">
+                {% if restaurant.google_place_id %}
+                <a href="https://maps.google.com/?q=place_id:{{ restaurant.google_place_id }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-geo-alt"></i> Open in Google Maps
+                </a>
                 {% endif %}
-            </form>
+                <form method="post" action="{% url 'content:restaurant_toggle_visited' pk=restaurant.pk %}">
+                    {% csrf_token %}
+                    {% if restaurant.visited %}
+                    <button type="submit" class="btn btn-outline-success">
+                        <i class="bi bi-check-circle-fill"></i> Been Here
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bi bi-circle"></i> Mark as Visited
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
             {% else %}
                 {% if restaurant.visited %}
                 <span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Visited</span>

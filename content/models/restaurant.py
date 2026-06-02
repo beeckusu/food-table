@@ -18,6 +18,7 @@ class Restaurant(models.Model):
     postal_code = models.CharField(max_length=20, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
+    google_place_id = models.CharField(max_length=255, blank=True, default='')
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

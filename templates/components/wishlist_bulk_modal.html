@@ -1,3 +1,4 @@
+<style>.pac-container { z-index: 1060 !important; }</style>
 <div class="modal fade" id="wishlistBulkModal" tabindex="-1"
      aria-labelledby="wishlistBulkModalLabel" aria-hidden="true"
      data-maps-key="{{ google_maps_api_key }}">
@@ -72,6 +73,7 @@
                 <div class="mb-2">
                   <input type="text" id="wbNewName" class="form-control form-control-sm"
                          placeholder="Restaurant name *">
+                  <input type="hidden" id="wbNewPlaceId">
                 </div>
                 <div class="mb-2">
                   <input type="text" id="wbNewStreet" class="form-control form-control-sm"
@@ -245,7 +247,7 @@
     document.getElementById('wbRestaurantSearch').style.display = '';
     document.getElementById('wbNewRestaurantForm').style.display = 'none';
 
-    ['wbNewName', 'wbNewStreet', 'wbNewCity', 'wbNewProvince', 'wbNewCountry', 'wbNewPostal'].forEach(function (id) {
+    ['wbNewName', 'wbNewStreet', 'wbNewCity', 'wbNewProvince', 'wbNewCountry', 'wbNewPostal', 'wbNewPlaceId'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -303,6 +305,7 @@
         province: document.getElementById('wbNewProvince').value.trim(),
         country: document.getElementById('wbNewCountry').value.trim(),
         postal_code: document.getElementById('wbNewPostal').value.trim(),
+        google_place_id: (document.getElementById('wbNewPlaceId') || {}).value || '',
         places_session_used: placesSessionUsed ? 1 : 0,
         dishes: dishes,
       };
@@ -447,7 +450,7 @@
       placesAutocomplete = new google.maps.places.Autocomplete(placesSearchEl, {
         types: ['establishment'],
         componentRestrictions: { country: ['ca', 'us'] },
-        fields: ['address_components', 'name'],
+        fields: ['address_components', 'name', 'place_id'],
         sessionToken: sessionToken,
       });
 
@@ -471,6 +474,10 @@
         document.getElementById('wbNewProvince').value = getComponent(['administrative_area_level_1'], 'short_name');
         document.getElementById('wbNewCountry').value = getComponent(['country'], 'long_name');
         document.getElementById('wbNewPostal').value = getComponent(['postal_code'], 'long_name');
+        if (place.place_id) {
+          var placeIdEl = document.getElementById('wbNewPlaceId');
+          if (placeIdEl) placeIdEl.value = place.place_id;
+        }
 
         placesSessionUsed = true;
         sessionToken = new google.maps.places.AutocompleteSessionToken();
@@ -479,12 +486,17 @@
 
     if (typeof google !== 'undefined' && google.maps && google.maps.places) {
       setupPlaces();
+    } else if (typeof google !== 'undefined' && google.maps && typeof google.maps.importLibrary === 'function') {
+      google.maps.importLibrary('places').then(function() { setupPlaces(); });
     } else {
+      window._wbInitPlaces = function() {
+        delete window._wbInitPlaces;
+        setupPlaces();
+      };
       var script = document.createElement('script');
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(MAPS_API_KEY) + '&libraries=places&loading=async';
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(MAPS_API_KEY)
+                 + '&libraries=places&loading=async&callback=_wbInitPlaces';
       script.async = true;
-      script.defer = true;
-      script.onload = setupPlaces;
       document.head.appendChild(script);
     }
   }
