@@ -14,6 +14,7 @@ urlpatterns = [
     path('restaurants/', views.RestaurantListView.as_view(), name='restaurant_list'),
     path('restaurants/new/', views.RestaurantCreateView.as_view(), name='restaurant_create'),
     path('restaurants/<int:pk>/', views.RestaurantDetailView.as_view(), name='restaurant_detail'),
+    path('restaurants/<int:pk>/edit/', views.RestaurantUpdateView.as_view(), name='restaurant_edit'),
     path('restaurants/<int:pk>/toggle-visited/', views.RestaurantToggleVisitedView.as_view(), name='restaurant_toggle_visited'),
     path('restaurants/<int:pk>/dishes/add/', views.RestaurantDishCreateView.as_view(), name='restaurant_dish_create'),
     path('restaurants/<int:pk>/dishes/<int:dish_pk>/edit/', views.RestaurantDishUpdateView.as_view(), name='restaurant_dish_update'),

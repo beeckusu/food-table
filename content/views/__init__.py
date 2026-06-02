@@ -9,6 +9,7 @@ from .restaurant_detail import (
     RestaurantDishMarkTriedView,
 )
 from .restaurant_create import RestaurantCreateView
+from .restaurant_update import RestaurantUpdateView
 from .encyclopedia_list import EncyclopediaListView
 from .encyclopedia_detail import EncyclopediaDetailView
 from .encyclopedia_search import EncyclopediaSearchView
@@ -44,6 +45,7 @@ __all__ = [
     'RestaurantDishDeleteView',
     'RestaurantDishMarkTriedView',
     'RestaurantCreateView',
+    'RestaurantUpdateView',
     'EncyclopediaListView',
     'EncyclopediaDetailView',
     'EncyclopediaSearchView',
