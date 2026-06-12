@@ -18,12 +18,18 @@ class RestaurantListView(LoginRequiredMixin, ListView):
             qs = qs.filter(visited=True)
         elif visited_param == '0':
             qs = qs.filter(visited=False)
+        if self.request.GET.get('sort') == 'name':
+            qs = qs.order_by('name')
+        else:
+            qs = qs.order_by('-created_at')
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         visited_param = self.request.GET.get('visited', '')
+        sort_param = self.request.GET.get('sort', '')
         context['visited_filter'] = visited_param
+        context['sort'] = sort_param
         context['total_count'] = Restaurant.objects.count()
         context['visited_count'] = Restaurant.objects.filter(visited=True).count()
         context['wishlist_count'] = Restaurant.objects.filter(visited=False).count()
@@ -33,6 +39,10 @@ class RestaurantListView(LoginRequiredMixin, ListView):
             map_qs = map_qs.filter(visited=True)
         elif visited_param == '0':
             map_qs = map_qs.filter(visited=False)
+        if sort_param == 'name':
+            map_qs = map_qs.order_by('name')
+        else:
+            map_qs = map_qs.order_by('-created_at')
 
         context['map_restaurants'] = [
             {
