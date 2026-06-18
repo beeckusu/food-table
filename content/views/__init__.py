@@ -34,6 +34,7 @@ from .review_ai_rewrite_api import ReviewAIRewriteApiView
 from .encyclopedia_ai_prefill_api import EncyclopediaAIPrefillApiView
 from .encyclopedia_edit_api import EncyclopediaEditApiView
 from .wishlist_bulk import WishlistBulkCreateApiView
+from .wishlist_bulk_page import WishlistBulkPageView
 
 __all__ = [
     'HomeView',
@@ -72,4 +73,5 @@ __all__ = [
     'EncyclopediaAIPrefillApiView',
     'EncyclopediaEditApiView',
     'WishlistBulkCreateApiView',
+    'WishlistBulkPageView',
 ]

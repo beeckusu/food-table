@@ -25,6 +25,7 @@ urlpatterns = [
     path('dishes/', views.ReviewDishListView.as_view(), name='review_dish_list'),
     path('recipes/', views.RecipeListView.as_view(), name='recipe_list'),
     path('recipes/<slug:slug>/', views.RecipeDetailView.as_view(), name='recipe_detail'),
+    path('wishlist/add/', views.WishlistBulkPageView.as_view(), name='wishlist_bulk_add'),
     # API endpoints
     path('api/restaurants/search/', views.RestaurantSearchApiView.as_view(), name='api_restaurant_search'),
     path('api/encyclopedia/search/', views.EncyclopediaSearchApiView.as_view(), name='api_encyclopedia_search'),
