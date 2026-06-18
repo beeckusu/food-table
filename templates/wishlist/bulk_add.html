@@ -94,6 +94,7 @@
 (function () {
   var RESTAURANT_SEARCH_URL = '{% url "content:api_restaurant_search" %}';
   var BULK_API_URL = '{% url "content:api_wishlist_bulk_create" %}';
+  var INSTAGRAM_PREVIEW_URL = '{% url "content:api_instagram_preview" %}';
   var MAPS_API_KEY = '{{ google_maps_api_key|escapejs }}';
 
   var urls = [];
@@ -156,6 +157,13 @@
     urlText.textContent = url;
     area.appendChild(urlText);
 
+    var description = document.createElement('p');
+    description.id = 'wbDescription';
+    description.className = 'small mb-0';
+    description.textContent = 'Loading description…';
+    area.appendChild(description);
+    loadDescription(url, description);
+
     var bq = document.createElement('blockquote');
     bq.className = 'instagram-media';
     bq.setAttribute('data-instgrm-permalink', url);
@@ -164,6 +172,26 @@
     area.appendChild(bq);
 
     if (window.instgrm) window.instgrm.Embeds.process();
+  }
+
+  function loadDescription(url, el) {
+    fetch(INSTAGRAM_PREVIEW_URL + '?url=' + encodeURIComponent(url))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!document.body.contains(el)) return;
+        if (data.success) {
+          el.textContent = data.description;
+          el.classList.remove('text-muted');
+        } else {
+          el.textContent = "Couldn't load description — open the link to view it.";
+          el.classList.add('text-muted');
+        }
+      })
+      .catch(function () {
+        if (!document.body.contains(el)) return;
+        el.textContent = "Couldn't load description — open the link to view it.";
+        el.classList.add('text-muted');
+      });
   }
 
   // ── Restaurant block template ──────────────────────────────────────────────

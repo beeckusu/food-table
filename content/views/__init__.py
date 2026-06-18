@@ -35,6 +35,7 @@ from .encyclopedia_ai_prefill_api import EncyclopediaAIPrefillApiView
 from .encyclopedia_edit_api import EncyclopediaEditApiView
 from .wishlist_bulk import WishlistBulkCreateApiView
 from .wishlist_bulk_page import WishlistBulkPageView
+from .instagram_preview_api import InstagramPreviewApiView
 
 __all__ = [
     'HomeView',
@@ -74,4 +75,5 @@ __all__ = [
     'EncyclopediaEditApiView',
     'WishlistBulkCreateApiView',
     'WishlistBulkPageView',
+    'InstagramPreviewApiView',
 ]
