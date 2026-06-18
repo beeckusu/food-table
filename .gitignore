@@ -27,6 +27,8 @@ confluence_*_export.json
 # Database snapshots
 db_snapshots/
 _sync_dump.json
+auth_users.json
+content_data.json
 
 # Temporary import/verification scripts
 import_batch.py
