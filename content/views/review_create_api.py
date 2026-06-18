@@ -169,8 +169,6 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
 
         # Create metadata
         metadata = {}
-        if basic_info.get('mealType'):
-            metadata['meal_type'] = basic_info['mealType']
 
         review = Review.objects.create(
             restaurant=restaurant,

@@ -106,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('reviewVisitDate').value = formData.basicInfo.visitDate || '';
             document.getElementById('reviewPartySize').value = formData.basicInfo.partySize || 1;
             document.getElementById('reviewEntryTime').value = formData.basicInfo.entryTime || '';
-            document.getElementById('reviewMealType').value = formData.basicInfo.mealType || '';
         }
 
         // Restore location
@@ -313,8 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     restaurantName: document.getElementById('reviewRestaurantName').value.trim(),
                     visitDate: document.getElementById('reviewVisitDate').value.trim(),
                     partySize: document.getElementById('reviewPartySize').value,
-                    entryTime: document.getElementById('reviewEntryTime').value.trim(),
-                    mealType: document.getElementById('reviewMealType').value
+                    entryTime: document.getElementById('reviewEntryTime').value.trim()
                 };
                 formData.location = {
                     address: document.getElementById('reviewAddress').value.trim(),
@@ -499,10 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (formData.basicInfo.entryTime) {
             summaryHtml += `<p class="mb-2"><strong>Time:</strong> ${formData.basicInfo.entryTime}</p>`;
         }
-        summaryHtml += `<p class="mb-2"><strong>Party Size:</strong> ${formData.basicInfo.partySize || '1'} people</p>`;
-        if (formData.basicInfo.mealType) {
-            summaryHtml += `<p class="mb-0"><strong>Meal Type:</strong> <span class="badge bg-secondary">${formData.basicInfo.mealType}</span></p>`;
-        }
+        summaryHtml += `<p class="mb-0"><strong>Party Size:</strong> ${formData.basicInfo.partySize || '1'} people</p>`;
         summaryHtml += '</div></div>';
 
         // Location Section (if provided)
