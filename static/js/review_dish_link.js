@@ -38,10 +38,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedParentDiv = document.getElementById('selectedParent');
     const selectedParentNameSpan = document.getElementById('selectedParentName');
     const clearParentBtn = document.getElementById('clearParent');
-    const entrySimilarDishesSearchInput = document.getElementById('entrySimilarDishesSearch');
-    const similarDishesSearchResults = document.getElementById('similarDishesSearchResults');
-    const selectedSimilarDishesDiv = document.getElementById('selectedSimilarDishes');
-    const similarDishesChips = document.getElementById('similarDishesChips');
+
+    const similarDishesController = createSimilarDishesController({
+        prefix: 'entry',
+        searchUrl: modalElement.dataset.searchUrl
+    });
+
+    let entryFormQuills = null;
+    function initEntryFormQuills() {
+        if (entryFormQuills) return;
+        entryFormQuills = {
+            description: initQuillEditor(
+                document.getElementById('entryDescriptionEditor'),
+                entryDescriptionInput,
+                { placeholder: 'Provide a detailed description of this dish...' }
+            ),
+            culturalSignificance: initQuillEditor(
+                document.getElementById('entryCulturalSignificanceEditor'),
+                entryCulturalSignificanceInput,
+                { placeholder: 'Describe the cultural importance or traditions...' }
+            ),
+            popularExamples: initQuillEditor(
+                document.getElementById('entryPopularExamplesEditor'),
+                entryPopularExamplesInput,
+                { placeholder: 'List well-known examples or variations...' }
+            ),
+            history: initQuillEditor(
+                document.getElementById('entryHistoryEditor'),
+                entryHistoryInput,
+                { placeholder: 'Describe the historical background...' }
+            )
+        };
+    }
 
     let currentDishId = null;
     let currentDishName = null;
@@ -50,10 +78,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let parentSearchTimeout = null;
     let selectedIndex = -1;
     let selectedParentId = null;
-    let similarDishesSearchTimeout = null;
-    let selectedSimilarDishes = [];
-    let similarDishRowCounter = 0;
-    let similarDishesSelectedIndex = -1;
 
     // Attach click handlers to unlinked badges (link)
     function attachUnlinkedHandlers() {
@@ -351,26 +375,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Pre-populate name with dish name
         entryNameInput.value = currentDishName || '';
-        entryDescriptionInput.value = '';
         entryCuisineTypeInput.value = '';
         entryDishCategoryInput.value = '';
         entryRegionInput.value = '';
-        entryCulturalSignificanceInput.value = '';
-        entryPopularExamplesInput.value = '';
-        entryHistoryInput.value = '';
+
+        initEntryFormQuills();
+        entryFormQuills.description.setContents([]);
+        entryFormQuills.culturalSignificance.setContents([]);
+        entryFormQuills.popularExamples.setContents([]);
+        entryFormQuills.history.setContents([]);
+
         entryParentSearchInput.value = '';
         selectedParentId = null;
         selectedParentDiv.style.display = 'none';
         parentSearchResults.style.display = 'none';
-        entrySimilarDishesSearchInput.value = '';
-        selectedSimilarDishes = [];
-        similarDishRowCounter = 0;
-        similarDishesSelectedIndex = -1;
-        selectedSimilarDishesDiv.style.display = 'none';
-        similarDishesSearchResults.style.display = 'none';
+        similarDishesController.reset();
         createFormError.style.display = 'none';
 
-        setTimeout(() => entryDescriptionInput.focus(), 100);
+        setTimeout(() => entryFormQuills.description.focus(), 100);
     }
 
     function resetToSearchView() {
@@ -387,66 +409,28 @@ document.addEventListener('DOMContentLoaded', function() {
     cancelCreateBtn.addEventListener('click', resetToSearchView);
 
     // AI prefill button
-    const aiPrefillBtn = document.getElementById('aiPrefillBtn');
-    if (aiPrefillBtn) {
-        aiPrefillBtn.addEventListener('click', async function() {
-            const dishName = entryNameInput.value.trim() || currentDishName;
-            if (!dishName) {
-                createFormError.textContent = 'No dish name set — please close and reopen the modal.';
-                createFormError.style.display = 'block';
-                return;
+    wireEncyclopediaAiPrefill({
+        button: document.getElementById('aiPrefillBtn'),
+        waitNotice: document.getElementById('aiWaitNotice'),
+        errorEl: createFormError,
+        prefillUrl: modalElement.dataset.aiPrefillUrl,
+        getDishName: () => entryNameInput.value.trim() || currentDishName,
+        setField: {
+            name: (v) => { entryNameInput.value = v; },
+            description: (v) => setQuillContentFromRtf(entryFormQuills.description, v),
+            cuisine_type: (v) => { entryCuisineTypeInput.value = v; },
+            dish_category: (v) => { entryDishCategoryInput.value = v; },
+            region: (v) => { entryRegionInput.value = v; },
+            cultural_significance: (v) => setQuillContentFromRtf(entryFormQuills.culturalSignificance, v),
+            popular_examples: (v) => setQuillContentFromRtf(entryFormQuills.popularExamples, v),
+            history: (v) => setQuillContentFromRtf(entryFormQuills.history, v),
+            similar_dishes_globally: (v) => {
+                similarDishesController.reset();
+                v.split(',').map(s => s.trim()).filter(Boolean)
+                    .forEach(name => similarDishesController.addRow({ id: null, name, linked: false }));
             }
-
-            aiPrefillBtn.disabled = true;
-            aiPrefillBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Asking Claude...';
-            createFormError.style.display = 'none';
-
-            const waitNotice = document.createElement('div');
-            waitNotice.id = 'aiWaitNotice';
-            waitNotice.className = 'alert alert-info py-2 mt-2';
-            waitNotice.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Claude is writing the entry — this usually takes 15–30 seconds.';
-            aiPrefillBtn.closest('.d-flex').after(waitNotice);
-
-            try {
-                const resp = await fetch('/api/encyclopedia/ai-prefill/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-                    body: JSON.stringify({ dish_name: dishName })
-                });
-                const data = await resp.json();
-
-                if (!resp.ok || !data.success) {
-                    createFormError.textContent = data.error || 'AI prefill failed. Please try again.';
-                    createFormError.style.display = 'block';
-                    return;
-                }
-
-                const f = data.fields;
-                if (f.name) entryNameInput.value = f.name;
-                if (f.description) entryDescriptionInput.value = f.description;
-                if (f.cuisine_type) entryCuisineTypeInput.value = f.cuisine_type;
-                if (f.dish_category) entryDishCategoryInput.value = f.dish_category;
-                if (f.region) entryRegionInput.value = f.region;
-                if (f.cultural_significance) entryCulturalSignificanceInput.value = f.cultural_significance;
-                if (f.popular_examples) entryPopularExamplesInput.value = f.popular_examples;
-                if (f.history) entryHistoryInput.value = f.history;
-                if (f.similar_dishes_globally) {
-                    selectedSimilarDishes = [];
-                    similarDishRowCounter = 0;
-                    f.similar_dishes_globally.split(',').map(s => s.trim()).filter(Boolean)
-                        .forEach(name => addSimilarDishRow({ id: null, name, linked: false }));
-                }
-            } catch (err) {
-                console.error('AI prefill error:', err);
-                createFormError.textContent = 'AI prefill failed. Please try again.';
-                createFormError.style.display = 'block';
-            } finally {
-                aiPrefillBtn.disabled = false;
-                aiPrefillBtn.innerHTML = '<i class="bi bi-stars"></i> Fill with Claude';
-                document.getElementById('aiWaitNotice')?.remove();
-            }
-        });
-    }
+        }
+    });
 
     // Parent search autocomplete
     entryParentSearchInput.addEventListener('input', function() {
@@ -508,121 +492,6 @@ document.addEventListener('DOMContentLoaded', function() {
         entryParentSearchInput.value = '';
     });
 
-    // Similar dishes chip rendering
-    function addSimilarDishRow({ id, name, linked }) {
-        if (linked && selectedSimilarDishes.find(d => d.linked && d.id === id)) return;
-        selectedSimilarDishes.push({ rowId: similarDishRowCounter++, id, name, linked });
-        renderSimilarDishRows();
-    }
-
-    function renderSimilarDishRows() {
-        if (selectedSimilarDishes.length === 0) {
-            selectedSimilarDishesDiv.style.display = 'none';
-            return;
-        }
-        selectedSimilarDishesDiv.style.display = 'block';
-        similarDishesChips.innerHTML = selectedSimilarDishes.map(dish => {
-            const removeBtn = `<button type="button" class="btn-close btn-sm" data-remove-row-id="${dish.rowId}" aria-label="Remove" style="font-size:0.6rem;"></button>`;
-            if (dish.linked) {
-                return `
-                    <div class="d-flex align-items-center gap-2 mb-1" data-row-id="${dish.rowId}">
-                        <span class="badge bg-success d-flex align-items-center gap-1" style="font-size:0.85rem;padding:0.4rem 0.65rem;">
-                            <i class="bi bi-book"></i> ${dish.name}
-                        </span>
-                        ${removeBtn}
-                    </div>`;
-            } else {
-                return `
-                    <div class="d-flex align-items-center gap-2 mb-1" data-row-id="${dish.rowId}">
-                        <span class="badge bg-warning text-dark" style="font-size:0.85rem;padding:0.4rem 0.65rem;">
-                            <i class="bi bi-plus-circle"></i> New placeholder
-                        </span>
-                        <span>${dish.name}</span>
-                        ${removeBtn}
-                    </div>`;
-            }
-        }).join('');
-
-        document.querySelectorAll('[data-remove-row-id]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const rowId = parseInt(this.dataset.removeRowId, 10);
-                selectedSimilarDishes = selectedSimilarDishes.filter(d => d.rowId !== rowId);
-                renderSimilarDishRows();
-            });
-        });
-    }
-
-    function commitSimilarDishInput() {
-        const items = similarDishesSearchResults.querySelectorAll('.similar-dish-result');
-        if (similarDishesSelectedIndex >= 0 && items[similarDishesSelectedIndex]) {
-            const item = items[similarDishesSelectedIndex];
-            addSimilarDishRow({ id: item.dataset.similarId, name: item.dataset.similarName, linked: true });
-        } else {
-            const text = entrySimilarDishesSearchInput.value.trim().replace(/,+$/, '');
-            if (text) addSimilarDishRow({ id: null, name: text, linked: false });
-        }
-        similarDishesSearchResults.style.display = 'none';
-        similarDishesSelectedIndex = -1;
-        entrySimilarDishesSearchInput.value = '';
-    }
-
-    modalElement.addEventListener('click', function(e) {
-        if (e.target.id === 'addSimilarDishBtn') commitSimilarDishInput();
-    });
-
-    if (entrySimilarDishesSearchInput) {
-        entrySimilarDishesSearchInput.addEventListener('input', function() {
-            clearTimeout(similarDishesSearchTimeout);
-            similarDishesSelectedIndex = -1;
-            const query = this.value.trim();
-
-            if (query.length < 2) {
-                similarDishesSearchResults.style.display = 'none';
-                similarDishesSearchResults.innerHTML = '';
-                return;
-            }
-
-            similarDishesSearchTimeout = setTimeout(() => {
-                fetch(`${modalElement.dataset.searchUrl}?q=${encodeURIComponent(query)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        if (!data.results || data.results.length === 0) {
-                            similarDishesSearchResults.style.display = 'none';
-                            return;
-                        }
-                        similarDishesSearchResults.style.display = 'block';
-                        similarDishesSearchResults.innerHTML = data.results.map(entry => `
-                            <button type="button" class="list-group-item list-group-item-action similar-dish-result"
-                                    data-similar-id="${entry.id}"
-                                    data-similar-name="${entry.name}">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <span>${entry.name}</span>
-                                    ${entry.cuisine_type ? `<small class="badge bg-info">${entry.cuisine_type}</small>` : ''}
-                                </div>
-                            </button>
-                        `).join('');
-                        document.querySelectorAll('.similar-dish-result').forEach(item => {
-                            item.addEventListener('click', function() {
-                                addSimilarDishRow({ id: this.dataset.similarId, name: this.dataset.similarName, linked: true });
-                                similarDishesSearchResults.style.display = 'none';
-                                similarDishesSelectedIndex = -1;
-                                entrySimilarDishesSearchInput.value = '';
-                            });
-                        });
-                    })
-                    .catch(() => { similarDishesSearchResults.style.display = 'none'; });
-            }, 300);
-        });
-
-        entrySimilarDishesSearchInput.addEventListener('keydown', function(e) {
-            const items = similarDishesSearchResults.querySelectorAll('.similar-dish-result');
-            if (e.key === 'ArrowDown') { e.preventDefault(); similarDishesSelectedIndex = Math.min(similarDishesSelectedIndex + 1, items.length - 1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); similarDishesSelectedIndex = Math.max(similarDishesSelectedIndex - 1, -1); }
-            else if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitSimilarDishInput(); return; }
-            items.forEach((item, i) => item.classList.toggle('active', i === similarDishesSelectedIndex));
-        });
-    }
-
     // Save & Link button handler
     saveAndLinkBtn.addEventListener('click', async function() {
         // Validate form
@@ -645,28 +514,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = getCookie('csrftoken');
 
         // Resolve similar dishes: create placeholders for unlinked rows
-        let resolvedSimilarIds = [];
-        if (selectedSimilarDishes.length > 0) {
-            try {
-                resolvedSimilarIds = await Promise.all(selectedSimilarDishes.map(async dish => {
-                    if (dish.linked) return dish.id;
-                    const resp = await fetch('/api/encyclopedia/create-placeholder/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                        body: JSON.stringify({ name: dish.name })
-                    });
-                    const result = await resp.json();
-                    if (!resp.ok) throw new Error(result.error || 'Failed to create placeholder');
-                    return result.entry.id;
-                }));
-            } catch (err) {
-                console.error('Placeholder creation error:', err);
-                createFormError.textContent = err.message || 'Failed to create placeholder entries for similar dishes';
-                createFormError.style.display = 'block';
-                saveAndLinkBtn.disabled = false;
-                saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
-                return;
-            }
+        let resolvedSimilarIds;
+        try {
+            resolvedSimilarIds = await similarDishesController.resolveIds(csrfToken);
+        } catch (err) {
+            console.error('Placeholder creation error:', err);
+            createFormError.textContent = err.message || 'Failed to create placeholder entries for similar dishes';
+            createFormError.style.display = 'block';
+            saveAndLinkBtn.disabled = false;
+            saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+            return;
         }
 
         // Prepare data

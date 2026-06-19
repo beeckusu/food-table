@@ -33,7 +33,6 @@ urlpatterns = [
     path('api/encyclopedia/create/', views.EncyclopediaCreateApiView.as_view(), name='api_encyclopedia_create'),
     path('api/encyclopedia/create-placeholder/', views.EncyclopediaQuickCreateApiView.as_view(), name='api_encyclopedia_quick_create'),
     path('api/encyclopedia/<int:entry_id>/set-parent/', views.EncyclopediaParentApiView.as_view(), name='api_encyclopedia_set_parent'),
-    path('api/encyclopedia/<int:entry_id>/convert/', views.EncyclopediaConvertApiView.as_view(), name='api_encyclopedia_convert'),
     path('api/dishes/<int:dish_id>/link/', views.DishLinkApiView.as_view(), name='api_dish_link'),
     path('api/dishes/<int:dish_id>/upload-image/', views.DishImageUploadApiView.as_view(), name='api_dish_image_upload'),
     path('api/reviews/create/', ReviewCreateApiView.as_view(), name='api_review_create'),

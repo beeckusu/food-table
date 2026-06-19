@@ -1,7 +1,9 @@
-<!-- Encyclopedia Edit Modal -->
+<!-- Encyclopedia Edit Modal (also used to convert placeholder entries -- a placeholder
+     is just an entry that hasn't had a description added yet) -->
 {% if user.is_staff %}
 <div class="modal fade" id="encyclopediaEditModal" tabindex="-1" aria-labelledby="encyclopediaEditModalLabel" aria-hidden="true"
      data-edit-url="{% url 'content:api_encyclopedia_edit' 0 %}"
+     data-search-url="{% url 'content:api_encyclopedia_search' %}"
      data-ai-prefill-url="{% url 'content:api_encyclopedia_ai_prefill' %}">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -10,6 +12,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div id="editPlaceholderNotice" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-info-circle"></i> This entry is currently a placeholder. Add a description to convert it to a full entry.
+                </div>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0 text-muted">Update entry details</h6>
                     <button type="button" class="btn btn-sm btn-outline-primary" id="editAiPrefillBtn">
@@ -20,50 +25,7 @@
                     <i class="bi bi-hourglass-split me-1"></i> Claude is writing the entry — this usually takes 15–30 seconds.
                 </div>
                 <form id="encyclopediaEditForm">
-                    <div class="mb-3">
-                        <label for="editEntryName" class="form-label">Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="editEntryName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryDescription" class="form-label">Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="editEntryDescription" rows="4" required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryCuisineType" class="form-label">Cuisine Type</label>
-                        <input type="text" class="form-control" id="editEntryCuisineType" placeholder="e.g., Thai, Italian, Chinese">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryDishCategory" class="form-label">Dish Category</label>
-                        <input type="text" class="form-control" id="editEntryDishCategory" placeholder="e.g., Noodles, Soup, Dessert">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryRegion" class="form-label">Region</label>
-                        <input type="text" class="form-control" id="editEntryRegion" placeholder="e.g., Northern Thailand, Southern Italy">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryCulturalSignificance" class="form-label">Cultural Significance</label>
-                        <textarea class="form-control" id="editEntryCulturalSignificance" rows="3" placeholder="Describe the cultural importance or traditions..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryPopularExamples" class="form-label">Popular Examples</label>
-                        <textarea class="form-control" id="editEntryPopularExamples" rows="2" placeholder="List well-known examples or variations..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editEntryHistory" class="form-label">History</label>
-                        <textarea class="form-control" id="editEntryHistory" rows="3" placeholder="Describe the historical background..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Similar Dishes Globally</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="editSimilarDishesSearch" placeholder="Search or type a name and press Add...">
-                            <button type="button" class="btn btn-outline-secondary" id="editAddSimilarDishBtn">Add</button>
-                        </div>
-                        <div class="form-text">Link to existing encyclopedia entries, or type a name to create a new placeholder.</div>
-                        <div id="editSimilarDishesSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
-                        <div id="editSelectedSimilarDishes" style="display: none;">
-                            <div id="editSimilarDishesChips" class="d-flex flex-column gap-1 mt-2"></div>
-                        </div>
-                    </div>
+                    {% include 'components/_encyclopedia_entry_fields.html' with prefix="editEntry" show_parent=False %}
                     <div id="editFormError" class="alert alert-danger" style="display: none;"></div>
                 </form>
             </div>

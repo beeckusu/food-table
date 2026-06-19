@@ -1,0 +1,64 @@
+{# Shared Encyclopedia entry fields. Expects: prefix, show_parent #}
+<div class="mb-3">
+    <label for="{{ prefix }}Name" class="form-label">Name <span class="text-danger">*</span></label>
+    <input type="text" class="form-control" id="{{ prefix }}Name" required>
+</div>
+<div class="mb-3">
+    <label class="form-label">Description <span class="text-danger">*</span></label>
+    <div id="{{ prefix }}DescriptionEditor" style="min-height: 120px;"></div>
+    <input type="hidden" id="{{ prefix }}Description">
+    <div class="form-text">Required to make this a full entry</div>
+</div>
+<div class="mb-3">
+    <label for="{{ prefix }}SimilarDishesSearch" class="form-label">Similar Dishes Globally (Optional)</label>
+    <div class="input-group">
+        <input type="text" class="form-control" id="{{ prefix }}SimilarDishesSearch" placeholder="Search or type a name and press Add...">
+        <button type="button" class="btn btn-outline-secondary" id="{{ prefix }}AddSimilarDishBtn">Add</button>
+    </div>
+    <div class="form-text">Link to existing encyclopedia entries, or type a name and press Enter to create a new placeholder entry.</div>
+    <div id="{{ prefix }}SimilarDishesSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+    <div id="{{ prefix }}SelectedSimilarDishes" style="display: none;">
+        <div id="{{ prefix }}SimilarDishesChips" class="d-flex flex-column gap-1 mt-2"></div>
+    </div>
+</div>
+<div class="mb-3">
+    <label for="{{ prefix }}CuisineType" class="form-label">Cuisine Type</label>
+    <input type="text" class="form-control" id="{{ prefix }}CuisineType" placeholder="e.g., Thai, Italian, Chinese">
+</div>
+<div class="mb-3">
+    <label for="{{ prefix }}DishCategory" class="form-label">Dish Category</label>
+    <input type="text" class="form-control" id="{{ prefix }}DishCategory" placeholder="e.g., Noodles, Soup, Dessert">
+</div>
+<div class="mb-3">
+    <label for="{{ prefix }}Region" class="form-label">Region</label>
+    <input type="text" class="form-control" id="{{ prefix }}Region" placeholder="e.g., Northern Thailand, Southern Italy">
+</div>
+<div class="mb-3">
+    <label class="form-label">Cultural Significance</label>
+    <div id="{{ prefix }}CulturalSignificanceEditor" style="min-height: 80px;"></div>
+    <input type="hidden" id="{{ prefix }}CulturalSignificance">
+</div>
+<div class="mb-3">
+    <label class="form-label">Popular Examples</label>
+    <div id="{{ prefix }}PopularExamplesEditor" style="min-height: 80px;"></div>
+    <input type="hidden" id="{{ prefix }}PopularExamples">
+</div>
+<div class="mb-3">
+    <label class="form-label">History</label>
+    <div id="{{ prefix }}HistoryEditor" style="min-height: 80px;"></div>
+    <input type="hidden" id="{{ prefix }}History">
+</div>
+{% if show_parent %}
+<div class="mb-3">
+    <label for="entryParentSearch" class="form-label">Parent Entry (Optional)</label>
+    <input type="text" class="form-control" id="entryParentSearch" placeholder="Search for parent entry...">
+    <div class="form-text">Link this entry under a broader category</div>
+    <div id="parentSearchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
+        <!-- Parent search results will be populated here -->
+    </div>
+    <div id="selectedParent" class="alert alert-info mt-2" style="display: none;">
+        <strong>Selected:</strong> <span id="selectedParentName"></span>
+        <button type="button" class="btn-close float-end" id="clearParent" aria-label="Clear"></button>
+    </div>
+</div>
+{% endif %}

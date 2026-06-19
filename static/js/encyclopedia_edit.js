@@ -1,3 +1,9 @@
+// Encyclopedia Edit Modal JavaScript
+// Also handles converting placeholder entries -- a placeholder is just an entry that
+// hasn't had a description added yet, and the edit API already flips is_placeholder
+// to false the moment a description is saved. So "edit" and "convert" are the same
+// flow, just possibly targeting a different entry than the one whose page you're on
+// (e.g. clicking a placeholder referenced in another entry's Similar Dishes list).
 document.addEventListener('DOMContentLoaded', function () {
     const modalElement = document.getElementById('encyclopediaEditModal');
     if (!modalElement) return;
@@ -5,11 +11,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const pageData = document.getElementById('encyclopediaPageData');
     if (!pageData) return;
 
-    const entryId = pageData.dataset.entryId;
-    const entryName = pageData.dataset.entryName;
-
     const modal = new bootstrap.Modal(modalElement);
 
+    const placeholderNotice = document.getElementById('editPlaceholderNotice');
     const nameInput = document.getElementById('editEntryName');
     const descriptionInput = document.getElementById('editEntryDescription');
     const cuisineTypeInput = document.getElementById('editEntryCuisineType');
@@ -23,226 +27,119 @@ document.addEventListener('DOMContentLoaded', function () {
     const aiPrefillBtn = document.getElementById('editAiPrefillBtn');
     const aiWaitNotice = document.getElementById('editAiWaitNotice');
 
-    const similarSearchInput = document.getElementById('editSimilarDishesSearch');
-    const similarSearchResults = document.getElementById('editSimilarDishesSearchResults');
-    const similarAddBtn = document.getElementById('editAddSimilarDishBtn');
-    const selectedSimilarDiv = document.getElementById('editSelectedSimilarDishes');
-    const similarChipsContainer = document.getElementById('editSimilarDishesChips');
+    const similarDishesController = createSimilarDishesController({
+        prefix: 'editEntry',
+        searchUrl: modalElement.dataset.searchUrl
+    });
 
-    let selectedSimilarDishes = [];
-    let similarRowCounter = 0;
-    let similarSearchTimeout = null;
-    let similarSelectedIndex = -1;
+    let editFormQuills = null;
+    function initEditFormQuills() {
+        if (editFormQuills) return;
+        editFormQuills = {
+            description: initQuillEditor(
+                document.getElementById('editEntryDescriptionEditor'),
+                descriptionInput,
+                { placeholder: 'Provide a detailed description of this dish...' }
+            ),
+            culturalSignificance: initQuillEditor(
+                document.getElementById('editEntryCulturalSignificanceEditor'),
+                culturalSignificanceInput,
+                { placeholder: 'Describe the cultural importance or traditions...' }
+            ),
+            popularExamples: initQuillEditor(
+                document.getElementById('editEntryPopularExamplesEditor'),
+                popularExamplesInput,
+                { placeholder: 'List well-known examples or variations...' }
+            ),
+            history: initQuillEditor(
+                document.getElementById('editEntryHistoryEditor'),
+                historyInput,
+                { placeholder: 'Describe the historical background...' }
+            )
+        };
+    }
 
     function getCsrfToken() {
         return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
                document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
     }
 
-    // Pre-populate fields from the page when modal opens
-    modalElement.addEventListener('show.bs.modal', function () {
-        // Read current values from the rendered page
-        const h1 = document.querySelector('h1.mb-0');
-        if (h1) nameInput.value = h1.textContent.trim();
+    function editUrlFor(entryId) {
+        return modalElement.dataset.editUrl.replace('/0/', `/${entryId}/`);
+    }
 
-        // Description: read from the rendered card-text, strip HTML tags
-        const descEl = document.querySelector('.card-body .card-text');
-        if (descEl) descriptionInput.value = descEl.innerText.trim();
+    // The entry to edit. Defaults to the current page's own entry when the modal is
+    // opened via the standard "Edit" button (Bootstrap's own data-bs-toggle, no JS call
+    // involved) -- openEditModal() overrides this when opened from elsewhere, e.g. a
+    // placeholder referenced in this page's Similar Dishes list.
+    let targetEntryId = null;
 
-        // Classification badges (scoped to the entry's own classification container)
-        const classificationBadges = document.getElementById('entryClassificationBadges');
-        cuisineTypeInput.value = classificationBadges?.querySelector('[data-field="cuisine_type"]')?.textContent.trim() || '';
-        dishCategoryInput.value = classificationBadges?.querySelector('[data-field="dish_category"]')?.textContent.trim() || '';
-        regionInput.value = classificationBadges?.querySelector('[data-field="region"]')?.textContent.trim() || '';
+    function openEditModal(entryId) {
+        targetEntryId = entryId;
+        modal.show();
+    }
 
-        // Long-form fields: read from their respective cards
-        culturalSignificanceInput.value = '';
-        popularExamplesInput.value = '';
-        historyInput.value = '';
+    modalElement.addEventListener('show.bs.modal', async function () {
+        if (targetEntryId === null) {
+            targetEntryId = pageData.dataset.entryId;
+        }
 
-        document.querySelectorAll('.card-body').forEach(cardBody => {
-            const title = cardBody.querySelector('.card-title');
-            const text = cardBody.querySelector('.card-text');
-            if (!title || !text) return;
-            const label = title.textContent.trim();
-            if (label === 'Cultural Significance') culturalSignificanceInput.value = text.innerText.trim();
-            if (label === 'Popular Examples') popularExamplesInput.value = text.innerText.trim();
-            if (label === 'History') historyInput.value = text.innerText.trim();
-        });
-
-        // Pre-populate similar dishes from page data
-        selectedSimilarDishes = [];
-        similarRowCounter = 0;
-        similarSelectedIndex = -1;
-        similarSearchInput.value = '';
-        similarSearchResults.style.display = 'none';
-        similarSearchResults.innerHTML = '';
-        try {
-            const existing = JSON.parse(pageData.dataset.similarDishes || '[]');
-            existing.forEach(d => addSimilarDishRow({ id: String(d.id), name: d.name, linked: true }));
-        } catch (_) {}
-
+        initEditFormQuills();
         formError.style.display = 'none';
-    });
-
-    // Similar dishes helpers
-    function addSimilarDishRow({ id, name, linked }) {
-        if (linked && selectedSimilarDishes.find(d => d.linked && d.id === id)) return;
-        selectedSimilarDishes.push({ rowId: similarRowCounter++, id, name, linked });
-        renderSimilarDishRows();
-    }
-
-    function renderSimilarDishRows() {
-        if (selectedSimilarDishes.length === 0) {
-            selectedSimilarDiv.style.display = 'none';
-            similarChipsContainer.innerHTML = '';
-            return;
-        }
-        selectedSimilarDiv.style.display = 'block';
-        similarChipsContainer.innerHTML = selectedSimilarDishes.map(dish => {
-            const label = dish.linked
-                ? `<span class="badge bg-primary me-1">${escapeHtml(dish.name)}</span>`
-                : `<span class="badge bg-secondary me-1">${escapeHtml(dish.name)} <em class="small">(new)</em></span>`;
-            return `<div class="d-flex align-items-center gap-1" data-row-id="${dish.rowId}">
-                ${label}
-                <button type="button" class="btn-close btn-sm" data-remove-row-id="${dish.rowId}" aria-label="Remove" style="font-size:0.6rem;"></button>
-            </div>`;
-        }).join('');
-        similarChipsContainer.querySelectorAll('[data-remove-row-id]').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const rowId = parseInt(this.dataset.removeRowId, 10);
-                selectedSimilarDishes = selectedSimilarDishes.filter(d => d.rowId !== rowId);
-                renderSimilarDishRows();
-            });
-        });
-    }
-
-    function escapeHtml(text) {
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function commitSimilarInput() {
-        const items = similarSearchResults.querySelectorAll('.edit-similar-result');
-        if (similarSelectedIndex >= 0 && items[similarSelectedIndex]) {
-            const item = items[similarSelectedIndex];
-            addSimilarDishRow({ id: item.dataset.similarId, name: item.dataset.similarName, linked: true });
-        } else {
-            const text = similarSearchInput.value.trim();
-            if (text) addSimilarDishRow({ id: null, name: text, linked: false });
-        }
-        similarSearchResults.style.display = 'none';
-        similarSearchResults.innerHTML = '';
-        similarSelectedIndex = -1;
-        similarSearchInput.value = '';
-    }
-
-    function updateSimilarSelection(items) {
-        items.forEach((item, i) => {
-            item.classList.toggle('active', i === similarSelectedIndex);
-            if (i === similarSelectedIndex) item.scrollIntoView({ block: 'nearest' });
-        });
-    }
-
-    similarSearchInput.addEventListener('input', function () {
-        clearTimeout(similarSearchTimeout);
-        similarSelectedIndex = -1;
-        const query = this.value.trim();
-        if (query.length < 2) {
-            similarSearchResults.style.display = 'none';
-            similarSearchResults.innerHTML = '';
-            return;
-        }
-        similarSearchTimeout = setTimeout(() => {
-            const searchUrl = pageData.dataset.searchUrl;
-            fetch(`${searchUrl}?q=${encodeURIComponent(query)}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.results || data.results.length === 0) {
-                        similarSearchResults.style.display = 'none';
-                        return;
-                    }
-                    similarSearchResults.style.display = 'block';
-                    similarSearchResults.innerHTML = data.results.map(e => `
-                        <button type="button" class="list-group-item list-group-item-action edit-similar-result"
-                                data-similar-id="${e.id}" data-similar-name="${escapeHtml(e.name)}">
-                            <div class="d-flex w-100 justify-content-between">
-                                <span>${escapeHtml(e.name)}</span>
-                                ${e.cuisine_type ? `<small class="badge bg-info">${escapeHtml(e.cuisine_type)}</small>` : ''}
-                            </div>
-                        </button>`).join('');
-                    similarSearchResults.querySelectorAll('.edit-similar-result').forEach(item => {
-                        item.addEventListener('click', function () {
-                            addSimilarDishRow({ id: this.dataset.similarId, name: this.dataset.similarName, linked: true });
-                            similarSearchResults.style.display = 'none';
-                            similarSearchResults.innerHTML = '';
-                            similarSelectedIndex = -1;
-                            similarSearchInput.value = '';
-                        });
-                    });
-                })
-                .catch(() => { similarSearchResults.style.display = 'none'; });
-        }, 300);
-    });
-
-    similarSearchInput.addEventListener('keydown', function (e) {
-        const items = similarSearchResults.querySelectorAll('.edit-similar-result');
-        if (e.key === 'ArrowDown') { e.preventDefault(); similarSelectedIndex = Math.min(similarSelectedIndex + 1, items.length - 1); updateSimilarSelection(items); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); similarSelectedIndex = Math.max(similarSelectedIndex - 1, -1); updateSimilarSelection(items); }
-        else if (e.key === 'Enter') { e.preventDefault(); commitSimilarInput(); }
-    });
-
-    similarAddBtn.addEventListener('click', commitSimilarInput);
-
-    // AI prefill
-    aiPrefillBtn.addEventListener('click', async function () {
-        const dishName = nameInput.value.trim() || entryName;
-        if (!dishName) return;
-
-        aiPrefillBtn.disabled = true;
-        aiPrefillBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Asking Claude...';
-        aiWaitNotice.style.display = 'block';
-        formError.style.display = 'none';
-
-        const prefillUrl = modalElement.dataset.aiPrefillUrl;
-        const csrfToken = getCsrfToken();
+        placeholderNotice.style.display = 'none';
+        similarDishesController.reset();
 
         try {
-            const resp = await fetch(prefillUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                body: JSON.stringify({ dish_name: dishName })
-            });
+            const resp = await fetch(editUrlFor(targetEntryId));
             const data = await resp.json();
 
             if (!resp.ok || !data.success) {
-                formError.textContent = data.error || 'AI prefill failed. Please try again.';
+                formError.textContent = data.error || 'Failed to load entry.';
                 formError.style.display = 'block';
                 return;
             }
 
-            const f = data.fields;
-            if (f.name) nameInput.value = f.name;
-            if (f.description) descriptionInput.value = f.description;
-            if (f.cuisine_type) cuisineTypeInput.value = f.cuisine_type;
-            if (f.dish_category) dishCategoryInput.value = f.dish_category;
-            if (f.region) regionInput.value = f.region;
-            if (f.cultural_significance) culturalSignificanceInput.value = f.cultural_significance;
-            if (f.popular_examples) popularExamplesInput.value = f.popular_examples;
-            if (f.history) historyInput.value = f.history;
-            if (f.similar_dishes_globally) {
-                const names = f.similar_dishes_globally.split(',').map(s => s.trim()).filter(Boolean);
-                selectedSimilarDishes = [];
-                similarRowCounter = 0;
-                names.forEach(name => addSimilarDishRow({ id: null, name, linked: false }));
-            }
+            const entry = data.entry;
+            nameInput.value = entry.name;
+            cuisineTypeInput.value = entry.cuisine_type;
+            dishCategoryInput.value = entry.dish_category;
+            regionInput.value = entry.region;
+            setQuillContentFromRtf(editFormQuills.description, entry.description);
+            setQuillContentFromRtf(editFormQuills.culturalSignificance, entry.cultural_significance);
+            setQuillContentFromRtf(editFormQuills.popularExamples, entry.popular_examples);
+            setQuillContentFromRtf(editFormQuills.history, entry.history);
+
+            entry.similar_dishes.forEach(d => similarDishesController.addRow({ id: String(d.id), name: d.name, linked: true }));
+
+            placeholderNotice.style.display = entry.is_placeholder ? 'block' : 'none';
         } catch (err) {
-            console.error('AI prefill error:', err);
-            formError.textContent = 'AI prefill failed. Please try again.';
+            console.error('Failed to load entry:', err);
+            formError.textContent = 'Failed to load entry. Please try again.';
             formError.style.display = 'block';
-        } finally {
-            aiPrefillBtn.disabled = false;
-            aiPrefillBtn.innerHTML = '<i class="bi bi-stars"></i> Fill with Claude';
-            aiWaitNotice.style.display = 'none';
+        }
+    });
+
+    // AI prefill
+    wireEncyclopediaAiPrefill({
+        button: aiPrefillBtn,
+        waitNotice: aiWaitNotice,
+        errorEl: formError,
+        prefillUrl: modalElement.dataset.aiPrefillUrl,
+        getDishName: () => nameInput.value.trim(),
+        setField: {
+            name: (v) => { nameInput.value = v; },
+            description: (v) => setQuillContentFromRtf(editFormQuills.description, v),
+            cuisine_type: (v) => { cuisineTypeInput.value = v; },
+            dish_category: (v) => { dishCategoryInput.value = v; },
+            region: (v) => { regionInput.value = v; },
+            cultural_significance: (v) => setQuillContentFromRtf(editFormQuills.culturalSignificance, v),
+            popular_examples: (v) => setQuillContentFromRtf(editFormQuills.popularExamples, v),
+            history: (v) => setQuillContentFromRtf(editFormQuills.history, v),
+            similar_dishes_globally: (v) => {
+                similarDishesController.reset();
+                v.split(',').map(s => s.trim()).filter(Boolean)
+                    .forEach(name => similarDishesController.addRow({ id: null, name, linked: false }));
+            }
         }
     });
 
@@ -261,24 +158,11 @@ document.addEventListener('DOMContentLoaded', function () {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
-        const baseUrl = modalElement.dataset.editUrl;
-        const editUrl = baseUrl.replace('/0/', `/${entryId}/`);
         const csrfToken = getCsrfToken();
 
-        // Resolve any typed-but-unlinked similar dishes into placeholder entries
         let resolvedSimilarIds;
         try {
-            resolvedSimilarIds = await Promise.all(selectedSimilarDishes.map(async dish => {
-                if (dish.linked) return dish.id;
-                const r = await fetch('/api/encyclopedia/create-placeholder/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                    body: JSON.stringify({ name: dish.name })
-                });
-                const result = await r.json();
-                if (!r.ok) throw new Error(result.error || 'Failed to create placeholder');
-                return String(result.entry.id);
-            }));
+            resolvedSimilarIds = await similarDishesController.resolveIds(csrfToken);
         } catch (err) {
             console.error('Placeholder creation error:', err);
             formError.textContent = err.message || 'Failed to create placeholder entries. Please try again.';
@@ -289,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            const resp = await fetch(editUrl, {
+            const resp = await fetch(editUrlFor(targetEntryId), {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -329,17 +213,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Reset on close
     modalElement.addEventListener('hidden.bs.modal', function () {
+        targetEntryId = null;
         formError.style.display = 'none';
+        placeholderNotice.style.display = 'none';
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save Changes';
         aiWaitNotice.style.display = 'none';
-        selectedSimilarDishes = [];
-        similarRowCounter = 0;
-        similarSelectedIndex = -1;
-        similarSearchInput.value = '';
-        similarSearchResults.style.display = 'none';
-        similarSearchResults.innerHTML = '';
-        selectedSimilarDiv.style.display = 'none';
-        similarChipsContainer.innerHTML = '';
+        similarDishesController.reset();
+    });
+
+    // Clicking a placeholder referenced elsewhere on this page (e.g. in Similar Dishes)
+    // opens this same modal targeting that placeholder instead of the page's own entry.
+    document.querySelectorAll('.encyclopedia-placeholder').forEach(element => {
+        element.addEventListener('click', function (e) {
+            e.preventDefault();
+            openEditModal(this.dataset.placeholderId);
+        });
     });
 });

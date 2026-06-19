@@ -21,6 +21,29 @@ def _is_staff(user):
 @method_decorator([login_required, user_passes_test(_is_staff)], name='dispatch')
 class EncyclopediaEditApiView(View):
 
+    def get(self, request, entry_id, *args, **kwargs):
+        entry = get_object_or_404(Encyclopedia, id=entry_id)
+
+        return JsonResponse({
+            'success': True,
+            'entry': {
+                'id': entry.id,
+                'name': entry.name,
+                'is_placeholder': entry.is_placeholder,
+                'description': entry.description,
+                'cuisine_type': entry.cuisine_type or '',
+                'dish_category': entry.dish_category or '',
+                'region': entry.region or '',
+                'cultural_significance': entry.cultural_significance,
+                'popular_examples': entry.popular_examples,
+                'history': entry.history,
+                'similar_dishes': [
+                    {'id': d.id, 'name': d.name}
+                    for d in entry.similar_dishes.all().order_by('name')
+                ],
+            }
+        })
+
     def patch(self, request, entry_id, *args, **kwargs):
         try:
             data = json.loads(request.body) if request.body else {}

@@ -25,9 +25,26 @@ Return only the JSON object. No markdown, no commentary."""
 
 MAX_DISH_NAME_LENGTH = 200
 
+# Fields the prompt asks Claude to return as a single joined string, keyed to the
+# separator to rejoin with if Claude instead returns a native JSON list for them.
+_LIST_FIELD_SEPARATORS = {
+    'similar_dishes_globally': ', ',
+    'popular_examples': '\n',
+    'history': '\n',
+}
+
 
 def _is_staff(user):
     return user.is_staff
+
+
+def _coerce_field(key, value):
+    if isinstance(value, list):
+        separator = _LIST_FIELD_SEPARATORS.get(key, '\n')
+        return separator.join(str(item) for item in value)
+    if value is None:
+        return ''
+    return value
 
 
 @method_decorator([login_required, user_passes_test(_is_staff)], name='dispatch')
@@ -58,5 +75,8 @@ class EncyclopediaAIPrefillApiView(View):
             fields = json.loads(raw)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'AI returned malformed response'}, status=503)
+
+        if isinstance(fields, dict):
+            fields = {key: _coerce_field(key, value) for key, value in fields.items()}
 
         return JsonResponse({'success': True, 'fields': fields})

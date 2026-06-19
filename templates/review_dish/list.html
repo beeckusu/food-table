@@ -387,13 +387,18 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+<link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/review_dish_list.css' %}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 {% load static %}
+<script src="{% static 'js/quill-editor.js' %}"></script>
+<script src="{% static 'js/encyclopedia_similar_dishes.js' %}"></script>
+<script src="{% static 'js/encyclopedia_ai_prefill.js' %}"></script>
 <script src="{% static 'js/review_dish_link.js' %}"></script>
 <script>
 // Initialize noUiSlider for rating range
