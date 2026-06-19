@@ -49,20 +49,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const descEl = document.querySelector('.card-body .card-text');
         if (descEl) descriptionInput.value = descEl.innerText.trim();
 
-        // Classification badges
-        const badges = document.querySelectorAll('.badge');
-        cuisineTypeInput.value = '';
-        dishCategoryInput.value = '';
-        regionInput.value = '';
-        badges.forEach(badge => {
-            if (badge.classList.contains('bg-secondary') && !cuisineTypeInput.value) {
-                cuisineTypeInput.value = badge.textContent.trim();
-            } else if (badge.classList.contains('bg-info') && !dishCategoryInput.value) {
-                dishCategoryInput.value = badge.textContent.trim();
-            } else if (badge.classList.contains('bg-success') && !regionInput.value) {
-                regionInput.value = badge.textContent.trim();
-            }
-        });
+        // Classification badges (scoped to the entry's own classification container)
+        const classificationBadges = document.getElementById('entryClassificationBadges');
+        cuisineTypeInput.value = classificationBadges?.querySelector('[data-field="cuisine_type"]')?.textContent.trim() || '';
+        dishCategoryInput.value = classificationBadges?.querySelector('[data-field="dish_category"]')?.textContent.trim() || '';
+        regionInput.value = classificationBadges?.querySelector('[data-field="region"]')?.textContent.trim() || '';
 
         // Long-form fields: read from their respective cards
         culturalSignificanceInput.value = '';

@@ -55,15 +55,15 @@
             </button>
             {% endif %}
         </div>
-        <div class="mb-3">
+        <div class="mb-3" id="entryClassificationBadges">
             {% if entry.cuisine_type %}
-            <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>
+            <span class="badge bg-secondary" data-field="cuisine_type">{{ entry.cuisine_type }}</span>
             {% endif %}
             {% if entry.dish_category %}
-            <span class="badge bg-info">{{ entry.dish_category }}</span>
+            <span class="badge bg-info" data-field="dish_category">{{ entry.dish_category }}</span>
             {% endif %}
             {% if entry.region %}
-            <span class="badge bg-success">{{ entry.region }}</span>
+            <span class="badge bg-success" data-field="region">{{ entry.region }}</span>
             {% endif %}
         </div>
     </div>
