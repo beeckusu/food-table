@@ -285,11 +285,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify({ name: dish.name })
                 });
                 const result = await r.json();
+                if (!r.ok) throw new Error(result.error || 'Failed to create placeholder');
                 return String(result.entry.id);
             }));
         } catch (err) {
             console.error('Placeholder creation error:', err);
-            formError.textContent = 'Failed to create placeholder entries. Please try again.';
+            formError.textContent = err.message || 'Failed to create placeholder entries. Please try again.';
             formError.style.display = 'block';
             saveBtn.disabled = false;
             saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save Changes';

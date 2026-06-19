@@ -26,6 +26,7 @@ confluence_*_export.json
 
 # Database snapshots
 db_snapshots/
+db_backups/
 _sync_dump.json
 auth_users.json
 content_data.json

@@ -656,11 +656,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         body: JSON.stringify({ name: dish.name })
                     });
                     const result = await resp.json();
+                    if (!resp.ok) throw new Error(result.error || 'Failed to create placeholder');
                     return result.entry.id;
                 }));
             } catch (err) {
                 console.error('Placeholder creation error:', err);
-                createFormError.textContent = 'Failed to create placeholder entries for similar dishes';
+                createFormError.textContent = err.message || 'Failed to create placeholder entries for similar dishes';
                 createFormError.style.display = 'block';
                 saveAndLinkBtn.disabled = false;
                 saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
