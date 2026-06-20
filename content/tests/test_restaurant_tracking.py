@@ -465,3 +465,69 @@ class RestaurantUpdateViewPopUpTest(TestCase):
         self.restaurant.refresh_from_db()
         self.assertFalse(self.restaurant.is_pop_up)
         self.assertEqual(self.restaurant.website, '')
+
+
+class RestaurantChainModelTest(TestCase):
+    def test_is_chain_false_for_unique_name(self):
+        r = make_restaurant(name='Solo Spot')
+        self.assertFalse(r.is_chain)
+        self.assertEqual(list(r.chain_locations), [])
+
+    def test_is_chain_true_when_name_shared(self):
+        r1 = make_restaurant(name='Big Chain', street_address='1 First St')
+        r2 = make_restaurant(name='Big Chain', street_address='2 Second St')
+        self.assertTrue(r1.is_chain)
+        self.assertTrue(r2.is_chain)
+
+    def test_chain_locations_excludes_self(self):
+        r1 = make_restaurant(name='Big Chain', street_address='1 First St')
+        r2 = make_restaurant(name='Big Chain', street_address='2 Second St')
+        self.assertEqual(list(r1.chain_locations), [r2])
+        self.assertEqual(list(r2.chain_locations), [r1])
+
+    def test_three_locations_all_see_each_other(self):
+        r1 = make_restaurant(name='Big Chain', street_address='1 First St')
+        r2 = make_restaurant(name='Big Chain', street_address='2 Second St')
+        r3 = make_restaurant(name='Big Chain', street_address='3 Third St')
+        self.assertEqual(set(r1.chain_locations), {r2, r3})
+
+
+class RestaurantChainDetailViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('viewer', password='pw')
+        self.client = Client()
+        self.client.login(username='viewer', password='pw')
+
+    def test_no_chain_section_when_only_location(self):
+        restaurant = make_restaurant(name='Lonely Place')
+        url = reverse('content:restaurant_detail', kwargs={'pk': restaurant.pk})
+        response = self.client.get(url)
+        self.assertNotContains(response, 'Other Locations')
+
+    def test_chain_section_lists_sibling_locations(self):
+        r1 = make_restaurant(name='Big Chain', street_address='1 First St', city='Toronto')
+        r2 = make_restaurant(name='Big Chain', street_address='2 Second St', city='Ottawa')
+        url = reverse('content:restaurant_detail', kwargs={'pk': r1.pk})
+        response = self.client.get(url)
+        self.assertContains(response, 'Other Locations')
+        self.assertContains(response, 'Ottawa')
+        self.assertEqual(list(response.context['chain_locations']), [r2])
+
+
+class RestaurantChainListViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('viewer', password='pw')
+        self.client = Client()
+        self.client.login(username='viewer', password='pw')
+        self.url = reverse('content:restaurant_list')
+
+    def test_chain_badge_shown_for_shared_name(self):
+        make_restaurant(name='Big Chain', street_address='1 First St')
+        make_restaurant(name='Big Chain', street_address='2 Second St')
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Chain')
+
+    def test_no_chain_badge_for_unique_name(self):
+        make_restaurant(name='Solo Spot')
+        response = self.client.get(self.url)
+        self.assertNotContains(response, 'Chain')

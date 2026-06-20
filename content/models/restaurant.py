@@ -51,6 +51,17 @@ class Restaurant(models.Model):
             parts.append(self.country)
         return ', '.join(parts) if len(parts) > 1 else self.name
 
+    @property
+    def chain_locations(self):
+        """Other Restaurant rows sharing this name, i.e. other locations of the same chain."""
+        if not self.name:
+            return Restaurant.objects.none()
+        return Restaurant.objects.filter(name=self.name).exclude(pk=self.pk)
+
+    @property
+    def is_chain(self):
+        return self.chain_locations.exists()
+
     def _geocode(self):
         api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', '')
         if not api_key:

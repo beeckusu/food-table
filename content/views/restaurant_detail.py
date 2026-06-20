@@ -26,6 +26,7 @@ class RestaurantDetailView(LoginRequiredMixin, DetailView):
         context['reviews'] = restaurant.reviews.filter(is_private=False).prefetch_related(
             'review_dishes'
         ).order_by('-visit_date')
+        context['chain_locations'] = restaurant.chain_locations
         return context
 
 

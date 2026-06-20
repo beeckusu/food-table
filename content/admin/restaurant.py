@@ -11,7 +11,7 @@ class RestaurantDishInline(admin.TabularInline):
 
 @admin.register(Restaurant)
 class RestaurantAdmin(admin.ModelAdmin):
-    list_display = ['name', 'city', 'province', 'country', 'postal_code', 'visited', 'is_pop_up', 'created_at']
+    list_display = ['name', 'city', 'province', 'country', 'postal_code', 'visited', 'is_pop_up', 'is_chain', 'created_at']
     list_filter = ['visited', 'is_pop_up', 'city', 'country']
     search_fields = ['name', 'street_address', 'city', 'province', 'country', 'postal_code', 'website']
     readonly_fields = ['created_at', 'updated_at']

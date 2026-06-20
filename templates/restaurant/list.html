@@ -90,6 +90,9 @@
                         {% if restaurant.is_pop_up %}
                         <span class="badge bg-warning text-dark"><i class="bi bi-shop-window"></i> Pop-Up</span>
                         {% endif %}
+                        {% if restaurant.is_chain %}
+                        <span class="badge bg-info text-dark"><i class="bi bi-shop"></i> Chain</span>
+                        {% endif %}
                         {% if restaurant.visited %}
                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Visited</span>
                         {% else %}
