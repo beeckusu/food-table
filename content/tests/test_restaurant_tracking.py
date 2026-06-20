@@ -3,6 +3,7 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 from content.models import Restaurant, RestaurantDish
+from content.forms import RestaurantForm
 
 
 def make_restaurant(**kwargs):
@@ -360,3 +361,107 @@ class ReviewCreateDishTrackingTest(TestCase):
         self.assertIsNotNone(wishlist_dish.review_id)
         # No duplicate created
         self.assertEqual(RestaurantDish.objects.filter(dish_name='Ramen').count(), 1)
+
+
+class RestaurantPopUpModelTest(TestCase):
+    def test_is_pop_up_defaults_false(self):
+        r = make_restaurant()
+        self.assertFalse(r.is_pop_up)
+        self.assertEqual(r.website, '')
+
+    def test_pop_up_skips_geocoding(self):
+        r = Restaurant.objects.create(
+            name='Mystery Pop-Up',
+            is_pop_up=True,
+            website='https://example.com',
+            street_address='123 Nowhere St',
+            city='Toronto',
+        )
+        self.assertIsNone(r.latitude)
+        self.assertIsNone(r.longitude)
+
+
+class RestaurantFormPopUpTest(TestCase):
+    def _data(self, **overrides):
+        data = {
+            'name': 'Pop-Up Place', 'street_address': '', 'city': '', 'province': '',
+            'country': '', 'postal_code': '', 'google_place_id': '', 'is_pop_up': False, 'website': '',
+        }
+        data.update(overrides)
+        return data
+
+    def test_valid_without_website_when_not_pop_up(self):
+        form = RestaurantForm(data=self._data())
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_invalid_when_pop_up_without_website(self):
+        form = RestaurantForm(data=self._data(is_pop_up=True))
+        self.assertFalse(form.is_valid())
+        self.assertIn('website', form.errors)
+
+    def test_valid_when_pop_up_with_website(self):
+        form = RestaurantForm(data=self._data(is_pop_up=True, website='https://example.com'))
+        self.assertTrue(form.is_valid(), form.errors)
+
+
+class RestaurantCreateViewPopUpTest(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user('staff', password='pw', is_staff=True)
+        self.client = Client()
+        self.client.login(username='staff', password='pw')
+        self.url = reverse('content:restaurant_create')
+
+    def _base_formset_data(self):
+        return {
+            'had-TOTAL_FORMS': '1', 'had-INITIAL_FORMS': '0', 'had-MIN_NUM_FORMS': '0', 'had-MAX_NUM_FORMS': '1000',
+            'had-0-dish_name': '', 'had-0-source': '', 'had-0-source_detail': '', 'had-0-notes': '', 'had-0-DELETE': '',
+            'wishlist-TOTAL_FORMS': '1', 'wishlist-INITIAL_FORMS': '0', 'wishlist-MIN_NUM_FORMS': '0', 'wishlist-MAX_NUM_FORMS': '1000',
+            'wishlist-0-dish_name': '', 'wishlist-0-source': '', 'wishlist-0-source_detail': '', 'wishlist-0-notes': '', 'wishlist-0-DELETE': '',
+        }
+
+    def test_create_pop_up_with_website(self):
+        data = {
+            'name': 'Taco Truck', 'street_address': '', 'city': '', 'province': '', 'country': '', 'postal_code': '',
+            'is_pop_up': 'on', 'website': 'https://tacotruck.example.com',
+        }
+        data.update(self._base_formset_data())
+        self.client.post(self.url, data)
+        restaurant = Restaurant.objects.get(name='Taco Truck')
+        self.assertTrue(restaurant.is_pop_up)
+        self.assertEqual(restaurant.website, 'https://tacotruck.example.com')
+
+    def test_create_pop_up_without_website_fails_validation(self):
+        data = {
+            'name': 'No Website Truck', 'street_address': '', 'city': '', 'province': '', 'country': '', 'postal_code': '',
+            'is_pop_up': 'on', 'website': '',
+        }
+        data.update(self._base_formset_data())
+        self.client.post(self.url, data)
+        self.assertFalse(Restaurant.objects.filter(name='No Website Truck').exists())
+
+
+class RestaurantUpdateViewPopUpTest(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user('staff', password='pw', is_staff=True)
+        self.client = Client()
+        self.client.login(username='staff', password='pw')
+        self.restaurant = make_restaurant(name='Soon Pop-Up', street_address='', city='', country='')
+        self.url = reverse('content:restaurant_edit', kwargs={'pk': self.restaurant.pk})
+
+    def test_update_to_pop_up_with_website(self):
+        self.client.post(self.url, {
+            'name': 'Soon Pop-Up', 'street_address': '', 'city': '', 'province': '', 'country': '', 'postal_code': '',
+            'is_pop_up': 'on', 'website': 'https://example.com',
+        })
+        self.restaurant.refresh_from_db()
+        self.assertTrue(self.restaurant.is_pop_up)
+        self.assertEqual(self.restaurant.website, 'https://example.com')
+
+    def test_update_to_pop_up_without_website_is_rejected(self):
+        self.client.post(self.url, {
+            'name': 'Soon Pop-Up', 'street_address': '', 'city': '', 'province': '', 'country': '', 'postal_code': '',
+            'is_pop_up': 'on', 'website': '',
+        })
+        self.restaurant.refresh_from_db()
+        self.assertFalse(self.restaurant.is_pop_up)
+        self.assertEqual(self.restaurant.website, '')

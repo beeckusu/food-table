@@ -19,8 +19,12 @@ class RestaurantUpdateView(LoginRequiredMixin, View):
         province = request.POST.get('province', '').strip()
         country = request.POST.get('country', '').strip()
         postal_code = request.POST.get('postal_code', '').strip()
+        is_pop_up = request.POST.get('is_pop_up') == 'on'
+        website = request.POST.get('website', '').strip()
 
         if not name:
+            return redirect('content:restaurant_list')
+        if is_pop_up and not website:
             return redirect('content:restaurant_list')
 
         # Merge if same name and addresses are compatible:
@@ -49,6 +53,8 @@ class RestaurantUpdateView(LoginRequiredMixin, View):
             restaurant.province = province
             restaurant.country = country
             restaurant.postal_code = postal_code
+            restaurant.is_pop_up = is_pop_up
+            restaurant.website = website
             restaurant.save()
 
         return redirect('content:restaurant_list')

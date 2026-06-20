@@ -85,6 +85,8 @@ def build_neon_env(neon_url):
     """Subprocess env that points to Neon via DATABASE_URL."""
     e = os.environ.copy()
     e['DATABASE_URL'] = neon_url
+    # settings.py only honors DATABASE_URL when DEBUG is falsy; local .env sets DEBUG=True.
+    e['DEBUG'] = 'False'
     e['PYTHONIOENCODING'] = 'utf-8'
     e['PYTHONUTF8'] = '1'
     return e

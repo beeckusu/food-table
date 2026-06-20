@@ -22,6 +22,8 @@ class Restaurant(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     google_place_id = models.CharField(max_length=255, blank=True, default='')
+    is_pop_up = models.BooleanField(default=False)
+    website = models.URLField(max_length=500, blank=True, default='')
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -74,20 +76,21 @@ class Restaurant(models.Model):
             logger.exception('Geocoding failed for restaurant %s', self.name)
 
     def save(self, *args, **kwargs):
-        needs_coords = self.latitude is None or self.longitude is None
-        address_changed = False
-        if self.pk:
-            try:
-                old = Restaurant.objects.get(pk=self.pk)
-                address_changed = any(
-                    getattr(old, f) != getattr(self, f) for f in _ADDRESS_FIELDS
-                )
-            except Restaurant.DoesNotExist:
+        if not self.is_pop_up:
+            needs_coords = self.latitude is None or self.longitude is None
+            address_changed = False
+            if self.pk:
+                try:
+                    old = Restaurant.objects.get(pk=self.pk)
+                    address_changed = any(
+                        getattr(old, f) != getattr(self, f) for f in _ADDRESS_FIELDS
+                    )
+                except Restaurant.DoesNotExist:
+                    address_changed = True
+            else:
                 address_changed = True
-        else:
-            address_changed = True
-        if needs_coords or address_changed:
-            self._geocode()
+            if needs_coords or address_changed:
+                self._geocode()
         super().save(*args, **kwargs)
 
 

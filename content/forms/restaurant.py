@@ -5,7 +5,7 @@ from content.models import Restaurant, RestaurantDish
 class RestaurantForm(forms.ModelForm):
     class Meta:
         model = Restaurant
-        fields = ['name', 'street_address', 'city', 'province', 'country', 'postal_code', 'visited', 'google_place_id']
+        fields = ['name', 'street_address', 'city', 'province', 'country', 'postal_code', 'visited', 'google_place_id', 'is_pop_up', 'website']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Restaurant name'}),
             'google_place_id': forms.HiddenInput(),
@@ -15,7 +15,15 @@ class RestaurantForm(forms.ModelForm):
             'country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
             'postal_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Postal code'}),
             'visited': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_pop_up': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'website': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('is_pop_up') and not cleaned_data.get('website'):
+            self.add_error('website', 'Website is required for pop-up restaurants.')
+        return cleaned_data
 
 
 class RestaurantDishForm(forms.ModelForm):

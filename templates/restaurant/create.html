@@ -28,6 +28,10 @@
 <form method="post" id="restaurant-form">
     {% csrf_token %}
 
+    {% if restaurant_form.non_field_errors %}
+    <div class="alert alert-danger">{{ restaurant_form.non_field_errors }}</div>
+    {% endif %}
+
     <!-- Restaurant details -->
     <div class="card shadow-sm mb-4">
         <div class="card-header">
@@ -40,6 +44,18 @@
                     {{ restaurant_form.name }}
                     {% if restaurant_form.name.errors %}<div class="text-danger small mt-1">{{ restaurant_form.name.errors }}</div>{% endif %}
                 </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ restaurant_form.is_pop_up }}
+                        <label class="form-check-label">This is a pop-up <span class="text-muted">(no fixed location)</span></label>
+                    </div>
+                </div>
+                <div id="pop-up-fields" class="col-12" style="display:none;">
+                    <label class="form-label">Website <span class="text-danger">*</span></label>
+                    {{ restaurant_form.website }}
+                    {% if restaurant_form.website.errors %}<div class="text-danger small mt-1">{{ restaurant_form.website.errors }}</div>{% endif %}
+                </div>
+                <div id="address-fields" class="row g-3 col-12">
                 {% if google_maps_api_key %}
                 <div class="col-12">
                     <label class="form-label">Search address</label>
@@ -68,6 +84,7 @@
                 <div class="col-sm-4">
                     <label class="form-label">Postal Code</label>
                     {{ restaurant_form.postal_code }}
+                </div>
                 </div>
                 <div class="col-12">
                     <div class="form-check">
@@ -242,5 +259,23 @@ document.querySelectorAll('.dish-row').forEach(row => {
 document.querySelectorAll('input[name*="-DELETE"]').forEach(cb => {
     cb.closest('td, div')?.classList.add('d-none');
 });
+
+// Toggle address fields vs. website field based on pop-up checkbox
+(function () {
+    const popUpCheckbox = document.getElementById('id_is_pop_up');
+    const addressFields = document.getElementById('address-fields');
+    const popUpFields = document.getElementById('pop-up-fields');
+    const websiteInput = document.getElementById('id_website');
+
+    function applyPopUpState() {
+        const isPopUp = popUpCheckbox.checked;
+        addressFields.style.display = isPopUp ? 'none' : '';
+        popUpFields.style.display = isPopUp ? '' : 'none';
+        websiteInput.required = isPopUp;
+    }
+
+    popUpCheckbox.addEventListener('change', applyPopUpState);
+    applyPopUpState();
+}());
 </script>
 {% endblock %}
