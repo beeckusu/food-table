@@ -56,7 +56,9 @@ class RestaurantDishModelTest(TestCase):
 
 class RestaurantListViewTest(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user('viewer', password='pw')
         self.client = Client()
+        self.client.login(username='viewer', password='pw')
         self.url = reverse('content:restaurant_list')
         make_restaurant(name='Visited Place', visited=True)
         make_restaurant(name='Not Visited', visited=False)
@@ -83,6 +85,70 @@ class RestaurantListViewTest(TestCase):
         self.assertEqual(response.context['visited_count'], 1)
         self.assertEqual(response.context['wishlist_count'], 1)
         self.assertEqual(response.context['total_count'], 2)
+
+
+class RestaurantListSearchTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('searcher', password='pw')
+        self.client = Client()
+        self.client.login(username='searcher', password='pw')
+        self.url = reverse('content:restaurant_list')
+
+    def test_search_by_name_prefix(self):
+        make_restaurant(name='Ramen House', city='Toronto', visited=True)
+        make_restaurant(name='Pizza Place', city='Vancouver', visited=False)
+
+        response = self.client.get(self.url, {'q': 'Ram'})
+
+        self.assertEqual(response.status_code, 200)
+        names = [r.name for r in response.context['restaurants']]
+        self.assertIn('Ramen House', names)
+        self.assertNotIn('Pizza Place', names)
+
+    def test_search_by_city(self):
+        make_restaurant(name='Ramen House', city='Toronto')
+        make_restaurant(name='Pizza Place', city='Vancouver')
+
+        response = self.client.get(self.url, {'q': 'Vancouver'})
+
+        names = [r.name for r in response.context['restaurants']]
+        self.assertEqual(names, ['Pizza Place'])
+
+    def test_search_composes_with_visited_filter(self):
+        make_restaurant(name='Ramen House', city='Toronto', visited=True)
+        make_restaurant(name='Ramen Spot', city='Toronto', visited=False)
+
+        response = self.client.get(self.url, {'q': 'Ramen', 'visited': '1'})
+
+        names = [r.name for r in response.context['restaurants']]
+        self.assertEqual(names, ['Ramen House'])
+
+    def test_search_with_no_matches_returns_empty(self):
+        make_restaurant(name='Ramen House', city='Toronto')
+
+        response = self.client.get(self.url, {'q': 'Nonexistent'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context['restaurants']), [])
+
+    def test_query_with_tsquery_special_characters_does_not_500(self):
+        make_restaurant(name='Cheese & Crackers', city='Toronto')
+
+        for special_query in ['chee & se', 'chee | se', 'chee:se', "chee's", '(chee)', 'chee!']:
+            response = self.client.get(self.url, {'q': special_query})
+            self.assertEqual(response.status_code, 200, msg=f'query={special_query!r}')
+
+    def test_empty_query_returns_all(self):
+        make_restaurant(name='Ramen House')
+        make_restaurant(name='Pizza Place')
+
+        response = self.client.get(self.url, {'q': ''})
+
+        self.assertEqual(response.context['restaurants'].count(), 2)
+
+    def test_query_echoed_into_context(self):
+        response = self.client.get(self.url, {'q': 'Ramen'})
+        self.assertEqual(response.context['query'], 'Ramen')
 
 
 class RestaurantDetailViewTest(TestCase):

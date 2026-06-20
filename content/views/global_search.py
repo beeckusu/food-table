@@ -4,7 +4,7 @@ from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F, Value, CharField, Q
 from itertools import chain
 from operator import attrgetter
-from content.models import Encyclopedia, Recipe, Review
+from content.models import Encyclopedia, Recipe, Review, Restaurant
 
 
 class GlobalSearchView(LoginRequiredMixin, ListView):
@@ -71,6 +71,16 @@ class GlobalSearchView(LoginRequiredMixin, ListView):
             ).order_by('-rank')
             results.extend(list(review_results))
 
+        # Search Restaurant (if not filtered or filtered to restaurant)
+        if not content_type or content_type == 'restaurant':
+            restaurant_results = Restaurant.objects.annotate(
+                rank=SearchRank(F('search_vector'), search_query),
+                content_type=Value('restaurant', output_field=CharField())
+            ).filter(
+                search_vector=search_query
+            ).order_by('-rank')
+            results.extend(list(restaurant_results))
+
         # Sort combined results by rank (descending)
         results.sort(key=attrgetter('rank'), reverse=True)
 
@@ -87,9 +97,11 @@ class GlobalSearchView(LoginRequiredMixin, ListView):
             context['encyclopedia_count'] = sum(1 for r in context['results'] if r.content_type == 'encyclopedia')
             context['recipe_count'] = sum(1 for r in context['results'] if r.content_type == 'recipe')
             context['review_count'] = sum(1 for r in context['results'] if r.content_type == 'review')
+            context['restaurant_count'] = sum(1 for r in context['results'] if r.content_type == 'restaurant')
         else:
             context['encyclopedia_count'] = 0
             context['recipe_count'] = 0
             context['review_count'] = 0
+            context['restaurant_count'] = 0
 
         return context

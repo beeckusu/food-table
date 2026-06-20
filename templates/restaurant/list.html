@@ -32,28 +32,43 @@
     </div>
 </div>
 
+<!-- Search -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form method="get" class="d-flex" role="search">
+            {% if visited_filter %}<input type="hidden" name="visited" value="{{ visited_filter }}">{% endif %}
+            {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+            <input type="search" name="q" value="{{ query }}" class="form-control me-2" placeholder="Search restaurants by name or city...">
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+            {% if query %}
+            <a href="{% url 'content:restaurant_list' %}{% if visited_filter or sort %}?{% endif %}{% if visited_filter %}visited={{ visited_filter }}{% endif %}{% if visited_filter and sort %}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" class="btn btn-link text-muted ms-1">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
 <!-- Status filter tabs -->
 <div class="d-flex justify-content-between align-items-end mb-4">
 <ul class="nav nav-tabs mb-0 flex-grow-1">
     <li class="nav-item">
-        <a class="nav-link {% if visited_filter == '' %}active{% endif %}" href="{% url 'content:restaurant_list' %}{% if sort %}?sort={{ sort }}{% endif %}">
+        <a class="nav-link {% if visited_filter == '' %}active{% endif %}" href="{% url 'content:restaurant_list' %}{% if sort or query %}?{% endif %}{% if sort %}sort={{ sort }}{% endif %}{% if sort and query %}&{% endif %}{% if query %}q={{ query|urlencode }}{% endif %}">
             All <span class="badge bg-secondary ms-1">{{ total_count }}</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if visited_filter == '1' %}active{% endif %}" href="{% url 'content:restaurant_list' %}?visited=1{% if sort %}&sort={{ sort }}{% endif %}">
+        <a class="nav-link {% if visited_filter == '1' %}active{% endif %}" href="{% url 'content:restaurant_list' %}?visited=1{% if sort %}&sort={{ sort }}{% endif %}{% if query %}&q={{ query|urlencode }}{% endif %}">
             <i class="bi bi-check-circle-fill text-success"></i> Been There <span class="badge bg-secondary ms-1">{{ visited_count }}</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if visited_filter == '0' %}active{% endif %}" href="{% url 'content:restaurant_list' %}?visited=0{% if sort %}&sort={{ sort }}{% endif %}">
+        <a class="nav-link {% if visited_filter == '0' %}active{% endif %}" href="{% url 'content:restaurant_list' %}?visited=0{% if sort %}&sort={{ sort }}{% endif %}{% if query %}&q={{ query|urlencode }}{% endif %}">
             <i class="bi bi-bookmark-fill text-primary"></i> Want to Go <span class="badge bg-secondary ms-1">{{ wishlist_count }}</span>
         </a>
     </li>
 </ul>
 <div class="d-flex gap-1 ms-3 pb-1">
-    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}sort=name" class="btn btn-sm {% if sort == 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">A–Z</a>
-    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}" class="btn btn-sm {% if sort != 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Recently Added</a>
+    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}sort=name{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if sort == 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">A–Z</a>
+    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if query %}q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if sort != 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Recently Added</a>
 </div>
 </div>
 
@@ -119,7 +134,7 @@
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            <a class="page-link" href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}{% if query %}q={{ query|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
         </li>
         {% endif %}
         <li class="page-item disabled">
@@ -127,7 +142,7 @@
         </li>
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            <a class="page-link" href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}{% if query %}q={{ query|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
         </li>
         {% endif %}
     </ul>
@@ -137,11 +152,15 @@
 {% else %}
 <div class="text-center py-5">
     <i class="bi bi-shop display-1 text-muted"></i>
+    {% if query %}
+    <h3 class="mt-3 text-muted">No restaurants match "{{ query }}"</h3>
+    {% else %}
     <h3 class="mt-3 text-muted">No restaurants found</h3>
     {% if user.is_staff %}
     <a href="{% url 'content:restaurant_create' %}" class="btn btn-primary mt-3">
         <i class="bi bi-plus-circle"></i> Add your first restaurant
     </a>
+    {% endif %}
     {% endif %}
 </div>
 {% endif %}

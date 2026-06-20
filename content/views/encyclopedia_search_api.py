@@ -1,16 +1,10 @@
-import re
-
 from django.db.utils import ProgrammingError
 from django.http import JsonResponse
 from django.views import View
-from django.contrib.postgres.search import SearchQuery, SearchRank
+from django.contrib.postgres.search import SearchRank
 from django.db.models import F, Q
 from content.models import Encyclopedia
-
-# Matches runs of characters that aren't word characters, used to strip
-# tsquery operators (&, |, !, (, ), :, ') out of each user-supplied term
-# before it's interpolated into a raw tsquery string.
-_TSQUERY_UNSAFE_CHARS = re.compile(r'[^\w]+')
+from content.utils.search import build_prefix_search_query
 
 
 class EncyclopediaSearchApiView(View):
@@ -35,14 +29,8 @@ class EncyclopediaSearchApiView(View):
             return JsonResponse({'results': []})
 
         # Strategy 1: Try full-text search with prefix matching.
-        # Each term is sanitized and given its own :* suffix so multi-word
-        # queries like "Al Pas" become the valid raw tsquery "Al:* & Pas:*"
-        # instead of the unparseable "Al Pas:*".
-        terms = [t for t in (_TSQUERY_UNSAFE_CHARS.sub('', t) for t in query.split()) if t]
-        if terms:
-            prefix_query = ' & '.join(f'{term}:*' for term in terms)
-            search_query = SearchQuery(prefix_query, search_type='raw')
-
+        search_query = build_prefix_search_query(query)
+        if search_query is not None:
             try:
                 entries = Encyclopedia.objects.annotate(
                     rank=SearchRank(F('search_vector'), search_query)

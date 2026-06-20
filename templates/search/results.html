@@ -54,6 +54,15 @@
                         {% endif %}
                     </a>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {% if filter_type == 'restaurant' %}active{% endif %}"
+                       href="?q={{ query }}&type=restaurant">
+                        Restaurants
+                        {% if restaurant_count %}
+                            <span class="badge bg-secondary ms-1">{{ restaurant_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
             </ul>
         {% else %}
             <div class="alert alert-warning">
@@ -78,6 +87,8 @@
                 <span class="badge bg-success">Recipe</span>
                 {% elif result.content_type == 'review' %}
                 <span class="badge bg-info">Review</span>
+                {% elif result.content_type == 'restaurant' %}
+                <span class="badge bg-warning text-dark">Restaurant</span>
                 {% endif %}
             </div>
 
@@ -106,7 +117,7 @@
 
             <div class="card-body">
                 <!-- Title/Name -->
-                {% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' %}
+                {% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' or result.content_type == 'restaurant' %}
                     <h5 class="card-title">{{ result.name }}</h5>
                 {% elif result.content_type == 'review' %}
                     <h5 class="card-title">{{ result.restaurant.name }}</h5>
@@ -169,6 +180,18 @@
                         {{ result.notes|truncatewords:15 }}
                     </p>
                     {% endif %}
+                {% elif result.content_type == 'restaurant' %}
+                    {% if result.city or result.country %}
+                    <p class="card-text text-muted small mb-2">
+                        <i class="bi bi-geo-alt"></i>
+                        {% if result.city %}{{ result.city }}{% if result.country %}, {% endif %}{% endif %}{{ result.country }}
+                    </p>
+                    {% endif %}
+                    {% if result.visited %}
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Visited</span>
+                    {% else %}
+                    <span class="badge bg-primary"><i class="bi bi-bookmark"></i> Wishlist</span>
+                    {% endif %}
                 {% endif %}
 
                 <!-- Relevance Score -->
@@ -185,6 +208,8 @@
                 <a href="{% url 'content:recipe_detail' result.slug %}" class="btn btn-primary btn-sm">View Recipe</a>
                 {% elif result.content_type == 'review' %}
                 <a href="{% url 'content:review_detail' result.pk %}" class="btn btn-primary btn-sm">View Review</a>
+                {% elif result.content_type == 'restaurant' %}
+                <a href="{% url 'content:restaurant_detail' result.pk %}" class="btn btn-primary btn-sm">View Restaurant</a>
                 {% endif %}
             </div>
         </div>

@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.contrib.postgres.search import SearchVectorField, SearchVector
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import requests
 import logging
 
@@ -29,6 +32,7 @@ class Restaurant(models.Model):
     visited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    search_vector = SearchVectorField(null=True, blank=True)
 
     class Meta:
         ordering = ['name']
@@ -85,3 +89,24 @@ class Restaurant(models.Model):
         if needs_coords or address_changed:
             self._geocode()
         super().save(*args, **kwargs)
+
+
+@receiver(post_save, sender=Restaurant)
+def update_restaurant_search_vector(sender, instance, **kwargs):
+    """
+    Signal handler to automatically update search_vector field when Restaurant is saved.
+    Updates the search vector with name (primary) and location fields (secondary).
+    """
+    # Avoid infinite recursion by checking if we're already updating
+    if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
+        return
+
+    Restaurant.objects.filter(pk=instance.pk).update(
+        search_vector=(
+            SearchVector('name', weight='A')
+            + SearchVector('city', weight='B')
+            + SearchVector('street_address', weight='B')
+            + SearchVector('province', weight='C')
+            + SearchVector('country', weight='C')
+        )
+    )
