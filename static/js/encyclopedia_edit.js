@@ -135,10 +135,11 @@ document.addEventListener('DOMContentLoaded', function () {
             cultural_significance: (v) => setQuillContentFromRtf(editFormQuills.culturalSignificance, v),
             popular_examples: (v) => setQuillContentFromRtf(editFormQuills.popularExamples, v),
             history: (v) => setQuillContentFromRtf(editFormQuills.history, v),
-            similar_dishes_globally: (v) => {
+            similar_dishes_globally: async (v) => {
                 similarDishesController.reset();
-                v.split(',').map(s => s.trim()).filter(Boolean)
-                    .forEach(name => similarDishesController.addRow({ id: null, name, linked: false }));
+                const names = v.split(',').map(s => s.trim()).filter(Boolean);
+                const rows = await Promise.all(names.map(name => similarDishesController.resolveExactMatch(name)));
+                rows.forEach(row => similarDishesController.addRow(row));
             }
         }
     });

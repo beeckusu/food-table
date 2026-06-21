@@ -40,6 +40,19 @@ function createSimilarDishesController(options) {
         return selectedDishes;
     }
 
+    function resolveExactMatch(name) {
+        return fetch(`${searchUrl}?q=${encodeURIComponent(name)}`)
+            .then(r => r.json())
+            .then(data => {
+                const match = data.results && data.results[0];
+                const isClose = match && match.name.toLowerCase() === name.toLowerCase();
+                return isClose
+                    ? { id: match.id, name: match.name, linked: true }
+                    : { id: null, name, linked: false };
+            })
+            .catch(() => ({ id: null, name, linked: false }));
+    }
+
     async function resolveIds(csrfToken) {
         if (selectedDishes.length === 0) return [];
         return Promise.all(selectedDishes.map(async dish => {
@@ -268,18 +281,7 @@ function createSimilarDishesController(options) {
             const names = text.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
             if (names.length === 0) return;
 
-            Promise.all(names.map(name =>
-                fetch(`${searchUrl}?q=${encodeURIComponent(name)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        const match = data.results && data.results[0];
-                        const isClose = match && match.name.toLowerCase() === name.toLowerCase();
-                        return isClose
-                            ? { id: match.id, name: match.name, linked: true }
-                            : { id: null, name, linked: false };
-                    })
-                    .catch(() => ({ id: null, name, linked: false }))
-            )).then(rows => {
+            Promise.all(names.map(resolveExactMatch)).then(rows => {
                 rows.forEach(row => addRow(row));
                 searchInput.value = '';
             });
@@ -288,5 +290,5 @@ function createSimilarDishesController(options) {
 
     if (addBtn) addBtn.addEventListener('click', commitInput);
 
-    return { reset, addRow, getSelected, resolveIds };
+    return { reset, addRow, getSelected, resolveIds, resolveExactMatch };
 }

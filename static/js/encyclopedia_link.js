@@ -511,10 +511,11 @@ document.addEventListener('DOMContentLoaded', function() {
             cultural_significance: (v) => setQuillContentFromRtf(entryFormQuills.culturalSignificance, v),
             popular_examples: (v) => setQuillContentFromRtf(entryFormQuills.popularExamples, v),
             history: (v) => setQuillContentFromRtf(entryFormQuills.history, v),
-            similar_dishes_globally: (v) => {
+            similar_dishes_globally: async (v) => {
                 similarDishesController.reset();
-                v.split(',').map(s => s.trim()).filter(Boolean)
-                    .forEach(name => similarDishesController.addRow({ id: null, name, linked: false }));
+                const names = v.split(',').map(s => s.trim()).filter(Boolean);
+                const rows = await Promise.all(names.map(name => similarDishesController.resolveExactMatch(name)));
+                rows.forEach(row => similarDishesController.addRow(row));
             }
         }
     });
