@@ -249,7 +249,10 @@
       '<div class="mb-3 mt-3">' +
       '<label class="form-label fw-semibold">Dishes to wishlist</label>' +
       '<div class="wb-dish-list">' +
-      '<div class="dish-row"><input type="text" class="form-control form-control-sm wb-dish" placeholder="Dish name"></div>' +
+      '<div class="dish-row">' +
+      '<input type="text" class="form-control form-control-sm wb-dish" placeholder="Dish name">' +
+      '<input type="text" class="form-control form-control-sm wb-dish-note mt-1" placeholder="Note (optional)">' +
+      '</div>' +
       '</div>' +
       '<button type="button" class="btn btn-link btn-sm ps-0 mt-1 wb-add-dish-btn">' +
       '<i class="bi bi-plus-circle"></i> Add another dish</button>' +
@@ -362,7 +365,8 @@
       row.innerHTML = '<div class="input-group input-group-sm">' +
         '<input type="text" class="form-control wb-dish" placeholder="Dish name">' +
         '<button type="button" class="btn btn-outline-secondary remove-dish-btn"><i class="bi bi-x"></i></button>' +
-        '</div>';
+        '</div>' +
+        '<input type="text" class="form-control form-control-sm wb-dish-note mt-1" placeholder="Note (optional)">';
       row.querySelector('.remove-dish-btn').addEventListener('click', function () { row.remove(); });
       dishList.appendChild(row);
     });
@@ -470,9 +474,13 @@
   });
 
   function getBlockBody(block) {
-    var dishes = Array.from(block.querySelectorAll('.wb-dish'))
-      .map(function (i) { return i.value.trim(); })
-      .filter(Boolean);
+    var dishes = Array.from(block.querySelectorAll('.dish-row')).map(function (row) {
+      var noteEl = row.querySelector('.wb-dish-note');
+      return {
+        name: row.querySelector('.wb-dish').value.trim(),
+        note: noteEl ? noteEl.value.trim() : '',
+      };
+    }).filter(function (d) { return d.name; });
 
     if (block._mode === 'new') {
       var newName = block.querySelector('.wb-new-name').value.trim();

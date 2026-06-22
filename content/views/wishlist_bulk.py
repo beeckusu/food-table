@@ -19,7 +19,13 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
         url = (data.get('url') or '').strip()
         restaurant_id = data.get('restaurant_id')
         restaurant_name = (data.get('restaurant_name') or '').strip()
-        dish_names = [d.strip() for d in data.get('dishes', []) if d and d.strip()]
+        dish_entries = []
+        for d in data.get('dishes', []):
+            if not isinstance(d, dict):
+                continue
+            name = (d.get('name') or '').strip()
+            if name:
+                dish_entries.append((name, (d.get('note') or '').strip()))
 
         if restaurant_id:
             restaurant = get_object_or_404(Restaurant, pk=restaurant_id)
@@ -42,13 +48,15 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
             return JsonResponse({'error': 'Restaurant name is required'}, status=400)
 
         source_detail = url[:255] if url else ''
-        for dish_name in dish_names:
+        for dish_name, note in dish_entries:
+            notes = '\n'.join(part for part in (source_detail, note) if part)
             RestaurantDish.objects.create(
                 restaurant=restaurant,
                 dish_name=dish_name,
                 status=RestaurantDish.STATUS_WISHLIST,
                 source='Instagram',
                 source_detail=source_detail,
+                notes=notes,
             )
 
         return JsonResponse({
