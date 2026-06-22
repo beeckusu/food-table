@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,33 @@ def _coerce_field(key, value):
     return value
 
 
+_FENCE_RE = re.compile(r'^```(?:json)?\s*\n?(.*?)\n?```$', re.DOTALL)
+
+
+def _parse_ai_json(raw):
+    """
+    Parse Claude's JSON response, tolerating the formatting slips models
+    occasionally make despite being told to return raw JSON: a wrapping
+    markdown code fence, or stray prose before/after the JSON object.
+    """
+    candidates = [raw.strip()]
+
+    fence_match = _FENCE_RE.match(raw.strip())
+    if fence_match:
+        candidates.append(fence_match.group(1).strip())
+
+    start, end = raw.find('{'), raw.rfind('}')
+    if start != -1 and end > start:
+        candidates.append(raw[start:end + 1])
+
+    for candidate in candidates:
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    raise json.JSONDecodeError('Could not parse AI response as JSON', raw, 0)
+
+
 @method_decorator([login_required, user_passes_test(_is_staff)], name='dispatch')
 class EncyclopediaAIPrefillApiView(View):
 
@@ -72,8 +100,9 @@ class EncyclopediaAIPrefillApiView(View):
             return JsonResponse({'error': 'AI service unavailable'}, status=503)
 
         try:
-            fields = json.loads(raw)
+            fields = _parse_ai_json(raw)
         except json.JSONDecodeError:
+            logger.error("Encyclopedia AI prefill returned unparsable JSON for %r: %r", dish_name, raw)
             return JsonResponse({'error': 'AI returned malformed response'}, status=503)
 
         if isinstance(fields, dict):
