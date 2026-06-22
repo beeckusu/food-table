@@ -29,11 +29,12 @@ class RestaurantForm(forms.ModelForm):
 class RestaurantDishForm(forms.ModelForm):
     class Meta:
         model = RestaurantDish
-        fields = ['dish_name', 'status', 'source', 'notes']
+        fields = ['dish_name', 'status', 'source', 'source_detail', 'notes']
         widgets = {
             'dish_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Dish name'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'source': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. friend, article, Instagram'}),
+            'source_detail': forms.TextInput(attrs={'class': 'form-control', 'type': 'url', 'placeholder': 'Link (optional, e.g. Instagram URL)'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Notes (optional)'}),
         }
 
@@ -42,9 +43,10 @@ class RestaurantDishInlineForm(forms.ModelForm):
     """Stripped-down form for inline dish entry in the create form (status set server-side)."""
     class Meta:
         model = RestaurantDish
-        fields = ['dish_name', 'source', 'notes']
+        fields = ['dish_name', 'source', 'source_detail', 'notes']
         widgets = {
             'dish_name': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'placeholder': 'Dish name'}),
             'source': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'placeholder': 'e.g. friend, article'}),
+            'source_detail': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'type': 'url', 'placeholder': 'Link (optional)'}),
             'notes': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 2, 'placeholder': 'Notes (optional)'}),
         }

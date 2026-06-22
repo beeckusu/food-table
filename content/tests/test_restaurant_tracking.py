@@ -222,6 +222,15 @@ class RestaurantDishCRUDTest(TestCase):
         dish = RestaurantDish.objects.get(restaurant=self.restaurant, dish_name='Tonkotsu')
         self.assertEqual(dish.source, 'friend')
 
+    def test_create_wishlist_dish_with_source_detail(self):
+        url = reverse('content:restaurant_dish_create', kwargs={'pk': self.restaurant.pk})
+        self.client.post(url, {
+            'dish_name': 'Tonkotsu', 'status': 'wishlist',
+            'source': 'Instagram', 'source_detail': 'https://www.instagram.com/p/abc123/', 'notes': ''
+        })
+        dish = RestaurantDish.objects.get(restaurant=self.restaurant, dish_name='Tonkotsu')
+        self.assertEqual(dish.source_detail, 'https://www.instagram.com/p/abc123/')
+
     def test_delete_dish(self):
         dish = make_dish(self.restaurant)
         url = reverse('content:restaurant_dish_delete', kwargs={'pk': self.restaurant.pk, 'dish_pk': dish.pk})
@@ -234,6 +243,16 @@ class RestaurantDishCRUDTest(TestCase):
         self.client.post(url, {'dish_name': 'New Name', 'status': 'wishlist', 'source': '', 'source_detail': '', 'notes': ''})
         dish.refresh_from_db()
         self.assertEqual(dish.dish_name, 'New Name')
+
+    def test_update_dish_sets_source_detail(self):
+        dish = make_dish(self.restaurant, dish_name='Ramen')
+        url = reverse('content:restaurant_dish_update', kwargs={'pk': self.restaurant.pk, 'dish_pk': dish.pk})
+        self.client.post(url, {
+            'dish_name': 'Ramen', 'status': 'wishlist',
+            'source': 'Instagram', 'source_detail': 'https://www.instagram.com/p/xyz789/', 'notes': ''
+        })
+        dish.refresh_from_db()
+        self.assertEqual(dish.source_detail, 'https://www.instagram.com/p/xyz789/')
 
 
 class RestaurantDishMarkTriedTest(TestCase):
@@ -284,13 +303,16 @@ class RestaurantCreateViewTest(TestCase):
             'had-0-dish_name': 'Ramen', 'had-0-source': '', 'had-0-source_detail': '', 'had-0-notes': '', 'had-0-DELETE': '',
             'had-1-dish_name': '', 'had-1-source': '', 'had-1-source_detail': '', 'had-1-notes': '', 'had-1-DELETE': '',
             'wishlist-TOTAL_FORMS': '2',
-            'wishlist-0-dish_name': 'Tonkotsu', 'wishlist-0-source': 'friend', 'wishlist-0-notes': '', 'wishlist-0-DELETE': '',
+            'wishlist-0-dish_name': 'Tonkotsu', 'wishlist-0-source': 'Instagram',
+            'wishlist-0-source_detail': 'https://www.instagram.com/p/abc123/', 'wishlist-0-notes': '', 'wishlist-0-DELETE': '',
             'wishlist-1-dish_name': '', 'wishlist-1-source': '', 'wishlist-1-source_detail': '', 'wishlist-1-notes': '', 'wishlist-1-DELETE': '',
         })
         self.client.post(self.url, data)
         restaurant = Restaurant.objects.get(name='Dish Place')
         self.assertTrue(restaurant.dishes.filter(dish_name='Ramen', status='had').exists())
-        self.assertTrue(restaurant.dishes.filter(dish_name='Tonkotsu', status='wishlist', source='friend').exists())
+        wishlist_dish = restaurant.dishes.get(dish_name='Tonkotsu', status='wishlist')
+        self.assertEqual(wishlist_dish.source, 'Instagram')
+        self.assertEqual(wishlist_dish.source_detail, 'https://www.instagram.com/p/abc123/')
 
 
 def _review_payload(restaurant_name='Test Place', dishes=None):

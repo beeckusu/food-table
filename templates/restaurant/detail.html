@@ -94,6 +94,11 @@
                                     <i class="bi bi-journal-text"></i> Review
                                 </a>
                                 {% endif %}
+                                {% if dish.source_detail %}
+                                <a href="{{ dish.source_detail }}" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border ms-2 small text-decoration-none">via {{ dish.source|default:"link" }} <i class="bi bi-box-arrow-up-right"></i></a>
+                                {% elif dish.source %}
+                                <span class="badge bg-light text-dark border ms-2 small">via {{ dish.source }}</span>
+                                {% endif %}
                                 {% if dish.notes %}
                                 <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
                                 {% endif %}
@@ -133,6 +138,7 @@
                                         </div>
                                         <input type="hidden" name="status" value="{{ dish.status }}">
                                         <input type="hidden" name="source" value="{{ dish.source }}">
+                                        <input type="hidden" name="source_detail" value="{{ dish.source_detail }}">
                                         <div class="mb-3">
                                             <label class="form-label">Notes</label>
                                             <textarea name="notes" class="form-control" rows="2">{{ dish.notes }}</textarea>
@@ -211,7 +217,9 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <strong>{{ dish.dish_name }}</strong>
-                                {% if dish.source %}
+                                {% if dish.source_detail %}
+                                <a href="{{ dish.source_detail }}" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border ms-2 small text-decoration-none">via {{ dish.source|default:"link" }} <i class="bi bi-box-arrow-up-right"></i></a>
+                                {% elif dish.source %}
                                 <span class="badge bg-light text-dark border ms-2 small">via {{ dish.source }}</span>
                                 {% endif %}
                                 {% if dish.notes %}
@@ -293,6 +301,10 @@
                                             <input type="text" name="source" class="form-control" value="{{ dish.source }}" placeholder="e.g. friend, article, Instagram">
                                         </div>
                                         <div class="mb-3">
+                                            <label class="form-label">Link</label>
+                                            <input type="url" name="source_detail" class="form-control" value="{{ dish.source_detail }}" placeholder="Link (optional, e.g. Instagram URL)">
+                                        </div>
+                                        <div class="mb-3">
                                             <label class="form-label">Notes</label>
                                             <textarea name="notes" class="form-control" rows="2">{{ dish.notes }}</textarea>
                                         </div>
@@ -325,6 +337,9 @@
                         </div>
                         <div class="mb-2">
                             <input type="text" name="source" class="form-control form-control-sm" placeholder="Source (e.g. friend, article, Instagram)">
+                        </div>
+                        <div class="mb-2">
+                            <input type="url" name="source_detail" class="form-control form-control-sm" placeholder="Link (optional, e.g. Instagram URL)">
                         </div>
                         <div class="mb-2">
                             <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
