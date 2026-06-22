@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!modalElement) return; // Modal not present (user not authenticated)
 
     const modal = new bootstrap.Modal(modalElement);
+    const modalTitleEl = document.getElementById('encyclopediaLinkModalLabel');
+    const searchLabelPrefixEl = document.getElementById('searchLabelPrefix');
     const searchInput = document.getElementById('encyclopediaSearch');
     const searchResults = document.getElementById('searchResults');
     const searchStatus = document.getElementById('searchStatus');
@@ -79,6 +81,29 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedIndex = -1;
     let selectedParentId = null;
 
+    // Default mode: linking a dish to an encyclopedia entry. Other consumers (e.g.
+    // encyclopedia_parent.js) switch modes via window.EncyclopediaLinkModal.openForSelection
+    // instead of wiring their own competing listeners onto this modal's shared elements.
+    const dishLinkMode = {
+        title: 'Link Dish to Encyclopedia Entry',
+        searchLabelPrefix: 'Search for dish:',
+        showSuggestedMatches: true,
+        saveButtonLabel: '<i class="bi bi-check-circle"></i> Save & Link',
+        includeDishId: true,
+        namePrefill: () => currentDishName || '',
+        filterResults: (results) => results,
+        onResultSelected: (entry) => linkDishToEncyclopedia(currentDishId, entry.id, entry.name, entry.slug),
+        onEntryCreated: (entry) => completeDishLink(entry)
+    };
+    let activeMode = dishLinkMode;
+
+    function setActiveMode(mode) {
+        activeMode = mode;
+        modalTitleEl.textContent = mode.title;
+        searchLabelPrefixEl.textContent = mode.searchLabelPrefix;
+        saveAndLinkBtn.innerHTML = mode.saveButtonLabel;
+    }
+
     // Open modal when "Link to Encyclopedia" button is clicked
     function attachLinkHandlers() {
         document.querySelectorAll('.link-dish-btn').forEach(btn => {
@@ -123,6 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentDishName = null;
         selectedIndex = -1;
         resetToSearchView();
+        setActiveMode(dishLinkMode);
     });
 
     // Show/hide create form functions
@@ -132,8 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
         searchFooter.style.display = 'none';
         createFooter.style.display = 'block';
 
-        // Pre-populate name with dish name
-        entryNameInput.value = currentDishName || '';
+        // Pre-populate name with dish name (or whatever the active mode prefills)
+        entryNameInput.value = activeMode.namePrefill();
         entryCuisineTypeInput.value = '';
         entryDishCategoryInput.value = '';
         entryRegionInput.value = '';
@@ -229,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadSuggestions(dishName) {
-        if (!dishName || dishName.trim().length === 0) {
+        if (!activeMode.showSuggestedMatches || !dishName || dishName.trim().length === 0) {
             suggestedMatchesSection.style.display = 'none';
             return;
         }
@@ -262,12 +288,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add click handlers to suggestions
                 document.querySelectorAll('.suggestion-result').forEach(item => {
                     item.addEventListener('click', function() {
-                        linkDishToEncyclopedia(
-                            currentDishId,
-                            this.dataset.entryId,
-                            this.dataset.entryName,
-                            this.dataset.entrySlug
-                        );
+                        activeMode.onResultSelected({
+                            id: this.dataset.entryId,
+                            name: this.dataset.entryName,
+                            slug: this.dataset.entrySlug
+                        });
                     });
                 });
             })
@@ -285,7 +310,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 searchStatus.style.display = 'none';
 
-                if (data.results.length === 0) {
+                const results = activeMode.filterResults(data.results);
+
+                if (results.length === 0) {
                     searchResults.innerHTML = '';
                     searchStatus.style.display = 'block';
                     searchStatus.innerHTML = '<em>No results found</em>';
@@ -297,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showCreateFormBtn.style.display = 'inline-block';
 
                 selectedIndex = -1;
-                searchResults.innerHTML = data.results.map(entry => `
+                searchResults.innerHTML = results.map(entry => `
                     <button type="button" class="list-group-item list-group-item-action encyclopedia-result"
                             data-entry-id="${entry.id}"
                             data-entry-name="${entry.name}"
@@ -314,12 +341,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add click handlers to results
                 document.querySelectorAll('.encyclopedia-result').forEach(item => {
                     item.addEventListener('click', function() {
-                        linkDishToEncyclopedia(
-                            currentDishId,
-                            this.dataset.entryId,
-                            this.dataset.entryName,
-                            this.dataset.entrySlug
-                        );
+                        activeMode.onResultSelected({
+                            id: this.dataset.entryId,
+                            name: this.dataset.entryName,
+                            slug: this.dataset.entrySlug
+                        });
                     });
                 });
             })
@@ -385,6 +411,37 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Link error:', error);
             showToast('Error', 'Failed to link dish', 'danger');
         });
+    }
+
+    function completeDishLink(entry) {
+        // Update the UI
+        const dishBtn = document.querySelector(`.link-dish-btn[data-dish-id="${currentDishId}"]`);
+        if (dishBtn) {
+            const container = dishBtn.closest('.mb-2');
+
+            // Replace the link button with the encyclopedia link display
+            container.innerHTML = `
+                <small class="text-muted">
+                    <i class="bi bi-book"></i> Linked to:
+                    <a href="/encyclopedia/${entry.slug}/" class="text-decoration-none">
+                        <strong>${entry.name}</strong>
+                    </a>
+                    <button class="btn btn-link btn-sm p-0 ms-1 text-danger unlink-dish-btn"
+                            data-dish-id="${currentDishId}"
+                            style="font-size: 0.75rem; text-decoration: none;"
+                            title="Unlink encyclopedia entry">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </small>
+            `;
+
+            // Re-attach unlink handlers
+            attachUnlinkHandlers();
+        }
+        modal.hide();
+
+        // Show success message
+        showToast('Success', `Created and linked ${entry.name}`, 'success');
     }
 
     function unlinkDishFromEncyclopedia(dishId) {
@@ -551,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
             createFormError.textContent = 'Failed to create placeholder entries for unlinked dishes';
             createFormError.style.display = 'block';
             saveAndLinkBtn.disabled = false;
-            saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+            saveAndLinkBtn.innerHTML = activeMode.saveButtonLabel;
             return;
         }
 
@@ -564,9 +621,12 @@ document.addEventListener('DOMContentLoaded', function() {
             region: entryRegionInput.value.trim() || '',
             cultural_significance: entryCulturalSignificanceInput.value.trim() || '',
             popular_examples: entryPopularExamplesInput.value.trim() || '',
-            history: entryHistoryInput.value.trim() || '',
-            dish_id: currentDishId
+            history: entryHistoryInput.value.trim() || ''
         };
+
+        if (activeMode.includeDishId) {
+            data.dish_id = currentDishId;
+        }
 
         if (selectedParentId) {
             data.parent_id = selectedParentId;
@@ -588,37 +648,10 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             saveAndLinkBtn.disabled = false;
-            saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+            saveAndLinkBtn.innerHTML = activeMode.saveButtonLabel;
 
             if (data.success) {
-                // Update the UI
-                const dishBtn = document.querySelector(`.link-dish-btn[data-dish-id="${currentDishId}"]`);
-                if (dishBtn) {
-                    const container = dishBtn.closest('.mb-2');
-
-                    // Replace the link button with the encyclopedia link display
-                    container.innerHTML = `
-                        <small class="text-muted">
-                            <i class="bi bi-book"></i> Linked to:
-                            <a href="/encyclopedia/${data.encyclopedia.slug}/" class="text-decoration-none">
-                                <strong>${data.encyclopedia.name}</strong>
-                            </a>
-                            <button class="btn btn-link btn-sm p-0 ms-1 text-danger unlink-dish-btn"
-                                    data-dish-id="${currentDishId}"
-                                    style="font-size: 0.75rem; text-decoration: none;"
-                                    title="Unlink encyclopedia entry">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
-                        </small>
-                    `;
-
-                    // Re-attach unlink handlers
-                    attachUnlinkHandlers();
-                }
-                modal.hide();
-
-                // Show success message
-                showToast('Success', `Created and linked ${data.encyclopedia.name}`, 'success');
+                activeMode.onEntryCreated(data.encyclopedia);
             } else {
                 createFormError.textContent = data.error || 'Failed to create entry';
                 createFormError.style.display = 'block';
@@ -627,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Create error:', error);
             saveAndLinkBtn.disabled = false;
-            saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
+            saveAndLinkBtn.innerHTML = activeMode.saveButtonLabel;
             createFormError.textContent = 'Failed to create entry';
             createFormError.style.display = 'block';
         });
@@ -660,4 +693,36 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(alertDiv);
         setTimeout(() => alertDiv.remove(), 5000);
     }
+
+    // Public API for other scripts (e.g. encyclopedia_parent.js) to drive this modal in a
+    // custom selection mode, instead of wiring their own competing listeners onto its elements.
+    window.EncyclopediaLinkModal = {
+        openForSelection: function(config) {
+            setActiveMode({
+                title: config.title,
+                searchLabelPrefix: config.searchLabelPrefix,
+                showSuggestedMatches: false,
+                saveButtonLabel: config.saveButtonLabel,
+                includeDishId: false,
+                namePrefill: () => '',
+                filterResults: config.filterResults || (results => results),
+                onResultSelected: config.onResultSelected,
+                onEntryCreated: config.onEntryCreated
+            });
+
+            currentDishId = null;
+            currentDishName = null;
+            currentDishNameEl.textContent = config.nameForDisplay || '';
+            selectedIndex = -1;
+            resetToSearchView();
+            showCreateFormBtn.style.display = 'inline-block';
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            searchStatus.style.display = 'block';
+            searchStatus.innerHTML = '<em>Type at least 2 characters to search</em>';
+
+            modal.show();
+            setTimeout(() => searchInput.focus(), 100);
+        }
+    };
 });
