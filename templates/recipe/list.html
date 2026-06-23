@@ -49,7 +49,7 @@
                 </p>
                 {% if recipe.description %}
                 <p class="card-text">
-                    {{ recipe.description|truncatewords:20 }}
+                    {{ recipe.description|striptags|truncatewords:20 }}
                 </p>
                 {% endif %}
             </div>

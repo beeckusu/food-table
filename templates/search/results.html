@@ -126,7 +126,7 @@
                 <!-- Type-specific Content -->
                 {% if result.content_type == 'encyclopedia' %}
                     <p class="card-text">
-                        {{ result.description|truncatewords:20 }}
+                        {{ result.description|striptags|truncatewords:20 }}
                     </p>
                     {% if result.cuisine_type %}
                     <span class="badge bg-secondary">{{ result.cuisine_type }}</span>
@@ -161,7 +161,7 @@
                     </p>
                     {% if result.description %}
                     <p class="card-text">
-                        {{ result.description|truncatewords:20 }}
+                        {{ result.description|striptags|truncatewords:20 }}
                     </p>
                     {% endif %}
 
@@ -177,7 +177,7 @@
                     </div>
                     {% if result.notes %}
                     <p class="card-text">
-                        {{ result.notes|truncatewords:15 }}
+                        {{ result.notes|striptags|truncatewords:15 }}
                     </p>
                     {% endif %}
                 {% elif result.content_type == 'restaurant' %}

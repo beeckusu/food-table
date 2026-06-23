@@ -39,7 +39,7 @@
             <div class="card-body">
                 <h5 class="card-title">{{ entry.name }}</h5>
                 <p class="card-text">
-                    {{ entry.description|truncatewords:20 }}
+                    {{ entry.description|striptags|truncatewords:20 }}
                 </p>
                 {% if entry.cuisine_type %}
                 <span class="badge bg-secondary">{{ entry.cuisine_type }}</span>

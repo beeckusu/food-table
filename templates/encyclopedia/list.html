@@ -78,7 +78,7 @@
                                         <a href="{% url 'content:encyclopedia_detail' entry.slug %}">{{ entry.name }}</a>
                                     </h5>
                                     {% if entry.description %}
-                                    <p class="card-text small">{{ entry.description|truncatewords:20 }}</p>
+                                    <p class="card-text small">{{ entry.description|striptags|truncatewords:20 }}</p>
                                     {% endif %}
                                     {% if entry.has_children %}
                                     <small class="text-muted">
