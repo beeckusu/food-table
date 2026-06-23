@@ -195,7 +195,7 @@
   }
 
   // ── Restaurant block template ──────────────────────────────────────────────
-  function blockTemplate(hasSeparator) {
+  function blockTemplate() {
     var hasMaps = !!MAPS_API_KEY;
     var placesHtml = hasMaps
       ? '<div class="mb-2">' +
@@ -204,7 +204,7 @@
         '</div>'
       : '';
 
-    return '<div class="wb-restaurant-block' + (hasSeparator ? ' border-top mt-3 pt-3' : '') + '">' +
+    return '<div class="wb-restaurant-block">' +
 
       '<div class="d-flex justify-content-end mb-1">' +
       '<button type="button" class="btn btn-link btn-sm text-danger p-0 wb-remove-block-btn" style="display:none;">' +
@@ -261,17 +261,22 @@
       '</div>';
   }
 
-  function addBlock(isFirst) {
+  function addBlock(prepend) {
     var container = document.getElementById('wbBlocksContainer');
     var wrapper = document.createElement('div');
-    wrapper.innerHTML = blockTemplate(!isFirst);
+    wrapper.innerHTML = blockTemplate();
     var block = wrapper.firstElementChild;
     block._mode = 'search';
     block._placesAutocomplete = null;
     block._placesSessionUsed = false;
-    container.appendChild(block);
+    if (prepend && container.firstChild) {
+      container.insertBefore(block, container.firstChild);
+    } else {
+      container.appendChild(block);
+    }
     initBlock(block);
     updateRemoveButtons();
+    updateSeparators();
     return block;
   }
 
@@ -280,6 +285,15 @@
     blocks.forEach(function (block) {
       var btn = block.querySelector('.wb-remove-block-btn');
       if (btn) btn.style.display = blocks.length > 1 ? '' : 'none';
+    });
+  }
+
+  function updateSeparators() {
+    var blocks = document.querySelectorAll('#wbBlocksContainer .wb-restaurant-block');
+    blocks.forEach(function (block, i) {
+      block.classList.toggle('border-top', i > 0);
+      block.classList.toggle('mt-3', i > 0);
+      block.classList.toggle('pt-3', i > 0);
     });
   }
 
@@ -354,6 +368,7 @@
     removeBtn.addEventListener('click', function () {
       block.remove();
       updateRemoveButtons();
+      updateSeparators();
     });
 
     // Add dish row
@@ -438,7 +453,7 @@
   // ── Clear form ─────────────────────────────────────────────────────────────
   function clearForm() {
     document.getElementById('wbBlocksContainer').innerHTML = '';
-    addBlock(true);
+    addBlock();
     document.getElementById('wbErrorMsg').style.display = 'none';
     var btn = document.getElementById('wbAddBtn');
     btn.disabled = false;
@@ -447,7 +462,7 @@
 
   // ── Add another restaurant button ──────────────────────────────────────────
   document.getElementById('wbAddRestaurantBtn').addEventListener('click', function () {
-    addBlock(false);
+    addBlock(true);
   });
 
   // ── Skip ───────────────────────────────────────────────────────────────────
