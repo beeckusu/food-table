@@ -186,13 +186,21 @@ class Encyclopedia(models.Model):
 def update_search_vector(sender, instance, **kwargs):
     """
     Signal handler to automatically update search_vector field when Encyclopedia is saved.
-    Updates the search vector with combined name and description content.
+    Updates the search vector with combined name, classification, and description content.
     """
     # Avoid infinite recursion by checking if we're already updating
     if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
         return
 
-    # Update search_vector with name and description
+    # Update search_vector with name, cuisine_type/dish_category, and description.
+    # cuisine_type/dish_category are included so a search like "Chinese" matches
+    # dishes classified under that cuisine, not just entries whose name/description
+    # happens to contain the word.
     Encyclopedia.objects.filter(pk=instance.pk).update(
-        search_vector=SearchVector('name', weight='A') + SearchVector('description', weight='B')
+        search_vector=(
+            SearchVector('name', weight='A')
+            + SearchVector('cuisine_type', weight='B')
+            + SearchVector('dish_category', weight='B')
+            + SearchVector('description', weight='B')
+        )
     )

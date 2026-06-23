@@ -61,3 +61,37 @@ class EncyclopediaSearchApiViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         names = [r['name'] for r in json.loads(response.content)['results']]
         self.assertIn('Pho', names)
+
+    def test_exact_name_match_ranks_above_incidental_description_mentions(self):
+        """FT-176: searching 'Chinese' should surface the Chinese entry first, not
+        dishes that merely mention it several times in their description."""
+        make_entry(
+            name='Almond Cookies',
+            description='<p>A classic Chinese bakery treat. Chinese bakeries sell these '
+                         'for Chinese New Year, a Chinese favorite.</p>',
+            slug='almond-cookies'
+        )
+        make_entry(name='Chinese', cuisine_type='Chinese', description='A major East Asian cuisine.', slug='chinese')
+
+        response = self.client.get(self.url, {'q': 'Chinese'})
+
+        self.assertEqual(response.status_code, 200)
+        names = [r['name'] for r in json.loads(response.content)['results']]
+        self.assertEqual(names[0], 'Chinese')
+
+    def test_exact_cuisine_type_match_ranks_above_incidental_description_mentions(self):
+        """A dish tagged cuisine_type='Chinese' should outrank unrelated dishes whose
+        description just happens to mention 'Chinese' several times."""
+        make_entry(
+            name='Almond Cookies',
+            description='<p>A classic Chinese bakery treat. Chinese bakeries sell these '
+                         'for Chinese New Year, a Chinese favorite.</p>',
+            slug='almond-cookies'
+        )
+        make_entry(name='Kung Pao Chicken', cuisine_type='Chinese', description='Spicy stir-fry dish.', slug='kung-pao-chicken')
+
+        response = self.client.get(self.url, {'q': 'Chinese'})
+
+        self.assertEqual(response.status_code, 200)
+        names = [r['name'] for r in json.loads(response.content)['results']]
+        self.assertEqual(names[0], 'Kung Pao Chicken')

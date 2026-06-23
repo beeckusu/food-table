@@ -2,7 +2,7 @@ from django.db.utils import ProgrammingError
 from django.http import JsonResponse
 from django.views import View
 from django.contrib.postgres.search import SearchRank
-from django.db.models import F, Q
+from django.db.models import F, Q, Case, When, Value, IntegerField
 from content.models import Encyclopedia
 from content.utils.search import build_prefix_search_query
 
@@ -28,15 +28,25 @@ class EncyclopediaSearchApiView(View):
         if not query:
             return JsonResponse({'results': []})
 
+        # Exact matches on name/cuisine_type are boosted to the top, ahead of
+        # SearchRank, since a description that mentions the query several
+        # times can otherwise out-rank the entry the user is actually after
+        # (e.g. searching "Chinese" surfacing dishes whose blurb just mentions
+        # it, before the "Chinese" cuisine entry itself).
+        exact_name_match = Case(When(name__iexact=query, then=Value(1)), default=Value(0), output_field=IntegerField())
+        exact_cuisine_match = Case(When(cuisine_type__iexact=query, then=Value(1)), default=Value(0), output_field=IntegerField())
+
         # Strategy 1: Try full-text search with prefix matching.
         search_query = build_prefix_search_query(query)
         if search_query is not None:
             try:
                 entries = Encyclopedia.objects.annotate(
-                    rank=SearchRank(F('search_vector'), search_query)
+                    rank=SearchRank(F('search_vector'), search_query),
+                    exact_name_match=exact_name_match,
+                    exact_cuisine_match=exact_cuisine_match
                 ).filter(
                     search_vector=search_query
-                ).select_related('parent')
+                ).select_related('parent').order_by('-exact_name_match', '-exact_cuisine_match', '-rank')
                 has_results = entries.exists()
             except ProgrammingError:
                 has_results = False
@@ -45,10 +55,13 @@ class EncyclopediaSearchApiView(View):
 
         # Strategy 2: If no results, fallback to ILIKE partial matching
         if not has_results:
-            entries = Encyclopedia.objects.filter(
+            entries = Encyclopedia.objects.annotate(
+                exact_name_match=exact_name_match,
+                exact_cuisine_match=exact_cuisine_match
+            ).filter(
                 Q(name__icontains=query) |
                 Q(description__icontains=query)
-            ).select_related('parent')
+            ).select_related('parent').order_by('-exact_name_match', '-exact_cuisine_match', 'name')
 
         # Limit to top 20 results and order by relevance
         entries = entries[:20]
