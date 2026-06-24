@@ -425,7 +425,6 @@ document.addEventListener('DOMContentLoaded', function() {
             popular_examples: (v) => setQuillContentFromRtf(entryFormQuills.popularExamples, v),
             history: (v) => setQuillContentFromRtf(entryFormQuills.history, v),
             similar_dishes_globally: async (v) => {
-                similarDishesController.reset();
                 const names = v.split(',').map(s => s.trim()).filter(Boolean);
                 const rows = await Promise.all(names.map(name => similarDishesController.resolveExactMatch(name)));
                 rows.forEach(row => similarDishesController.addRow(row));
