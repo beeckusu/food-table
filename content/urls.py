@@ -22,6 +22,7 @@ urlpatterns = [
     path('restaurants/<int:pk>/dishes/<int:dish_pk>/mark-tried/', views.RestaurantDishMarkTriedView.as_view(), name='restaurant_dish_mark_tried'),
     path('reviews/', views.ReviewListView.as_view(), name='review_list'),
     path('reviews/<int:pk>/', views.ReviewDetailView.as_view(), name='review_detail'),
+    path('reviews/<int:pk>/share/', views.ReviewSharePageView.as_view(), name='review_share'),
     path('dishes/', views.ReviewDishListView.as_view(), name='review_dish_list'),
     path('recipes/', views.RecipeListView.as_view(), name='recipe_list'),
     path('recipes/<slug:slug>/', views.RecipeDetailView.as_view(), name='recipe_detail'),
@@ -44,4 +45,5 @@ urlpatterns = [
     path('api/encyclopedia/<int:entry_id>/edit/', views.EncyclopediaEditApiView.as_view(), name='api_encyclopedia_edit'),
     path('api/wishlist/bulk/', views.WishlistBulkCreateApiView.as_view(), name='api_wishlist_bulk_create'),
     path('api/instagram/preview/', views.InstagramPreviewApiView.as_view(), name='api_instagram_preview'),
+    path('api/reviews/<int:pk>/share-draft/', views.ReviewShareDraftApiView.as_view(), name='api_review_share_draft_save'),
 ]

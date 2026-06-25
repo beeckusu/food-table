@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load rtf_tags %}
+{% load static %}
+
+{% block title %}Share - {{ review.restaurant.name }} - Food Table{% endblock %}
+
+{% block extra_css %}
+<style>
+    .share-platform-tabs .nav-link { cursor: pointer; }
+    .share-source-item { cursor: pointer; }
+    .share-source-item:hover { background-color: #f8f9fa; }
+    .share-preview-card { white-space: pre-wrap; min-height: 6rem; }
+    .share-photo-thumb { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; cursor: pointer; opacity: 0.5; }
+    .share-photo-thumb.selected { opacity: 1; outline: 3px solid #0d6efd; }
+    .share-segment-row { background-color: #fff; }
+    .share-segment-type-shared { border-left: 4px solid #6c757d; }
+    .share-segment-type-instagram { border-left: 4px solid #e1306c; }
+    .share-segment-type-google { border-left: 4px solid #4285f4; }
+    .share-segment-type-yelp { border-left: 4px solid #d32323; }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'content:review_detail' pk=review.pk %}">{{ review.restaurant.name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Share</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Compose &amp; Share</h1>
+    <span id="shareSaveStatus" class="text-muted small"></span>
+</div>
+
+<div class="row">
+    <!-- Source panel -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Source material</h5>
+                <p class="text-muted small">Click a note to add it as a new shared segment. Click photos to attach them to the active platform.</p>
+
+                {% if review.notes %}
+                <div class="share-source-item border rounded p-2 mb-3" data-source-text="{{ review.notes|striptags }}">
+                    <strong class="small">Review notes</strong>
+                    <div class="small">{{ review.notes|rtf }}</div>
+                </div>
+                {% endif %}
+
+                {% if images %}
+                <div class="mb-3">
+                    <strong class="small d-block mb-1">Restaurant photos</strong>
+                    <div class="row row-cols-3 g-1">
+                        {% for image in images %}
+                        <div class="col">
+                            <img src="{{ image.image.url }}" class="share-photo-thumb" data-image-id="{{ image.id }}" alt="{{ image.caption }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% for dish in dishes %}
+                <div class="mb-3 border-top pt-2">
+                    <strong class="small">
+                        {% if dish.dish_name %}{{ dish.dish_name }}{% elif dish.encyclopedia_entry %}{{ dish.encyclopedia_entry.name }}{% else %}Dish{% endif %}
+                    </strong>
+                    {% if dish.notes %}
+                    <div class="share-source-item border rounded p-2 mt-1" data-source-text="{{ dish.notes|striptags }}">
+                        <div class="small">{{ dish.notes|rtf }}</div>
+                    </div>
+                    {% endif %}
+                    {% if dish.images.all %}
+                    <div class="row row-cols-3 g-1 mt-1">
+                        {% for image in dish.images.all %}
+                        <div class="col">
+                            <img src="{{ image.image.url }}" class="share-photo-thumb" data-image-id="{{ image.id }}" alt="{{ image.caption }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Compose + preview -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-semibold mb-0">Compose</label>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-plus-circle"></i> Add segment
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item share-add-segment-btn" href="#" data-type="shared">Shared</a></li>
+                            <li><a class="dropdown-item share-add-segment-btn" href="#" data-type="instagram">Instagram</a></li>
+                            <li><a class="dropdown-item share-add-segment-btn" href="#" data-type="google">Google</a></li>
+                            <li><a class="dropdown-item share-add-segment-btn" href="#" data-type="yelp">Yelp</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="text-muted small">Each segment is tagged Shared or a specific platform. Shared segments appear in every platform's text; platform segments are interleaved in only at their position.</p>
+                <div id="shareSegments"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <ul class="nav nav-tabs share-platform-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-platform="instagram" type="button">Instagram</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-platform="google" type="button">Google</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-platform="yelp" type="button">Yelp</button>
+                    </li>
+                </ul>
+
+                <div class="mt-4">
+                    <h6 class="text-muted">Preview — <span id="sharePlatformLabel">Instagram</span></h6>
+                    <p class="text-muted small mb-1">Photos selected in the source panel while this tab is active are attached here.</p>
+                    <div id="sharePreview" class="border rounded p-3 share-preview-card bg-light"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'content:review_detail' pk=review.pk %}" class="btn btn-secondary">Back to Review</a>
+</div>
+
+{{ page_data|json_script:"share-page-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/review_share.js' %}?v={% now "U" %}"></script>
+{% endblock %}

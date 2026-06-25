@@ -35,6 +35,8 @@ from .encyclopedia_edit_api import EncyclopediaEditApiView
 from .wishlist_bulk import WishlistBulkCreateApiView
 from .wishlist_bulk_page import WishlistBulkPageView
 from .instagram_preview_api import InstagramPreviewApiView
+from .review_share_page import ReviewSharePageView
+from .review_share_draft_api import ReviewShareDraftApiView
 
 __all__ = [
     'HomeView',
@@ -74,4 +76,6 @@ __all__ = [
     'WishlistBulkCreateApiView',
     'WishlistBulkPageView',
     'InstagramPreviewApiView',
+    'ReviewSharePageView',
+    'ReviewShareDraftApiView',
 ]
