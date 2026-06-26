@@ -228,11 +228,19 @@
       '<button type="button" class="btn btn-link btn-sm p-0 wb-back-to-search-btn">' +
       '<i class="bi bi-arrow-left"></i> Back to search</button>' +
       '</div>' +
-      placesHtml +
       '<div class="mb-2">' +
       '<input type="text" class="form-control form-control-sm wb-new-name" placeholder="Restaurant name *">' +
       '<input type="hidden" class="wb-new-place-id">' +
       '</div>' +
+      '<div class="form-check mb-2">' +
+      '<input class="form-check-input wb-new-is-popup" type="checkbox">' +
+      '<label class="form-check-label small">Pop-up restaurant (no fixed address)</label>' +
+      '</div>' +
+      '<div class="wb-new-website-section" style="display:none;">' +
+      '<input type="url" class="form-control form-control-sm wb-new-website mb-2" placeholder="Website URL *">' +
+      '</div>' +
+      '<div class="wb-address-section">' +
+      placesHtml +
       '<div class="mb-2">' +
       '<input type="text" class="form-control form-control-sm wb-new-street" placeholder="Street address">' +
       '</div>' +
@@ -243,6 +251,7 @@
       '<div class="row g-2">' +
       '<div class="col"><input type="text" class="form-control form-control-sm wb-new-country" placeholder="Country"></div>' +
       '<div class="col"><input type="text" class="form-control form-control-sm wb-new-postal" placeholder="Postal code"></div>' +
+      '</div>' +
       '</div>' +
       '</div>' +
 
@@ -361,6 +370,16 @@
       block._mode = 'search';
       searchSection.style.display = '';
       newSection.style.display = 'none';
+    });
+
+    // Pop-up toggle
+    var isPopupCheckbox = block.querySelector('.wb-new-is-popup');
+    var websiteSection = block.querySelector('.wb-new-website-section');
+    var addressSection = block.querySelector('.wb-address-section');
+    isPopupCheckbox.addEventListener('change', function () {
+      var isPopup = isPopupCheckbox.checked;
+      websiteSection.style.display = isPopup ? '' : 'none';
+      addressSection.style.display = isPopup ? 'none' : '';
     });
 
     // Remove block
@@ -503,11 +522,19 @@
         showError('Please enter a restaurant name.');
         return null;
       }
+      var isPopup = block.querySelector('.wb-new-is-popup').checked;
+      var website = block.querySelector('.wb-new-website').value.trim();
+      if (isPopup && !website) {
+        showError('Please enter a website URL for pop-up restaurants.');
+        return null;
+      }
       var placeIdEl = block.querySelector('.wb-new-place-id');
       return {
         url: urls[currentIdx],
         restaurant_id: null,
         restaurant_name: newName,
+        is_pop_up: isPopup,
+        website: website,
         street_address: block.querySelector('.wb-new-street').value.trim(),
         city: block.querySelector('.wb-new-city').value.trim(),
         province: block.querySelector('.wb-new-province').value.trim(),

@@ -27,13 +27,20 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
             if name:
                 dish_entries.append((name, (d.get('note') or '').strip()))
 
+        is_pop_up = bool(data.get('is_pop_up'))
+        website = (data.get('website') or '').strip()
+
         if restaurant_id:
             restaurant = get_object_or_404(Restaurant, pk=restaurant_id)
         elif restaurant_name:
             restaurant = Restaurant.objects.filter(name=restaurant_name).first()
             if not restaurant:
+                if is_pop_up and not website:
+                    return JsonResponse({'error': 'Website is required for pop-up restaurants.'}, status=400)
                 restaurant = Restaurant.objects.create(
                     name=restaurant_name,
+                    is_pop_up=is_pop_up,
+                    website=website,
                     street_address=(data.get('street_address') or '').strip(),
                     city=(data.get('city') or '').strip(),
                     province=(data.get('province') or '').strip(),

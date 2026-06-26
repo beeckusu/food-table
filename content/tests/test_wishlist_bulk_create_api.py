@@ -141,3 +141,38 @@ class WishlistBulkCreateApiViewTest(TestCase):
         )
         self.post({'restaurant_id': restaurant.pk, 'dishes': [{'name': 'Ramen', 'note': ''}]})
         self.assertEqual(RestaurantDish.objects.filter(restaurant=restaurant).count(), 1)
+
+    def test_new_popup_restaurant_created_with_website(self):
+        response = self.post({
+            'restaurant_name': 'Pop-Up Kitchen',
+            'is_pop_up': True,
+            'website': 'https://popupkitchen.com',
+            'dishes': [{'name': 'Tacos', 'note': ''}],
+        })
+        self.assertEqual(response.status_code, 200)
+        restaurant = Restaurant.objects.get(name='Pop-Up Kitchen')
+        self.assertTrue(restaurant.is_pop_up)
+        self.assertEqual(restaurant.website, 'https://popupkitchen.com')
+
+    def test_new_popup_restaurant_without_website_returns_error(self):
+        response = self.post({
+            'restaurant_name': 'Pop-Up Kitchen',
+            'is_pop_up': True,
+            'website': '',
+            'dishes': [{'name': 'Tacos', 'note': ''}],
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Restaurant.objects.filter(name='Pop-Up Kitchen').exists())
+
+    def test_non_popup_restaurant_ignores_is_pop_up_flag(self):
+        response = self.post({
+            'restaurant_name': 'Corner Bistro',
+            'is_pop_up': False,
+            'street_address': '123 Main St',
+            'city': 'Toronto',
+            'country': 'Canada',
+            'dishes': [{'name': 'Burger', 'note': ''}],
+        })
+        self.assertEqual(response.status_code, 200)
+        restaurant = Restaurant.objects.get(name='Corner Bistro')
+        self.assertFalse(restaurant.is_pop_up)
