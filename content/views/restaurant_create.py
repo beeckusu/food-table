@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.forms import formset_factory
-from content.models import RestaurantDish, ApiUsageLog
+from content.models import RestaurantDish, RestaurantDishReference, ApiUsageLog
 from content.forms import RestaurantForm, RestaurantDishInlineForm
 
 
@@ -56,6 +56,10 @@ class RestaurantCreateView(LoginRequiredMixin, View):
                     dish.restaurant = restaurant
                     dish.status = RestaurantDish.STATUS_WISHLIST
                     dish.save()
+                    src = form.cleaned_data.get('source', '').strip()
+                    det = form.cleaned_data.get('source_detail', '').strip()
+                    if src or det:
+                        RestaurantDishReference.objects.create(dish=dish, source=src, source_detail=det)
 
             return redirect('content:restaurant_detail', pk=restaurant.pk)
 

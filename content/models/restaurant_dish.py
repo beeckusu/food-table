@@ -24,8 +24,6 @@ class RestaurantDish(models.Model):
         related_name='restaurant_dishes'
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_WISHLIST)
-    source = models.CharField(max_length=255, blank=True)
-    source_detail = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
     review = models.ForeignKey(
         'Review',

@@ -3,7 +3,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseForbidden
-from content.models import Restaurant, RestaurantDish
+from content.models import Restaurant, RestaurantDish, RestaurantDishReference
 from content.forms import RestaurantDishForm
 
 
@@ -20,7 +20,7 @@ class RestaurantDetailView(LoginRequiredMixin, DetailView):
         ).select_related('review')
         context['dishes_wishlist'] = restaurant.dishes.filter(
             status=RestaurantDish.STATUS_WISHLIST
-        )
+        ).prefetch_related('references')
         context['had_form'] = RestaurantDishForm(initial={'status': RestaurantDish.STATUS_HAD})
         context['wishlist_form'] = RestaurantDishForm(initial={'status': RestaurantDish.STATUS_WISHLIST})
         context['reviews'] = restaurant.reviews.filter(is_private=False).prefetch_related(
@@ -50,6 +50,7 @@ class RestaurantDishCreateView(LoginRequiredMixin, View):
             dish = form.save(commit=False)
             dish.restaurant = restaurant
             dish.save()
+            _save_references(dish, request.POST)
         return redirect('content:restaurant_detail', pk=pk)
 
 
@@ -62,6 +63,8 @@ class RestaurantDishUpdateView(LoginRequiredMixin, View):
         form = RestaurantDishForm(request.POST, instance=dish)
         if form.is_valid():
             form.save()
+            dish.references.all().delete()
+            _save_references(dish, request.POST)
         return redirect('content:restaurant_detail', pk=pk)
 
 
@@ -91,3 +94,12 @@ class RestaurantDishMarkTriedView(LoginRequiredMixin, View):
                 pass
         dish.save()
         return redirect('content:restaurant_detail', pk=pk)
+
+
+def _save_references(dish, post_data):
+    sources = post_data.getlist('ref_source')
+    details = post_data.getlist('ref_source_detail')
+    for src, det in zip(sources, details):
+        src, det = src.strip()[:255], det.strip()[:255]
+        if src or det:
+            RestaurantDishReference.objects.create(dish=dish, source=src, source_detail=det)

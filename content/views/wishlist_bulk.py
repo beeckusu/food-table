@@ -3,7 +3,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, HttpResponseForbidden
-from content.models import Restaurant, RestaurantDish, ApiUsageLog
+from content.models import Restaurant, RestaurantDish, RestaurantDishReference, ApiUsageLog
 
 
 class WishlistBulkCreateApiView(LoginRequiredMixin, View):
@@ -49,15 +49,28 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
 
         source_detail = url[:255] if url else ''
         for dish_name, note in dish_entries:
-            notes = '\n'.join(part for part in (source_detail, note) if part)
-            RestaurantDish.objects.create(
+            dish = RestaurantDish.objects.filter(
                 restaurant=restaurant,
-                dish_name=dish_name,
+                dish_name__iexact=dish_name,
                 status=RestaurantDish.STATUS_WISHLIST,
-                source='Instagram',
-                source_detail=source_detail,
-                notes=notes,
-            )
+            ).first()
+            if dish:
+                if note and note not in dish.notes:
+                    dish.notes = '\n'.join(filter(None, [dish.notes, note]))
+                    dish.save(update_fields=['notes'])
+            else:
+                dish = RestaurantDish.objects.create(
+                    restaurant=restaurant,
+                    dish_name=dish_name,
+                    status=RestaurantDish.STATUS_WISHLIST,
+                    notes=note,
+                )
+            if source_detail and not dish.references.filter(source_detail=source_detail).exists():
+                RestaurantDishReference.objects.create(
+                    dish=dish,
+                    source='Instagram',
+                    source_detail=source_detail,
+                )
 
         return JsonResponse({
             'success': True,

@@ -1,11 +1,17 @@
 from django.contrib import admin
-from content.models import Restaurant, RestaurantDish
+from content.models import Restaurant, RestaurantDish, RestaurantDishReference
+
+
+class RestaurantDishReferenceInline(admin.TabularInline):
+    model = RestaurantDishReference
+    extra = 1
+    fields = ['source', 'source_detail']
 
 
 class RestaurantDishInline(admin.TabularInline):
     model = RestaurantDish
     extra = 0
-    fields = ['dish_name', 'status', 'source', 'source_detail', 'notes', 'review']
+    fields = ['dish_name', 'status', 'notes', 'review']
     autocomplete_fields = ['review']
 
 
@@ -25,7 +31,8 @@ class RestaurantAdmin(admin.ModelAdmin):
 
 @admin.register(RestaurantDish)
 class RestaurantDishAdmin(admin.ModelAdmin):
-    list_display = ['dish_name', 'restaurant', 'status', 'source', 'created_at']
-    list_filter = ['status', 'source']
+    list_display = ['dish_name', 'restaurant', 'status', 'created_at']
+    list_filter = ['status']
     search_fields = ['dish_name', 'restaurant__name']
     autocomplete_fields = ['restaurant', 'review']
+    inlines = [RestaurantDishReferenceInline]

@@ -94,11 +94,6 @@
                                     <i class="bi bi-journal-text"></i> Review
                                 </a>
                                 {% endif %}
-                                {% if dish.source_detail %}
-                                <a href="{{ dish.source_detail }}" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border ms-2 small text-decoration-none">via {{ dish.source|default:"link" }} <i class="bi bi-box-arrow-up-right"></i></a>
-                                {% elif dish.source %}
-                                <span class="badge bg-light text-dark border ms-2 small">via {{ dish.source }}</span>
-                                {% endif %}
                                 {% if dish.notes %}
                                 <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
                                 {% endif %}
@@ -137,8 +132,6 @@
                                             <input type="text" name="dish_name" class="form-control" value="{{ dish.dish_name }}" required>
                                         </div>
                                         <input type="hidden" name="status" value="{{ dish.status }}">
-                                        <input type="hidden" name="source" value="{{ dish.source }}">
-                                        <input type="hidden" name="source_detail" value="{{ dish.source_detail }}">
                                         <div class="mb-3">
                                             <label class="form-label">Notes</label>
                                             <textarea name="notes" class="form-control" rows="2">{{ dish.notes }}</textarea>
@@ -217,11 +210,13 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <strong>{{ dish.dish_name }}</strong>
-                                {% if dish.source_detail %}
-                                <a href="{{ dish.source_detail }}" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border ms-2 small text-decoration-none">via {{ dish.source|default:"link" }} <i class="bi bi-box-arrow-up-right"></i></a>
-                                {% elif dish.source %}
-                                <span class="badge bg-light text-dark border ms-2 small">via {{ dish.source }}</span>
+                                {% for ref in dish.references.all %}
+                                {% if ref.source_detail %}
+                                <a href="{{ ref.source_detail }}" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border ms-2 small text-decoration-none">via {{ ref.source|default:"link" }} <i class="bi bi-box-arrow-up-right"></i></a>
+                                {% elif ref.source %}
+                                <span class="badge bg-light text-dark border ms-2 small">via {{ ref.source }}</span>
                                 {% endif %}
+                                {% endfor %}
                                 {% if dish.notes %}
                                 <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
                                 {% endif %}
@@ -297,12 +292,23 @@
                                         </div>
                                         <input type="hidden" name="status" value="{{ dish.status }}">
                                         <div class="mb-3">
-                                            <label class="form-label">Source</label>
-                                            <input type="text" name="source" class="form-control" value="{{ dish.source }}" placeholder="e.g. friend, article, Instagram">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Link</label>
-                                            <input type="url" name="source_detail" class="form-control" value="{{ dish.source_detail }}" placeholder="Link (optional, e.g. Instagram URL)">
+                                            <label class="form-label">References</label>
+                                            <div id="refs-{{ dish.pk }}">
+                                                {% for ref in dish.references.all %}
+                                                <div class="d-flex gap-2 mb-2 ref-row">
+                                                    <input type="text" name="ref_source" class="form-control form-control-sm" value="{{ ref.source }}" placeholder="e.g. friend, Instagram">
+                                                    <input type="url" name="ref_source_detail" class="form-control form-control-sm" value="{{ ref.source_detail }}" placeholder="Link (optional)">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-ref flex-shrink-0">&times;</button>
+                                                </div>
+                                                {% empty %}
+                                                <div class="d-flex gap-2 mb-2 ref-row">
+                                                    <input type="text" name="ref_source" class="form-control form-control-sm" placeholder="e.g. friend, Instagram">
+                                                    <input type="url" name="ref_source_detail" class="form-control form-control-sm" placeholder="Link (optional)">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-ref flex-shrink-0">&times;</button>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary add-ref" data-target="refs-{{ dish.pk }}">+ Add reference</button>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Notes</label>
@@ -336,10 +342,15 @@
                             <input type="text" name="dish_name" class="form-control form-control-sm" placeholder="Dish name" required>
                         </div>
                         <div class="mb-2">
-                            <input type="text" name="source" class="form-control form-control-sm" placeholder="Source (e.g. friend, article, Instagram)">
-                        </div>
-                        <div class="mb-2">
-                            <input type="url" name="source_detail" class="form-control form-control-sm" placeholder="Link (optional, e.g. Instagram URL)">
+                            <label class="form-label form-label-sm mb-1">References</label>
+                            <div id="refs-add-{{ restaurant.pk }}">
+                                <div class="d-flex gap-2 mb-1 ref-row">
+                                    <input type="text" name="ref_source" class="form-control form-control-sm" placeholder="Source (e.g. friend, Instagram)">
+                                    <input type="url" name="ref_source_detail" class="form-control form-control-sm" placeholder="Link (optional)">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-ref flex-shrink-0">&times;</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary add-ref" data-target="refs-add-{{ restaurant.pk }}">+ Add reference</button>
                         </div>
                         <div class="mb-2">
                             <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
@@ -419,4 +430,32 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addRefRow(containerId) {
+    const container = document.getElementById(containerId);
+    const row = document.createElement('div');
+    row.className = 'd-flex gap-2 mb-2 ref-row';
+    row.innerHTML =
+        '<input type="text" name="ref_source" class="form-control form-control-sm" placeholder="e.g. friend, Instagram">' +
+        '<input type="url" name="ref_source_detail" class="form-control form-control-sm" placeholder="Link (optional)">' +
+        '<button type="button" class="btn btn-sm btn-outline-danger remove-ref flex-shrink-0">&times;</button>';
+    container.appendChild(row);
+}
+
+document.addEventListener('click', function (e) {
+    const addBtn = e.target.closest('.add-ref');
+    if (addBtn) {
+        addRefRow(addBtn.dataset.target);
+        return;
+    }
+    const removeBtn = e.target.closest('.remove-ref');
+    if (removeBtn) {
+        const row = removeBtn.closest('.ref-row');
+        if (row) row.remove();
+    }
+});
+</script>
 {% endblock %}

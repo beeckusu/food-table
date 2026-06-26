@@ -2,7 +2,7 @@ import json
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
-from content.models import Restaurant, RestaurantDish
+from content.models import Restaurant, RestaurantDish, RestaurantDishReference
 from content.forms import RestaurantForm
 
 
@@ -210,26 +210,37 @@ class RestaurantDishCRUDTest(TestCase):
 
     def test_create_had_dish(self):
         url = reverse('content:restaurant_dish_create', kwargs={'pk': self.restaurant.pk})
-        self.client.post(url, {'dish_name': 'Ramen', 'status': 'had', 'source': '', 'source_detail': '', 'notes': ''})
+        self.client.post(url, {'dish_name': 'Ramen', 'status': 'had', 'notes': ''})
         self.assertTrue(RestaurantDish.objects.filter(restaurant=self.restaurant, dish_name='Ramen', status='had').exists())
 
     def test_create_wishlist_dish_with_source(self):
         url = reverse('content:restaurant_dish_create', kwargs={'pk': self.restaurant.pk})
         self.client.post(url, {
             'dish_name': 'Tonkotsu', 'status': 'wishlist',
-            'source': 'friend', 'notes': ''
+            'ref_source': 'friend', 'ref_source_detail': '', 'notes': ''
         })
         dish = RestaurantDish.objects.get(restaurant=self.restaurant, dish_name='Tonkotsu')
-        self.assertEqual(dish.source, 'friend')
+        self.assertEqual(dish.references.first().source, 'friend')
 
     def test_create_wishlist_dish_with_source_detail(self):
         url = reverse('content:restaurant_dish_create', kwargs={'pk': self.restaurant.pk})
         self.client.post(url, {
             'dish_name': 'Tonkotsu', 'status': 'wishlist',
-            'source': 'Instagram', 'source_detail': 'https://www.instagram.com/p/abc123/', 'notes': ''
+            'ref_source': 'Instagram', 'ref_source_detail': 'https://www.instagram.com/p/abc123/', 'notes': ''
         })
         dish = RestaurantDish.objects.get(restaurant=self.restaurant, dish_name='Tonkotsu')
-        self.assertEqual(dish.source_detail, 'https://www.instagram.com/p/abc123/')
+        self.assertEqual(dish.references.first().source_detail, 'https://www.instagram.com/p/abc123/')
+
+    def test_create_wishlist_dish_with_multiple_references(self):
+        url = reverse('content:restaurant_dish_create', kwargs={'pk': self.restaurant.pk})
+        self.client.post(url, {
+            'dish_name': 'Tonkotsu', 'status': 'wishlist',
+            'ref_source': ['friend', 'Instagram'],
+            'ref_source_detail': ['', 'https://www.instagram.com/p/abc123/'],
+            'notes': ''
+        })
+        dish = RestaurantDish.objects.get(restaurant=self.restaurant, dish_name='Tonkotsu')
+        self.assertEqual(dish.references.count(), 2)
 
     def test_delete_dish(self):
         dish = make_dish(self.restaurant)
@@ -240,19 +251,30 @@ class RestaurantDishCRUDTest(TestCase):
     def test_update_dish(self):
         dish = make_dish(self.restaurant, dish_name='Old Name')
         url = reverse('content:restaurant_dish_update', kwargs={'pk': self.restaurant.pk, 'dish_pk': dish.pk})
-        self.client.post(url, {'dish_name': 'New Name', 'status': 'wishlist', 'source': '', 'source_detail': '', 'notes': ''})
+        self.client.post(url, {'dish_name': 'New Name', 'status': 'wishlist', 'notes': ''})
         dish.refresh_from_db()
         self.assertEqual(dish.dish_name, 'New Name')
 
-    def test_update_dish_sets_source_detail(self):
+    def test_update_dish_sets_reference(self):
         dish = make_dish(self.restaurant, dish_name='Ramen')
         url = reverse('content:restaurant_dish_update', kwargs={'pk': self.restaurant.pk, 'dish_pk': dish.pk})
         self.client.post(url, {
             'dish_name': 'Ramen', 'status': 'wishlist',
-            'source': 'Instagram', 'source_detail': 'https://www.instagram.com/p/xyz789/', 'notes': ''
+            'ref_source': 'Instagram', 'ref_source_detail': 'https://www.instagram.com/p/xyz789/', 'notes': ''
         })
-        dish.refresh_from_db()
-        self.assertEqual(dish.source_detail, 'https://www.instagram.com/p/xyz789/')
+        ref = dish.references.first()
+        self.assertEqual(ref.source_detail, 'https://www.instagram.com/p/xyz789/')
+
+    def test_update_dish_replaces_references(self):
+        dish = make_dish(self.restaurant, dish_name='Ramen')
+        RestaurantDishReference.objects.create(dish=dish, source='old', source_detail='')
+        url = reverse('content:restaurant_dish_update', kwargs={'pk': self.restaurant.pk, 'dish_pk': dish.pk})
+        self.client.post(url, {
+            'dish_name': 'Ramen', 'status': 'wishlist',
+            'ref_source': 'new', 'ref_source_detail': '', 'notes': ''
+        })
+        self.assertEqual(dish.references.count(), 1)
+        self.assertEqual(dish.references.first().source, 'new')
 
 
 class RestaurantDishMarkTriedTest(TestCase):
@@ -284,7 +306,7 @@ class RestaurantCreateViewTest(TestCase):
     def _base_formset_data(self):
         return {
             'had-TOTAL_FORMS': '1', 'had-INITIAL_FORMS': '0', 'had-MIN_NUM_FORMS': '0', 'had-MAX_NUM_FORMS': '1000',
-            'had-0-dish_name': '', 'had-0-source': '', 'had-0-source_detail': '', 'had-0-notes': '', 'had-0-DELETE': '',
+            'had-0-dish_name': '', 'had-0-notes': '', 'had-0-DELETE': '',
             'wishlist-TOTAL_FORMS': '1', 'wishlist-INITIAL_FORMS': '0', 'wishlist-MIN_NUM_FORMS': '0', 'wishlist-MAX_NUM_FORMS': '1000',
             'wishlist-0-dish_name': '', 'wishlist-0-source': '', 'wishlist-0-source_detail': '', 'wishlist-0-notes': '', 'wishlist-0-DELETE': '',
         }
@@ -300,8 +322,8 @@ class RestaurantCreateViewTest(TestCase):
         data.update(self._base_formset_data())
         data.update({
             'had-TOTAL_FORMS': '2',
-            'had-0-dish_name': 'Ramen', 'had-0-source': '', 'had-0-source_detail': '', 'had-0-notes': '', 'had-0-DELETE': '',
-            'had-1-dish_name': '', 'had-1-source': '', 'had-1-source_detail': '', 'had-1-notes': '', 'had-1-DELETE': '',
+            'had-0-dish_name': 'Ramen', 'had-0-notes': '', 'had-0-DELETE': '',
+            'had-1-dish_name': '', 'had-1-notes': '', 'had-1-DELETE': '',
             'wishlist-TOTAL_FORMS': '2',
             'wishlist-0-dish_name': 'Tonkotsu', 'wishlist-0-source': 'Instagram',
             'wishlist-0-source_detail': 'https://www.instagram.com/p/abc123/', 'wishlist-0-notes': '', 'wishlist-0-DELETE': '',
@@ -311,8 +333,9 @@ class RestaurantCreateViewTest(TestCase):
         restaurant = Restaurant.objects.get(name='Dish Place')
         self.assertTrue(restaurant.dishes.filter(dish_name='Ramen', status='had').exists())
         wishlist_dish = restaurant.dishes.get(dish_name='Tonkotsu', status='wishlist')
-        self.assertEqual(wishlist_dish.source, 'Instagram')
-        self.assertEqual(wishlist_dish.source_detail, 'https://www.instagram.com/p/abc123/')
+        ref = wishlist_dish.references.first()
+        self.assertEqual(ref.source, 'Instagram')
+        self.assertEqual(ref.source_detail, 'https://www.instagram.com/p/abc123/')
 
 
 def _review_payload(restaurant_name='Test Place', dishes=None):
@@ -436,7 +459,7 @@ class RestaurantCreateViewPopUpTest(TestCase):
     def _base_formset_data(self):
         return {
             'had-TOTAL_FORMS': '1', 'had-INITIAL_FORMS': '0', 'had-MIN_NUM_FORMS': '0', 'had-MAX_NUM_FORMS': '1000',
-            'had-0-dish_name': '', 'had-0-source': '', 'had-0-source_detail': '', 'had-0-notes': '', 'had-0-DELETE': '',
+            'had-0-dish_name': '', 'had-0-notes': '', 'had-0-DELETE': '',
             'wishlist-TOTAL_FORMS': '1', 'wishlist-INITIAL_FORMS': '0', 'wishlist-MIN_NUM_FORMS': '0', 'wishlist-MAX_NUM_FORMS': '1000',
             'wishlist-0-dish_name': '', 'wishlist-0-source': '', 'wishlist-0-source_detail': '', 'wishlist-0-notes': '', 'wishlist-0-DELETE': '',
         }
