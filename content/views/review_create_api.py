@@ -16,7 +16,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.contenttypes.models import ContentType
 
-from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image, RestaurantDish
+from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image, RestaurantDish, RestaurantDishReference
 
 logger = logging.getLogger(__name__)
 
@@ -255,12 +255,15 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                     wishlist_dish.encyclopedia_entry = encyclopedia_entry
                 wishlist_dish.save()
             else:
-                RestaurantDish.objects.create(
+                new_dish = RestaurantDish.objects.create(
                     restaurant=review.restaurant,
                     dish_name=dish_data['name'],
                     encyclopedia_entry=encyclopedia_entry,
                     status=RestaurantDish.STATUS_HAD,
                     review=review,
+                )
+                RestaurantDishReference.objects.create(
+                    dish=new_dish,
                     source='review',
                 )
 
