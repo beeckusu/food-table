@@ -127,3 +127,22 @@ if env.bool('USE_HTTPS', default=False):
 CONFLUENCE_EMAIL = env('CONFLUENCE_EMAIL', default=None)
 CONFLUENCE_API_TOKEN = env('CONFLUENCE_API_TOKEN', default=None)
 CONFLUENCE_SITE_URL = env('CONFLUENCE_SITE_URL', default='https://gavinlu.atlassian.net')
+
+# Without this, Django's default logging only emails ADMINS (unconfigured here) on
+# unhandled exceptions, so 500s in production leave no trace in Render's log output.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
