@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from content.views.review_draft_api import ReviewDraftSaveApiView, ReviewDraftRetrieveApiView, ReviewDraftDeleteApiView
 from content.views.review_create_api import ReviewCreateApiView
+from content.views.review_update_api import ReviewEditDataApiView, ReviewUpdateApiView
 
 app_name = 'content'
 
@@ -37,6 +38,8 @@ urlpatterns = [
     path('api/dishes/<int:dish_id>/link/', views.DishLinkApiView.as_view(), name='api_dish_link'),
     path('api/dishes/<int:dish_id>/upload-image/', views.DishImageUploadApiView.as_view(), name='api_dish_image_upload'),
     path('api/reviews/create/', ReviewCreateApiView.as_view(), name='api_review_create'),
+    path('api/reviews/<int:pk>/edit-data/', ReviewEditDataApiView.as_view(), name='api_review_edit_data'),
+    path('api/reviews/<int:pk>/update/', ReviewUpdateApiView.as_view(), name='api_review_update'),
     path('api/reviews/draft/', ReviewDraftSaveApiView.as_view(), name='api_review_draft_save'),
     path('api/reviews/draft/retrieve/', ReviewDraftRetrieveApiView.as_view(), name='api_review_draft_retrieve'),
     path('api/reviews/draft/<str:draft_id>/delete/', ReviewDraftDeleteApiView.as_view(), name='api_review_draft_delete'),

@@ -1,5 +1,5 @@
 // Review Modal JavaScript
-// Handles multi-step review creation workflow
+// Handles multi-step review creation and editing workflow
 
 document.addEventListener('DOMContentLoaded', function() {
     const modalElement = document.getElementById('reviewModal');
@@ -29,24 +29,37 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentStep = 0;
     let formData = {
         basicInfo: {},
-        location: {},
+        restaurant: {},
         rating: {},
         dishes: []
     };
     let hasUnsavedChanges = false;
     let restaurantSearchTimeout = null;
 
+    // Editing an existing review (set by openModalForEdit); null means create mode
+    let editingReviewId = null;
+
+    // Restaurant picker mode: 'search' (pick existing) or 'new' (create restaurant)
+    let restaurantMode = 'search';
+
+    // Google Places autocomplete for the "new restaurant" address fields
+    const MAPS_API_KEY = window.REVIEW_MAPS_API_KEY || '';
+    let placesAutocomplete = null;
+    let mapsScriptLoaded = false;
+    let pendingPlaceInits = [];
+    let placesSessionUsed = false;
+
     // Quill editor for review notes — initialized lazily when Step 3 becomes visible
     let reviewNotesQuill = null;
 
-    // Review-level images (base64 strings), populated on the rating step
+    // Review-level images ({id, src} objects; id is null for newly-added images), populated on the rating step
     let reviewImages = [];
     let reviewImageHandlersInitialized = false;
 
     // AI rewrite — populated once the modal element is found
     let openAiRewriteModal = null;
 
-    // Draft manager
+    // Draft manager (only used in create mode — edits skip drafts entirely)
     const draftManager = new ReviewDraftManager();
 
     // Initialize modal trigger
@@ -57,14 +70,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Open modal
+    // Open modal for edit (triggered by elements with class "review-edit-trigger" and data-review-id)
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('.review-edit-trigger');
+        if (trigger && trigger.dataset.reviewId) {
+            e.preventDefault();
+            openModalForEdit(trigger.dataset.reviewId);
+        }
+    });
+
+    // Open modal (create mode)
     async function openModal() {
+        editingReviewId = null;
+        document.getElementById('reviewModalLabel').textContent = 'Create New Review';
+
         // Check for existing drafts
         const draft = await draftManager.init();
 
         if (draft) {
-            // Restore draft data
-            restoreDraftData(draft);
+            populateFormFields(draft.data);
             currentStep = REVIEW_STEPS.findIndex(s => s.id === draft.step);
             if (currentStep === -1) currentStep = 0;
         } else {
@@ -72,11 +96,13 @@ document.addEventListener('DOMContentLoaded', function() {
             currentStep = 0;
             formData = {
                 basicInfo: {},
-                location: {},
+                restaurant: {},
                 rating: {},
                 dishes: []
             };
             hasUnsavedChanges = false;
+            restaurantMode = 'search';
+            placesSessionUsed = false;
 
             // Set default date to today
             const today = new Date().toISOString().split('T')[0];
@@ -96,44 +122,93 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.show();
     }
 
-    // Restore draft data into form
-    function restoreDraftData(draft) {
-        formData = draft.data;
+    // Open modal for editing an existing review
+    async function openModalForEdit(reviewId) {
+        editingReviewId = reviewId;
+        currentStep = 0;
+        formData = {
+            basicInfo: {},
+            restaurant: {},
+            rating: {},
+            dishes: []
+        };
+        hasUnsavedChanges = false;
+        restaurantMode = 'search';
+        placesSessionUsed = false;
+        dishCounter = 0;
 
-        // Restore basic info
+        document.getElementById('reviewModalLabel').textContent = 'Edit Review';
+        document.getElementById('dishesContainer').innerHTML = '';
+
+        showStep(currentStep);
+        modal.show();
+
+        try {
+            const response = await fetch(`/api/reviews/${reviewId}/edit-data/`);
+            const data = await response.json();
+            if (!data.success) {
+                showError(data.error || 'Failed to load review data.');
+                return;
+            }
+            populateFormFields(data.review);
+            validateCurrentStep();
+        } catch (error) {
+            console.error('Error loading review for edit:', error);
+            showError('Network error while loading review data.');
+        }
+    }
+
+    // Populate all form fields from a formData-shaped object (draft restore or edit load)
+    function populateFormFields(data) {
+        formData = data;
+
         if (formData.basicInfo) {
-            document.getElementById('reviewRestaurantName').value = formData.basicInfo.restaurantName || '';
             document.getElementById('reviewVisitDate').value = formData.basicInfo.visitDate || '';
             document.getElementById('reviewPartySize').value = formData.basicInfo.partySize || 1;
             document.getElementById('reviewEntryTime').value = formData.basicInfo.entryTime || '';
         }
 
-        // Restore location
-        if (formData.location) {
-            document.getElementById('reviewAddress').value = formData.location.address || '';
-            document.getElementById('reviewCity').value = formData.location.city || '';
-            document.getElementById('reviewProvince').value = formData.location.province || '';
-            document.getElementById('reviewCountry').value = formData.location.country || '';
-            document.getElementById('reviewPostalCode').value = formData.location.postalCode || '';
+        if (formData.restaurant) {
+            const r = formData.restaurant;
+            if (r.mode === 'new') {
+                switchToNewRestaurantMode();
+                document.getElementById('reviewNewRestaurantName').value = r.name || '';
+                document.getElementById('reviewNewIsPopUp').checked = !!r.isPopUp;
+                document.getElementById('reviewNewWebsite').value = r.website || '';
+                document.getElementById('reviewAddress').value = r.address || '';
+                document.getElementById('reviewCity').value = r.city || '';
+                document.getElementById('reviewProvince').value = r.province || '';
+                document.getElementById('reviewCountry').value = r.country || '';
+                document.getElementById('reviewPostalCode').value = r.postalCode || '';
+                document.getElementById('reviewNewPlaceId').value = r.googlePlaceId || '';
+                document.getElementById('reviewNewWebsiteSection').style.display = r.isPopUp ? 'block' : 'none';
+                document.getElementById('reviewNewAddressSection').style.display = r.isPopUp ? 'none' : 'block';
+            } else {
+                switchToSearchRestaurantMode();
+                document.getElementById('reviewRestaurantName').value = r.name || '';
+                document.getElementById('reviewRestaurantId').value = r.id || '';
+            }
         }
 
         // Restore rating
         if (formData.rating) {
-            document.getElementById('reviewOverallRating').value = formData.rating.overall || 50;
-            document.getElementById('ratingValue').textContent = formData.rating.overall || 50;
+            document.getElementById('reviewOverallRating').value = formData.rating.overall ?? 50;
+            document.getElementById('ratingValue').textContent = formData.rating.overall ?? 50;
             document.getElementById('reviewTitle').value = formData.rating.title || '';
             document.getElementById('reviewNotes').value = formData.rating.notes || '';
-            document.getElementById('reviewAmbiance').value = formData.rating.ambiance || 50;
-            document.getElementById('ambianceValue').textContent = formData.rating.ambiance || 50;
-            document.getElementById('reviewService').value = formData.rating.service || 50;
-            document.getElementById('serviceValue').textContent = formData.rating.service || 50;
+            document.getElementById('reviewAmbiance').value = formData.rating.ambiance ?? 50;
+            document.getElementById('ambianceValue').textContent = formData.rating.ambiance ?? 50;
+            document.getElementById('reviewService').value = formData.rating.service ?? 50;
+            document.getElementById('serviceValue').textContent = formData.rating.service ?? 50;
 
             // Update character count
             const titleLength = (formData.rating.title || '').length;
             document.getElementById('titleCharCount').textContent = titleLength;
 
             // Restore review images
-            reviewImages = formData.rating.images || [];
+            reviewImages = (formData.rating.images || []).map(
+                img => (typeof img === 'string' ? { id: null, src: img } : img)
+            );
             renderReviewImagePreviews();
         }
 
@@ -220,6 +295,135 @@ document.addEventListener('DOMContentLoaded', function() {
         validateCurrentStep();
     }
 
+    // Restaurant picker helpers
+    function switchToNewRestaurantMode() {
+        restaurantMode = 'new';
+        document.getElementById('reviewRestaurantSearchSection').style.display = 'none';
+        document.getElementById('reviewNewRestaurantSection').style.display = 'block';
+        const typedName = document.getElementById('reviewRestaurantName').value.trim();
+        const newNameField = document.getElementById('reviewNewRestaurantName');
+        if (!newNameField.value) newNameField.value = typedName;
+        initReviewPlacesAutocomplete();
+        validateCurrentStep();
+    }
+
+    function switchToSearchRestaurantMode() {
+        restaurantMode = 'search';
+        document.getElementById('reviewNewRestaurantSection').style.display = 'none';
+        document.getElementById('reviewRestaurantSearchSection').style.display = 'block';
+        validateCurrentStep();
+    }
+
+    function isRestaurantSectionValid() {
+        if (restaurantMode === 'new') {
+            const name = document.getElementById('reviewNewRestaurantName').value.trim();
+            if (!name) return false;
+            const isPopUp = document.getElementById('reviewNewIsPopUp').checked;
+            if (isPopUp && !document.getElementById('reviewNewWebsite').value.trim()) return false;
+            return true;
+        }
+        const id = document.getElementById('reviewRestaurantId').value;
+        const name = document.getElementById('reviewRestaurantName').value.trim();
+        return !!(id || name);
+    }
+
+    function collectRestaurantData() {
+        if (restaurantMode === 'new') {
+            return {
+                mode: 'new',
+                name: document.getElementById('reviewNewRestaurantName').value.trim(),
+                isPopUp: document.getElementById('reviewNewIsPopUp').checked,
+                website: document.getElementById('reviewNewWebsite').value.trim(),
+                address: document.getElementById('reviewAddress').value.trim(),
+                city: document.getElementById('reviewCity').value.trim(),
+                province: document.getElementById('reviewProvince').value.trim(),
+                country: document.getElementById('reviewCountry').value.trim(),
+                postalCode: document.getElementById('reviewPostalCode').value.trim(),
+                googlePlaceId: document.getElementById('reviewNewPlaceId').value,
+                placesSessionUsed: placesSessionUsed,
+            };
+        }
+        return {
+            mode: 'search',
+            id: document.getElementById('reviewRestaurantId').value || null,
+            name: document.getElementById('reviewRestaurantName').value.trim(),
+        };
+    }
+
+    document.getElementById('reviewNewRestaurantBtn').addEventListener('click', switchToNewRestaurantMode);
+    document.getElementById('reviewBackToSearchBtn').addEventListener('click', switchToSearchRestaurantMode);
+
+    document.getElementById('reviewNewIsPopUp').addEventListener('change', function() {
+        document.getElementById('reviewNewWebsiteSection').style.display = this.checked ? 'block' : 'none';
+        document.getElementById('reviewNewAddressSection').style.display = this.checked ? 'none' : 'block';
+        validateCurrentStep();
+    });
+
+    document.getElementById('reviewNewRestaurantName').addEventListener('input', validateCurrentStep);
+    document.getElementById('reviewNewWebsite').addEventListener('input', validateCurrentStep);
+
+    // Google Places autocomplete for the "new restaurant" address fields (lazy-loaded)
+    function initReviewPlacesAutocomplete() {
+        if (placesAutocomplete || !MAPS_API_KEY) return;
+        const el = document.getElementById('reviewPlacesSearch');
+        if (!el) return;
+
+        if (mapsScriptLoaded) {
+            setupReviewPlaces(el);
+        } else {
+            pendingPlaceInits.push(el);
+            if (pendingPlaceInits.length === 1) {
+                window._reviewMapsLoaded = function() {
+                    delete window._reviewMapsLoaded;
+                    mapsScriptLoaded = true;
+                    pendingPlaceInits.forEach(setupReviewPlaces);
+                    pendingPlaceInits = [];
+                };
+                const script = document.createElement('script');
+                script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(MAPS_API_KEY)
+                    + '&libraries=places&loading=async&callback=_reviewMapsLoaded';
+                script.async = true;
+                document.head.appendChild(script);
+            }
+        }
+    }
+
+    function setupReviewPlaces(el) {
+        if (placesAutocomplete) return;
+        let sessionToken = new google.maps.places.AutocompleteSessionToken();
+        placesAutocomplete = new google.maps.places.Autocomplete(el, {
+            types: ['establishment'],
+            componentRestrictions: { country: ['ca', 'us'] },
+            fields: ['address_components', 'name', 'place_id'],
+            sessionToken: sessionToken,
+        });
+        placesAutocomplete.addListener('place_changed', function() {
+            const place = placesAutocomplete.getPlace();
+            if (!place.address_components) return;
+
+            function getComponent(types, nameType) {
+                const comp = place.address_components.find(c => types.some(t => c.types.includes(t)));
+                return comp ? comp[nameType] : '';
+            }
+
+            const streetNumber = getComponent(['street_number'], 'long_name');
+            const route = getComponent(['route'], 'long_name');
+
+            if (place.name) document.getElementById('reviewNewRestaurantName').value = place.name;
+            document.getElementById('reviewAddress').value = [streetNumber, route].filter(Boolean).join(' ');
+            document.getElementById('reviewCity').value = getComponent(['locality', 'sublocality_level_1'], 'long_name');
+            document.getElementById('reviewProvince').value = getComponent(['administrative_area_level_1'], 'short_name');
+            document.getElementById('reviewCountry').value = getComponent(['country'], 'long_name');
+            document.getElementById('reviewPostalCode').value = getComponent(['postal_code'], 'long_name');
+            const placeIdEl = document.getElementById('reviewNewPlaceId');
+            if (place.place_id) placeIdEl.value = place.place_id;
+
+            placesSessionUsed = true;
+            sessionToken = new google.maps.places.AutocompleteSessionToken();
+            validateCurrentStep();
+        });
+    }
+
     // Validate current step
     function validateCurrentStep() {
         const step = REVIEW_STEPS[currentStep];
@@ -228,20 +432,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (step.required) {
             switch (step.id) {
                 case 'basic-info':
-                    const restaurantName = document.getElementById('reviewRestaurantName').value.trim();
                     const visitDate = document.getElementById('reviewVisitDate').value.trim();
                     const partySize = parseInt(document.getElementById('reviewPartySize').value);
                     const dateValidationError = document.getElementById('dateValidationError');
 
-                    // Validate required fields
-                    isValid = restaurantName !== '' && visitDate !== '';
-
-                    console.log('Basic info validation:', {
-                        restaurantName,
-                        visitDate,
-                        partySize,
-                        isValid
-                    });
+                    isValid = isRestaurantSectionValid() && visitDate !== '';
 
                     // Validate date is not in future
                     if (visitDate) {
@@ -251,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (selectedDate > today) {
                             isValid = false;
                             dateValidationError.style.display = 'block';
-                            console.log('Date is in future, invalid');
                         } else {
                             dateValidationError.style.display = 'none';
                         }
@@ -262,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Validate party size is positive
                     if (partySize < 1 || isNaN(partySize)) {
                         isValid = false;
-                        console.log('Party size invalid:', partySize);
                     }
                     break;
 
@@ -276,7 +469,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Save dishes first to ensure formData is up to date
                     saveDishes();
                     isValid = formData.dishes.length > 0;
-                    console.log('Dishes validation - count:', formData.dishes.length, 'valid:', isValid);
                     break;
 
                 case 'confirm':
@@ -287,14 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update next button state
         if (nextBtn.style.display !== 'none') {
-            const shouldDisable = !isValid && step.required;
-            nextBtn.disabled = shouldDisable;
-            console.log('Next button state:', {
-                isValid,
-                required: step.required,
-                shouldDisable,
-                buttonDisabled: nextBtn.disabled
-            });
+            nextBtn.disabled = !isValid && step.required;
         }
 
         return isValid;
@@ -309,18 +494,11 @@ document.addEventListener('DOMContentLoaded', function() {
         switch (step.id) {
             case 'basic-info':
                 formData.basicInfo = {
-                    restaurantName: document.getElementById('reviewRestaurantName').value.trim(),
                     visitDate: document.getElementById('reviewVisitDate').value.trim(),
                     partySize: document.getElementById('reviewPartySize').value,
                     entryTime: document.getElementById('reviewEntryTime').value.trim()
                 };
-                formData.location = {
-                    address: document.getElementById('reviewAddress').value.trim(),
-                    city: document.getElementById('reviewCity').value.trim(),
-                    province: document.getElementById('reviewProvince').value.trim(),
-                    country: document.getElementById('reviewCountry').value.trim(),
-                    postalCode: document.getElementById('reviewPostalCode').value.trim()
-                };
+                formData.restaurant = collectRestaurantData();
                 break;
 
             case 'rating':
@@ -342,15 +520,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Go to next step
     async function goToNextStep() {
-        console.log('goToNextStep called, currentStep:', currentStep);
         if (currentStep >= REVIEW_STEPS.length - 1) return;
 
         const step = REVIEW_STEPS[currentStep];
-        console.log('Current step:', step.id, 'required:', step.required);
 
         // Validate if required
         const isValid = validateCurrentStep();
-        console.log('Step is valid:', isValid);
 
         if (step.required && !isValid) {
             showError('Please fill in all required fields before continuing.');
@@ -360,8 +535,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save current step data
         saveCurrentStepData();
 
-        // Save draft
-        await draftManager.saveNow(step.id, formData);
+        // Save draft (create mode only)
+        if (!editingReviewId) {
+            await draftManager.saveNow(step.id, formData);
+        }
 
         // Clear any errors
         hideError();
@@ -384,8 +561,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save current step data (don't validate)
         saveCurrentStepData();
 
-        // Save draft
-        await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
+        // Save draft (create mode only)
+        if (!editingReviewId) {
+            await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
+        }
 
         // Clear any errors
         hideError();
@@ -413,6 +592,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Close modal with confirmation
     async function closeModal() {
+        if (editingReviewId) {
+            if (hasUnsavedChanges && !confirm('Discard your changes to this review?')) {
+                return;
+            }
+            modal.hide();
+            resetModal();
+            return;
+        }
+
         // Save draft before closing if there are changes
         if (hasUnsavedChanges || draftManager.hasUnsaved()) {
             saveCurrentStepData();
@@ -435,11 +623,16 @@ document.addEventListener('DOMContentLoaded', function() {
         currentStep = 0;
         formData = {
             basicInfo: {},
-            location: {},
+            restaurant: {},
             rating: {},
             dishes: []
         };
         hasUnsavedChanges = false;
+        editingReviewId = null;
+        restaurantMode = 'search';
+        placesSessionUsed = false;
+
+        document.getElementById('reviewModalLabel').textContent = 'Create New Review';
 
         // Stop autosave
         draftManager.stopAutosave();
@@ -470,10 +663,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset title character count
         document.getElementById('titleCharCount').textContent = '0';
 
-        // Clear restaurant search results
+        // Reset restaurant picker to search mode
         document.getElementById('restaurantSearchResults').style.display = 'none';
         document.getElementById('restaurantSearchResults').innerHTML = '';
         document.getElementById('restaurantSearchStatus').textContent = '';
+        document.getElementById('reviewNewRestaurantSection').style.display = 'none';
+        document.getElementById('reviewRestaurantSearchSection').style.display = 'block';
+        document.getElementById('reviewNewWebsiteSection').style.display = 'none';
+        document.getElementById('reviewNewAddressSection').style.display = 'block';
 
         hideError();
     }
@@ -481,6 +678,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Populate review summary
     function populateReviewSummary() {
         const summaryDiv = document.getElementById('reviewSummary');
+        const restaurant = formData.restaurant || {};
 
         let summaryHtml = '';
 
@@ -492,7 +690,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
         summaryHtml += '</div>';
         summaryHtml += '<div class="card-body">';
-        summaryHtml += `<p class="mb-2"><strong>Restaurant:</strong> ${formData.basicInfo.restaurantName || 'N/A'}</p>`;
+        summaryHtml += `<p class="mb-2"><strong>Restaurant:</strong> ${restaurant.name || 'N/A'}</p>`;
         summaryHtml += `<p class="mb-2"><strong>Visit Date:</strong> ${formData.basicInfo.visitDate || 'N/A'}</p>`;
         if (formData.basicInfo.entryTime) {
             summaryHtml += `<p class="mb-2"><strong>Time:</strong> ${formData.basicInfo.entryTime}</p>`;
@@ -500,20 +698,20 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += `<p class="mb-0"><strong>Party Size:</strong> ${formData.basicInfo.partySize || '1'} people</p>`;
         summaryHtml += '</div></div>';
 
-        // Location Section (if provided)
-        if (formData.location.address || formData.location.city || formData.location.province || formData.location.country || formData.location.postalCode) {
+        // New Restaurant Address Section (only shown when adding a brand new restaurant)
+        if (restaurant.mode === 'new' && (restaurant.address || restaurant.city || restaurant.province || restaurant.country || restaurant.postalCode)) {
             summaryHtml += '<div class="card mb-3">';
             summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
-            summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Location</h6>';
+            summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>New Restaurant Location</h6>';
             summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="0">';
             summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
             summaryHtml += '</div>';
             summaryHtml += '<div class="card-body">';
-            if (formData.location.address) summaryHtml += `<p class="mb-2"><strong>Address:</strong> ${formData.location.address}</p>`;
-            if (formData.location.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${formData.location.city}</p>`;
-            if (formData.location.province) summaryHtml += `<p class="mb-2"><strong>Province/State:</strong> ${formData.location.province}</p>`;
-            if (formData.location.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${formData.location.country}</p>`;
-            if (formData.location.postalCode) summaryHtml += `<p class="mb-0"><strong>Postal Code:</strong> ${formData.location.postalCode}</p>`;
+            if (restaurant.address) summaryHtml += `<p class="mb-2"><strong>Address:</strong> ${restaurant.address}</p>`;
+            if (restaurant.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${restaurant.city}</p>`;
+            if (restaurant.province) summaryHtml += `<p class="mb-2"><strong>Province/State:</strong> ${restaurant.province}</p>`;
+            if (restaurant.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${restaurant.country}</p>`;
+            if (restaurant.postalCode) summaryHtml += `<p class="mb-0"><strong>Postal Code:</strong> ${restaurant.postalCode}</p>`;
             summaryHtml += '</div></div>';
         }
 
@@ -598,8 +796,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save current step data
         saveCurrentStepData();
 
-        // Save draft
-        await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
+        // Save draft (create mode only)
+        if (!editingReviewId) {
+            await draftManager.saveNow(REVIEW_STEPS[currentStep].id, formData);
+        }
 
         // Update current step
         currentStep = stepIndex;
@@ -616,26 +816,29 @@ document.addEventListener('DOMContentLoaded', function() {
         // IMPORTANT: Re-save dishes to ensure encyclopedia links are captured
         saveDishes();
 
+        const isEdit = !!editingReviewId;
+
         // Disable submit button
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isEdit ? 'Saving...' : 'Submitting...'}`;
 
         try {
             // Prepare data for submission
             const submissionData = {
                 basicInfo: formData.basicInfo,
-                location: formData.location,
+                restaurant: formData.restaurant,
                 rating: formData.rating,
-                dishes: formData.dishes,
-                draft_id: draftManager.getDraftId()
+                dishes: formData.dishes
             };
+            if (!isEdit) {
+                submissionData.draft_id = draftManager.getDraftId();
+            }
 
-            console.log('Submitting review with data:', JSON.stringify(submissionData, null, 2));
-            console.log('Dishes detail:', formData.dishes);
+            const url = isEdit ? `/api/reviews/${editingReviewId}/update/` : '/api/reviews/create/';
+            const method = isEdit ? 'PATCH' : 'POST';
 
-            // Submit to API
-            const response = await fetch('/api/reviews/create/', {
-                method: 'POST',
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': draftManager.getCsrfToken()
@@ -646,12 +849,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                // Success! Reset draft manager
-                draftManager.reset();
+                // Success! Reset draft manager (create mode only)
+                if (!isEdit) draftManager.reset();
 
+                const actionWord = isEdit ? 'updated' : 'submitted';
                 const toastMsg = result.image_warnings
-                    ? `Review submitted, but some images failed to upload: ${result.image_warnings.join('; ')}`
-                    : 'Review submitted successfully!';
+                    ? `Review ${actionWord}, but some images failed to upload: ${result.image_warnings.join('; ')}`
+                    : `Review ${actionWord} successfully!`;
                 showSuccessToast(toastMsg);
 
                 // Close modal
@@ -679,7 +883,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     showError(errorMessages.join('<br>'));
                 } else {
-                    showError(result.error || 'Failed to submit review. Please try again.');
+                    showError(result.error || `Failed to ${isEdit ? 'update' : 'submit'} review. Please try again.`);
                 }
 
                 // Re-enable submit button
@@ -764,7 +968,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Form input validation listeners
-    document.getElementById('reviewRestaurantName').addEventListener('input', validateCurrentStep);
     document.getElementById('reviewVisitDate').addEventListener('input', validateCurrentStep);
     document.getElementById('reviewPartySize').addEventListener('input', validateCurrentStep);
 
@@ -780,6 +983,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const restaurantStatus = document.getElementById('restaurantSearchStatus');
 
     restaurantInput.addEventListener('input', function() {
+        document.getElementById('reviewRestaurantId').value = '';
         clearTimeout(restaurantSearchTimeout);
         const query = this.value.trim();
 
@@ -815,6 +1019,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     restaurantResults.style.display = 'block';
 
                     data.results.forEach(restaurant => {
+                        const location = [restaurant.city, restaurant.province].filter(Boolean).join(', ');
                         const item = document.createElement('a');
                         item.className = 'list-group-item list-group-item-action';
                         item.href = '#';
@@ -822,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <strong>${restaurant.name}</strong>
-                                    ${restaurant.location ? `<br><small class="text-muted">${restaurant.location}</small>` : ''}
+                                    ${location ? `<br><small class="text-muted">${location}</small>` : ''}
                                 </div>
                                 <span class="badge bg-secondary">${restaurant.visit_count} visit(s)</span>
                             </div>
@@ -833,29 +1038,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                         restaurantResults.appendChild(item);
                     });
-
-                    // Add "Create new" option if no exact match
-                    const createNewItem = document.createElement('a');
-                    createNewItem.className = 'list-group-item list-group-item-action list-group-item-light';
-                    createNewItem.href = '#';
-                    createNewItem.innerHTML = `<i class="bi bi-plus-circle"></i> Create new: "${query}"`;
-                    createNewItem.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        selectRestaurant({ name: query, location: '' });
-                    });
-                    restaurantResults.appendChild(createNewItem);
                 } else {
-                    restaurantStatus.textContent = 'No restaurants found';
-                    restaurantResults.style.display = 'block';
-                    const createNewItem = document.createElement('a');
-                    createNewItem.className = 'list-group-item list-group-item-action';
-                    createNewItem.href = '#';
-                    createNewItem.innerHTML = `<i class="bi bi-plus-circle"></i> Create new: "${query}"`;
-                    createNewItem.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        selectRestaurant({ name: query, location: '' });
-                    });
-                    restaurantResults.appendChild(createNewItem);
+                    restaurantStatus.textContent = 'No restaurants found. Use "New restaurant" below to add one.';
+                    restaurantResults.style.display = 'none';
                 }
             })
             .catch(error => {
@@ -868,15 +1053,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function selectRestaurant(restaurant) {
         restaurantInput.value = restaurant.name;
+        document.getElementById('reviewRestaurantId').value = restaurant.id;
         restaurantResults.style.display = 'none';
         restaurantResults.innerHTML = '';
         restaurantStatus.textContent = '';
-
-        document.getElementById('reviewAddress').value = restaurant.street_address || '';
-        document.getElementById('reviewCity').value = restaurant.city || '';
-        document.getElementById('reviewProvince').value = restaurant.province || '';
-        document.getElementById('reviewCountry').value = restaurant.country || '';
-        document.getElementById('reviewPostalCode').value = restaurant.postal_code || '';
 
         validateCurrentStep();
     }
@@ -929,18 +1109,28 @@ document.addEventListener('DOMContentLoaded', function() {
             dishCard.querySelector('.dish-notes').value = dishData.notes || '';
             if (dishData.cost) dishCard.querySelector('.dish-cost').value = dishData.cost;
 
+            // Track the server-side ReviewDish id (edit mode only) so saves reconcile in place
+            if (dishData.id) {
+                dishCard.dataset.reviewDishId = dishData.id;
+            }
+
             // Pre-fill encyclopedia links if provided
             if (dishData.encyclopedia_ids && dishData.encyclopedia_ids.length > 0) {
                 dishCard.dataset.encyclopediaIds = JSON.stringify(dishData.encyclopedia_ids);
             }
 
-            // Pre-fill image if provided
+            // Pre-fill image if provided (edit mode sends {id, src}; drafts never include dish images)
             if (dishData.image) {
                 const imagePreview = dishCard.querySelector('.dish-image-preview');
                 const previewImg = dishCard.querySelector('.dish-preview-img');
                 const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
 
-                previewImg.src = dishData.image;
+                const img = dishData.image;
+                const src = typeof img === 'string' ? img : img.src;
+                const imgId = typeof img === 'string' ? null : img.id;
+                if (imgId) dishCard.dataset.existingImageId = imgId;
+
+                previewImg.src = src;
                 imagePreview.style.display = 'block';
                 imageDropZone.style.display = 'none';
             }
@@ -988,21 +1178,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
         dishCard.querySelector('.remove-dish-btn').addEventListener('click', function() {
-            console.log('Remove button clicked for dish:', dishCard.id);
             const name = dishCard.querySelector('.dish-name').value.trim();
             const notes = dishCard.querySelector('.dish-notes').value.trim();
             const previewImg = dishCard.querySelector('.dish-preview-img');
-            const hasImage = previewImg && previewImg.src && previewImg.src.startsWith('data:');
+            const hasImage = previewImg && previewImg.src && (previewImg.src.startsWith('data:') || dishCard.dataset.existingImageId);
             const hasData = name !== '' || notes !== '' || hasImage;
 
-            console.log('Dish has data:', hasData, '(name:', name, 'notes:', notes, 'image:', hasImage, ')');
-
             if (hasData && !confirm('Remove this dish? All data for this dish will be lost.')) {
-                console.log('User cancelled removal');
                 return;
             }
 
-            console.log('Removing dish...');
             dishCard.remove();
             updateDishNumbers();
             saveDishes();
@@ -1063,6 +1248,9 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImg.src = '';
             imagePreview.style.display = 'none';
             imageDropZone.style.display = 'block';
+            if (dishCard.dataset.existingImageId) {
+                dishCard.dataset.removeImage = 'true';
+            }
             saveDishes();
         });
 
@@ -1165,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            reviewImages.push(e.target.result);
+            reviewImages.push({ id: null, src: e.target.result });
             renderReviewImagePreviews();
             saveCurrentStepData();
         };
@@ -1176,7 +1364,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('reviewImagePreviews');
         if (!container) return;
         container.innerHTML = '';
-        reviewImages.forEach((src, idx) => {
+        reviewImages.forEach((item, idx) => {
+            const src = typeof item === 'string' ? item : item.src;
+
             const wrapper = document.createElement('div');
             wrapper.className = 'position-relative';
             wrapper.style.cssText = 'width: 80px; height: 80px;';
@@ -1231,8 +1421,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveDishes() {
         formData.dishes = [];
 
-        console.log('saveDishes called, scanning dish cards...');
-
         document.querySelectorAll('.dish-card').forEach(card => {
             if (card.id !== 'dishFormTemplate' && card.style.display !== 'none') {
                 const name = card.querySelector('.dish-name').value.trim();
@@ -1241,22 +1429,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 const cost = card.querySelector('.dish-cost').value.trim() || null;
                 const imagePreview = card.querySelector('.dish-preview-img');
                 const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
-                // Read encyclopediaIds from parent element (the wrapper div where it's actually stored)
+                // Read tracking data from the parent element (the wrapper div where it's actually stored)
                 const encyclopediaIds = JSON.parse(card.parentElement.dataset.encyclopediaIds || '[]');
-
-                console.log(`Dish card ${card.id}:`, {
-                    name,
-                    encyclopediaIds,
-                    datasetValue: card.parentElement.dataset.encyclopediaIds
-                });
+                const reviewDishId = card.parentElement.dataset.reviewDishId
+                    ? parseInt(card.parentElement.dataset.reviewDishId, 10)
+                    : undefined;
+                const existingImageId = card.parentElement.dataset.existingImageId
+                    ? parseInt(card.parentElement.dataset.existingImageId, 10)
+                    : null;
+                const removeImage = card.parentElement.dataset.removeImage === 'true';
 
                 if (name) { // Only save dishes with a name
                     formData.dishes.push({
+                        id: reviewDishId,
                         name,
                         rating,
                         notes,
                         cost,
                         image: imageSrc,
+                        existing_image_id: existingImageId,
+                        remove_image: removeImage,
                         encyclopedia_ids: encyclopediaIds
                     });
                 }
@@ -1266,13 +1458,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Mark unsaved changes
         hasUnsavedChanges = true;
         draftManager.markUnsaved();
-
-        console.log('Dishes saved:', formData.dishes.length, 'Full dishes data:', JSON.stringify(formData.dishes, null, 2));
     }
 
     // Encyclopedia Search Functions
     function openEncyclopediaSearch(dishCard) {
-        console.log('Opening encyclopedia search for dish:', dishCard.id);
         currentDishCard = dishCard;
         encyclopediaSearchInput.value = '';
         encyclopediaSearchResults.innerHTML = '';
@@ -1341,11 +1530,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function performEncyclopediaSearch(query) {
-        console.log('Searching encyclopedia for:', query);
         fetch(`/api/encyclopedia/search/?q=${encodeURIComponent(query)}`)
             .then(response => response.json())
             .then(data => {
-                console.log('Encyclopedia search results:', data);
                 encyclopediaSearchStatus.style.display = 'none';
 
                 if (data.results.length === 0) {
@@ -1390,8 +1577,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function addEncyclopediaLink(dishCard, entryId, entryName, entrySlug) {
-        console.log('Adding encyclopedia link:', entryId, entryName, entrySlug);
-
         // Only allow one encyclopedia link per dish - replace existing if any
         const newLink = {
             id: entryId,
@@ -1401,14 +1586,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update dataset with single entry (replaces any existing)
         dishCard.dataset.encyclopediaIds = JSON.stringify([newLink]);
-        console.log('Updated dataset:', dishCard.dataset.encyclopediaIds);
 
         // Render chips
         renderEncyclopediaChips(dishCard);
 
         // Save dishes
         saveDishes();
-        console.log('Encyclopedia link saved, formData.dishes:', formData.dishes);
 
         // Clear search and close modal
         encyclopediaSearchInput.value = '';

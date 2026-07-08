@@ -343,12 +343,11 @@ def _review_payload(restaurant_name='Test Place', dishes=None):
         dishes = [{'name': 'Ramen', 'rating': 80}]
     return {
         'basicInfo': {
-            'restaurantName': restaurant_name,
             'visitDate': '2024-06-01',
             'entryTime': '18:00',
             'partySize': '2',
         },
-        'location': {},
+        'restaurant': {'mode': 'search', 'name': restaurant_name},
         'rating': {'overall': 75, 'title': '', 'notes': '', 'images': []},
         'dishes': dishes,
     }

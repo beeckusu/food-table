@@ -1,24 +1,22 @@
 import json
-import base64
-import uuid
-import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from decimal import Decimal, InvalidOperation
 
 from django.http import JsonResponse
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.core.files.base import ContentFile
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.contenttypes.models import ContentType
 
-from content.models import Restaurant, Review, ReviewDish, ReviewDraft, Encyclopedia, Image, RestaurantDish, RestaurantDishReference
-
-logger = logging.getLogger(__name__)
+from content.models import Restaurant, Review, ReviewDish, ReviewDraft
+from content.views.review_shared import (
+    validate_review_data,
+    resolve_restaurant,
+    save_review_images,
+    save_dish_image,
+    link_or_create_wishlist_dish,
+    resolve_encyclopedia_entry,
+)
 
 
 class ReviewCreateApiView(LoginRequiredMixin, View):
@@ -37,7 +35,6 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
         Returns JSON with the created review ID and URL.
         """
         try:
-            # Parse JSON data
             data = json.loads(request.body)
         except json.JSONDecodeError:
             return JsonResponse({
@@ -45,27 +42,33 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 'error': 'Invalid JSON data'
             }, status=400)
 
-        # Validate and extract data
-        validation_errors = self._validate_data(data)
+        validation_errors = validate_review_data(data, dishes_required=True)
         if validation_errors:
             return JsonResponse({
                 'success': False,
                 'errors': validation_errors
             }, status=400)
 
+        restaurant, restaurant_error = resolve_restaurant(data.get('restaurant', {}), request.user)
+        if restaurant_error:
+            return JsonResponse({
+                'success': False,
+                'errors': {'restaurant': restaurant_error}
+            }, status=400)
+
         try:
             with transaction.atomic():
-                # Create the review
-                review = self._create_review(data, request.user)
+                review = self._create_review(data, restaurant, request.user)
 
-                # Save review-level images
                 review_images_data = data.get('rating', {}).get('images', [])
-                image_errors = self._save_review_images(review, review_images_data, request.user)
+                review_image_srcs = [
+                    img.get('src') if isinstance(img, dict) else img
+                    for img in review_images_data
+                ]
+                image_errors = save_review_images(review, review_image_srcs, request.user)
 
-                # Create review dishes
                 image_errors.extend(self._create_dishes(review, data.get('dishes', []), request.user))
 
-                # Delete draft if provided
                 draft_id = data.get('draft_id')
                 if draft_id:
                     try:
@@ -74,7 +77,6 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                     except ReviewDraft.DoesNotExist:
                         pass  # Draft already deleted or doesn't exist
 
-            # Return success response (with warnings if any images failed)
             response = {
                 'success': True,
                 'review_id': review.id,
@@ -90,84 +92,15 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 'error': f'Failed to create review: {str(e)}'
             }, status=500)
 
-    def _validate_data(self, data):
-        """Validate required fields and data formats."""
-        errors = {}
-
-        # Validate basic info
-        basic_info = data.get('basicInfo', {})
-        if not basic_info.get('restaurantName'):
-            errors['restaurant'] = 'Restaurant name is required'
-
-        if not basic_info.get('visitDate'):
-            errors['visit_date'] = 'Visit date is required'
-        else:
-            # Validate date format and not in future
-            try:
-                visit_date = datetime.strptime(basic_info['visitDate'], '%Y-%m-%d').date()
-                if visit_date > datetime.now(tz=ZoneInfo('America/New_York')).date():
-                    errors['visit_date'] = 'Visit date cannot be in the future'
-            except ValueError:
-                errors['visit_date'] = 'Invalid date format'
-
-        # Validate party size
-        party_size = basic_info.get('partySize')
-        if not party_size or int(party_size) < 1:
-            errors['party_size'] = 'Party size must be at least 1'
-
-        # Validate rating
-        rating_data = data.get('rating', {})
-        overall_rating = rating_data.get('overall')
-        if overall_rating is None:
-            errors['rating'] = 'Overall rating is required'
-        else:
-            try:
-                rating_val = int(overall_rating)
-                if rating_val < 0 or rating_val > 100:
-                    errors['rating'] = 'Rating must be between 0 and 100'
-            except (ValueError, TypeError):
-                errors['rating'] = 'Invalid rating value'
-
-        # Validate dishes (at least one required)
-        dishes = data.get('dishes', [])
-        if not dishes:
-            errors['dishes'] = 'At least one dish is required'
-        else:
-            for i, dish in enumerate(dishes):
-                if not dish.get('name'):
-                    errors[f'dish_{i}_name'] = f'Dish {i+1} must have a name'
-
-        return errors
-
-    def _create_review(self, data, user):
+    def _create_review(self, data, restaurant, user):
         """Create the Review instance."""
         basic_info = data.get('basicInfo', {})
-        location_info = data.get('location', {})
         rating_data = data.get('rating', {})
 
-        # Parse entry time
         entry_time = basic_info.get('entryTime')
         if not entry_time:
-            # Default to noon if not provided
             entry_time = '12:00'
 
-        # Get or create the Restaurant record
-        restaurant, created = Restaurant.objects.get_or_create(
-            name=basic_info['restaurantName'],
-            street_address=location_info.get('address', ''),
-            defaults={
-                'city': location_info.get('city', ''),
-                'province': location_info.get('province', ''),
-                'country': location_info.get('country', ''),
-                'postal_code': location_info.get('postalCode', ''),
-                'visited': True,
-            },
-        )
-        if not created and not restaurant.visited:
-            restaurant.visited = True
-            restaurant.save(update_fields=['visited'])
-
-        # Create metadata
         metadata = {}
 
         review = Review.objects.create(
@@ -182,7 +115,6 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             metadata=metadata
         )
 
-        # Add ambiance and service ratings to metadata if provided
         if rating_data.get('ambiance'):
             review.metadata['ambiance_rating'] = int(rating_data['ambiance'])
         if rating_data.get('service'):
@@ -191,46 +123,11 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
 
         return review
 
-    def _save_review_images(self, review, images_data, user):
-        """Save base64-encoded images attached to the review itself. Returns list of error strings."""
-        errors = []
-        for image_data in images_data:
-            if not (isinstance(image_data, str) and image_data.startswith('data:image/')):
-                continue
-            try:
-                format_type, imgstr = image_data.split(';base64,')
-                ext = format_type.split('/')[-1]
-
-                image_file = ContentFile(
-                    base64.b64decode(imgstr),
-                    name=f'review_{uuid.uuid4()}.{ext}'
-                )
-
-                content_type = ContentType.objects.get_for_model(Review)
-                Image.objects.create(
-                    image=image_file,
-                    content_type=content_type,
-                    object_id=review.id,
-                    uploaded_by=user,
-                )
-            except Exception as e:
-                logger.error("Error saving image for review %s: %s", review.id, e, exc_info=True)
-                errors.append(f"A review photo failed to save: {e}")
-        return errors
-
     def _create_dishes(self, review, dishes_data, user):
         """Create ReviewDish instances with images. Returns list of image save errors."""
         image_errors = []
         for dish_data in dishes_data:
-            encyclopedia_entry = None
-            encyclopedia_ids = dish_data.get('encyclopedia_ids', [])
-
-            if encyclopedia_ids:
-                try:
-                    entry_id = int(encyclopedia_ids[0]['id'])
-                    encyclopedia_entry = Encyclopedia.objects.get(id=entry_id)
-                except (Encyclopedia.DoesNotExist, ValueError, KeyError, IndexError) as e:
-                    logger.warning("Failed to link encyclopedia entry: %s", e)
+            encyclopedia_entry = resolve_encyclopedia_entry(dish_data)
 
             cost = dish_data.get('cost')
             review_dish = ReviewDish.objects.create(
@@ -242,61 +139,12 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 cost=cost if cost else None
             )
 
-            # Promote an existing wishlist entry to 'had', or create a new record
-            wishlist_dish = RestaurantDish.objects.filter(
-                restaurant=review.restaurant,
-                dish_name=dish_data['name'],
-                status=RestaurantDish.STATUS_WISHLIST,
-            ).first()
-            if wishlist_dish:
-                wishlist_dish.status = RestaurantDish.STATUS_HAD
-                wishlist_dish.review = review
-                if encyclopedia_entry:
-                    wishlist_dish.encyclopedia_entry = encyclopedia_entry
-                wishlist_dish.save()
-            else:
-                new_dish = RestaurantDish.objects.create(
-                    restaurant=review.restaurant,
-                    dish_name=dish_data['name'],
-                    encyclopedia_entry=encyclopedia_entry,
-                    status=RestaurantDish.STATUS_HAD,
-                    review=review,
-                )
-                RestaurantDishReference.objects.create(
-                    dish=new_dish,
-                    source='review',
-                )
+            link_or_create_wishlist_dish(review, dish_data['name'], encyclopedia_entry)
 
             image_data = dish_data.get('image')
             if image_data and image_data.startswith('data:image/'):
-                error = self._save_dish_image(review_dish, image_data, user)
+                error = save_dish_image(review_dish, image_data, user)
                 if error:
                     image_errors.append(error)
 
         return image_errors
-
-    def _save_dish_image(self, review_dish, image_data, user):
-        """Convert base64 image to Image model and attach to dish. Returns error string or None."""
-        try:
-            format_type, imgstr = image_data.split(';base64,')
-            ext = format_type.split('/')[-1]  # jpeg, png, webp
-
-            image_file = ContentFile(
-                base64.b64decode(imgstr),
-                name=f'dish_{uuid.uuid4()}.{ext}'
-            )
-
-            content_type = ContentType.objects.get_for_model(ReviewDish)
-            Image.objects.create(
-                image=image_file,
-                content_type=content_type,
-                object_id=review_dish.id,
-                uploaded_by=user,
-                caption=review_dish.dish_name,
-                alt_text=f'Photo of {review_dish.dish_name}'
-            )
-            return None
-
-        except Exception as e:
-            logger.error("Error saving dish image for dish %s: %s", review_dish.id, e, exc_info=True)
-            return f"Image for '{review_dish.dish_name}' failed to save: {e}"

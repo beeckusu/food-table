@@ -19,10 +19,56 @@
                     <h6 class="mb-3">Basic Information</h6>
                     <form id="basicInfoForm">
                         <div class="mb-3">
-                            <label for="reviewRestaurantName" class="form-label">Restaurant Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="reviewRestaurantName" required autocomplete="off">
-                            <div id="restaurantSearchResults" class="list-group mt-2" style="display: none;"></div>
-                            <div id="restaurantSearchStatus" class="form-text"></div>
+                            <label class="form-label">Restaurant <span class="text-danger">*</span></label>
+                            <div id="reviewRestaurantSearchSection">
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" id="reviewRestaurantName" placeholder="Search restaurants…" required autocomplete="off">
+                                    <input type="hidden" id="reviewRestaurantId">
+                                    <div id="restaurantSearchResults" class="list-group mt-2" style="display: none;"></div>
+                                </div>
+                                <div id="restaurantSearchStatus" class="form-text"></div>
+                                <button type="button" class="btn btn-link btn-sm ps-0 mt-1" id="reviewNewRestaurantBtn">
+                                    <i class="bi bi-plus-circle"></i> New restaurant
+                                </button>
+                            </div>
+                            <div id="reviewNewRestaurantSection" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="form-text mb-0">New Restaurant</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0" id="reviewBackToSearchBtn">
+                                        <i class="bi bi-arrow-left"></i> Back to search
+                                    </button>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="text" class="form-control" id="reviewNewRestaurantName" placeholder="Restaurant name">
+                                    <input type="hidden" id="reviewNewPlaceId">
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="reviewNewIsPopUp">
+                                    <label class="form-check-label small" for="reviewNewIsPopUp">Pop-up restaurant (no fixed address)</label>
+                                </div>
+                                <div class="mb-2" id="reviewNewWebsiteSection" style="display: none;">
+                                    <input type="url" class="form-control" id="reviewNewWebsite" placeholder="Website URL *">
+                                </div>
+                                <div id="reviewNewAddressSection">
+                                    {% if google_maps_api_key %}
+                                    <div class="mb-2">
+                                        <input type="text" id="reviewPlacesSearch" class="form-control" placeholder="Search Google Places…" autocomplete="off">
+                                        <div class="form-text text-muted">Select a suggestion to fill the fields below automatically.</div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control" id="reviewAddress" placeholder="Street address">
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col"><input type="text" class="form-control" id="reviewCity" placeholder="City"></div>
+                                        <div class="col"><input type="text" class="form-control" id="reviewProvince" placeholder="Province/State"></div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col"><input type="text" class="form-control" id="reviewCountry" placeholder="Country"></div>
+                                        <div class="col"><input type="text" class="form-control" id="reviewPostalCode" placeholder="Postal Code"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="reviewVisitDate" class="form-label">Visit Date <span class="text-danger">*</span></label>
@@ -39,39 +85,6 @@
                                 <label for="reviewEntryTime" class="form-label">Time</label>
                                 <input type="time" class="form-control" id="reviewEntryTime">
                                 <div class="form-text">Optional</div>
-                            </div>
-                        </div>
-                        <hr>
-                        <h6 class="mb-3">Location <span class="badge bg-secondary">Optional</span></h6>
-                        {% if google_maps_api_key %}
-                        <div class="mb-3">
-                            <label for="reviewAddressSearch" class="form-label">Search address</label>
-                            <input type="text" id="reviewAddressSearch" class="form-control" placeholder="Start typing an address or restaurant name…" autocomplete="off">
-                            <div class="form-text text-muted">Select a suggestion to fill the fields below automatically.</div>
-                        </div>
-                        {% endif %}
-                        <div class="mb-3">
-                            <label for="reviewAddress" class="form-label">Address</label>
-                            <input type="text" class="form-control" id="reviewAddress" placeholder="Street address">
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="reviewCity" class="form-label">City</label>
-                                <input type="text" class="form-control" id="reviewCity">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="reviewProvince" class="form-label">Province/State</label>
-                                <input type="text" class="form-control" id="reviewProvince">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="reviewCountry" class="form-label">Country</label>
-                                <input type="text" class="form-control" id="reviewCountry">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="reviewPostalCode" class="form-label">Postal Code</label>
-                                <input type="text" class="form-control" id="reviewPostalCode">
                             </div>
                         </div>
                     </form>
@@ -322,4 +335,5 @@
         </div>
     </div>
 </div>
+<script>window.REVIEW_MAPS_API_KEY = '{{ google_maps_api_key|escapejs }}';</script>
 {% endif %}
