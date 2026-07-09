@@ -10,7 +10,7 @@
         {% if display_image %}
         <img src="{{ display_image.image.url }}"
              class="card-img-top lightbox-trigger"
-             alt="{{ review.restaurant.name }}"
+             alt="{% firstof review.restaurant.name review.food_festival.name %}"
              style="height: 200px; object-fit: cover; cursor: pointer; position: relative; z-index: 2;"
              data-lightbox-src="{{ display_image.image.url }}"
              data-lightbox-gallery="{{ review.get_all_images_ordered|to_json }}">
@@ -23,11 +23,13 @@
     {% endwith %}
 
     <div class="card-body">
-        <h5 class="card-title">{{ review.restaurant.name }}</h5>
+        <h5 class="card-title">{% firstof review.restaurant.name review.food_festival.name %}</h5>
         <p class="card-text text-muted mb-2">
             <small>{{ review.visit_date|date:"F d, Y" }}</small>
             {% if review.restaurant.city %}
             <br><small>{{ review.restaurant.city }}{% if review.restaurant.country %}, {{ review.restaurant.country }}{% endif %}</small>
+            {% elif review.food_festival.city %}
+            <br><small>{{ review.food_festival.city }}{% if review.food_festival.country %}, {{ review.food_festival.country }}{% endif %}</small>
             {% endif %}
         </p>
         <div class="mb-2">

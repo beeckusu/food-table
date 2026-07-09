@@ -1,11 +1,11 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
-from content.models import Review
+from content.models import Review, RestaurantDish
 
 
 class ReviewDetailView(LoginRequiredMixin, DetailView):
     """
-    Detail view for a single restaurant review.
+    Detail view for a single restaurant or food-festival review.
     Displays full review details including dishes, images, tags, and related reviews.
     """
     model = Review
@@ -22,7 +22,19 @@ class ReviewDetailView(LoginRequiredMixin, DetailView):
         review = self.object
 
         # Add dishes with encyclopedia entries and images
-        context['dishes'] = review.review_dishes.select_related('encyclopedia_entry').prefetch_related('images').all()
+        dishes = list(review.review_dishes.select_related('encyclopedia_entry').prefetch_related('images').all())
+
+        if review.food_festival_id:
+            # A food-festival review's dishes can each come from a different vendor; look up
+            # which restaurant each dish was tried at (matched by name, same as the edit-data API).
+            dish_restaurants = {
+                rd.dish_name: rd.restaurant
+                for rd in RestaurantDish.objects.filter(review=review).select_related('restaurant')
+            }
+            for dish in dishes:
+                dish.restaurant_for_display = dish_restaurants.get(dish.dish_name)
+
+        context['dishes'] = dishes
 
         # Add images
         context['images'] = review.images.all()
@@ -30,11 +42,12 @@ class ReviewDetailView(LoginRequiredMixin, DetailView):
         # Add tags
         context['tags'] = review.review_tags.all()
 
-        # Add related reviews at the same restaurant (excluding current review)
-        context['related_reviews'] = Review.objects.filter(
-            restaurant=review.restaurant,
-            is_private=False
-        ).exclude(
+        # Add related reviews at the same target (excluding current review)
+        if review.food_festival_id:
+            related_qs = Review.objects.filter(food_festival=review.food_festival, is_private=False)
+        else:
+            related_qs = Review.objects.filter(restaurant=review.restaurant, is_private=False)
+        context['related_reviews'] = related_qs.exclude(
             id=review.id
         ).prefetch_related(
             'images',

@@ -12,10 +12,13 @@ from content.models import Restaurant, Review, ReviewDish, ReviewDraft
 from content.views.review_shared import (
     validate_review_data,
     resolve_restaurant,
+    resolve_food_festival,
+    resolve_dish_restaurant,
     save_review_images,
     save_dish_image,
     link_or_create_wishlist_dish,
     resolve_encyclopedia_entry,
+    DishRestaurantResolutionError,
 )
 
 
@@ -49,16 +52,24 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 'errors': validation_errors
             }, status=400)
 
-        restaurant, restaurant_error = resolve_restaurant(data.get('restaurant', {}), request.user)
-        if restaurant_error:
+        target_type = data.get('targetType', 'restaurant')
+        if target_type == 'food_festival':
+            food_festival, target_error = resolve_food_festival(data.get('food_festival', {}), request.user)
+            restaurant = None
+            error_key = 'food_festival'
+        else:
+            restaurant, target_error = resolve_restaurant(data.get('restaurant', {}), request.user)
+            food_festival = None
+            error_key = 'restaurant'
+        if target_error:
             return JsonResponse({
                 'success': False,
-                'errors': {'restaurant': restaurant_error}
+                'errors': {error_key: target_error}
             }, status=400)
 
         try:
             with transaction.atomic():
-                review = self._create_review(data, restaurant, request.user)
+                review = self._create_review(data, restaurant, food_festival, request.user)
 
                 review_images_data = data.get('rating', {}).get('images', [])
                 review_image_srcs = [
@@ -86,13 +97,19 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 response['image_warnings'] = image_errors
             return JsonResponse(response)
 
+        except DishRestaurantResolutionError as e:
+            return JsonResponse({
+                'success': False,
+                'errors': {f'dish_{e.dish_index}_restaurant': e.message}
+            }, status=400)
+
         except Exception as e:
             return JsonResponse({
                 'success': False,
                 'error': f'Failed to create review: {str(e)}'
             }, status=500)
 
-    def _create_review(self, data, restaurant, user):
+    def _create_review(self, data, restaurant, food_festival, user):
         """Create the Review instance."""
         basic_info = data.get('basicInfo', {})
         rating_data = data.get('rating', {})
@@ -105,6 +122,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
 
         review = Review.objects.create(
             restaurant=restaurant,
+            food_festival=food_festival,
             visit_date=basic_info['visitDate'],
             entry_time=entry_time,
             party_size=int(basic_info['partySize']),
@@ -126,8 +144,15 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
     def _create_dishes(self, review, dishes_data, user):
         """Create ReviewDish instances with images. Returns list of image save errors."""
         image_errors = []
-        for dish_data in dishes_data:
+        for i, dish_data in enumerate(dishes_data):
             encyclopedia_entry = resolve_encyclopedia_entry(dish_data)
+
+            if review.food_festival_id:
+                dish_restaurant, dish_restaurant_error = resolve_dish_restaurant(dish_data, user)
+                if dish_restaurant_error:
+                    raise DishRestaurantResolutionError(i, dish_restaurant_error)
+            else:
+                dish_restaurant = review.restaurant
 
             cost = dish_data.get('cost')
             review_dish = ReviewDish.objects.create(
@@ -139,7 +164,9 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 cost=cost if cost else None
             )
 
-            link_or_create_wishlist_dish(review, dish_data['name'], encyclopedia_entry)
+            link_or_create_wishlist_dish(
+                review, dish_data['name'], encyclopedia_entry, dish_restaurant, review.food_festival
+            )
 
             image_data = dish_data.get('image')
             if image_data and image_data.startswith('data:image/'):

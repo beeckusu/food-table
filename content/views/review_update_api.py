@@ -9,14 +9,17 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from content.models import Review, ReviewDish
+from content.models import Review, ReviewDish, RestaurantDish
 from content.views.review_shared import (
     validate_review_data,
     resolve_restaurant,
+    resolve_food_festival,
+    resolve_dish_restaurant,
     sync_review_images,
     sync_dish_image,
     link_or_create_wishlist_dish,
     resolve_encyclopedia_entry,
+    DishRestaurantResolutionError,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,18 +33,24 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
         try:
-            review = Review.objects.select_related('restaurant').prefetch_related(
+            review = Review.objects.select_related('restaurant', 'food_festival').prefetch_related(
                 'review_dishes__encyclopedia_entry', 'review_dishes__images', 'images'
             ).get(pk=pk)
         except Review.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Review not found'}, status=404)
 
         restaurant = review.restaurant
+        food_festival = review.food_festival
+
+        dish_restaurants = {}
+        if food_festival:
+            for rd in RestaurantDish.objects.filter(review=review).select_related('restaurant'):
+                dish_restaurants.setdefault(rd.dish_name, rd.restaurant)
 
         dishes = []
         for dish in review.review_dishes.all():
             dish_image = dish.images.first()
-            dishes.append({
+            dish_payload = {
                 'id': dish.id,
                 'name': dish.dish_name or (dish.encyclopedia_entry.name if dish.encyclopedia_entry else ''),
                 'rating': dish.dish_rating if dish.dish_rating is not None else 50,
@@ -55,15 +64,18 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
                     }] if dish.encyclopedia_entry else []
                 ),
                 'image': {'id': dish_image.id, 'src': dish_image.image.url} if dish_image else None,
-            })
+            }
+            if food_festival:
+                dish_restaurant = dish_restaurants.get(dish.dish_name)
+                dish_payload['restaurant'] = (
+                    {'mode': 'search', 'id': dish_restaurant.id, 'name': dish_restaurant.name}
+                    if dish_restaurant else {}
+                )
+            dishes.append(dish_payload)
 
-        data = {
-            'basicInfo': {
-                'visitDate': review.visit_date.isoformat(),
-                'partySize': review.party_size,
-                'entryTime': review.entry_time.strftime('%H:%M') if review.entry_time else '',
-            },
-            'restaurant': {
+        if restaurant:
+            target_type = 'restaurant'
+            restaurant_payload = {
                 'mode': 'search',
                 'id': restaurant.id,
                 'name': restaurant.name,
@@ -75,7 +87,31 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
                 'country': restaurant.country,
                 'postalCode': restaurant.postal_code,
                 'googlePlaceId': restaurant.google_place_id,
+            }
+            food_festival_payload = {}
+        else:
+            target_type = 'food_festival'
+            restaurant_payload = {}
+            food_festival_payload = {
+                'mode': 'search',
+                'id': food_festival.id,
+                'name': food_festival.name,
+                'city': food_festival.city,
+                'country': food_festival.country,
+                'startDate': food_festival.start_date.isoformat() if food_festival.start_date else '',
+                'endDate': food_festival.end_date.isoformat() if food_festival.end_date else '',
+                'website': food_festival.website,
+            }
+
+        data = {
+            'targetType': target_type,
+            'basicInfo': {
+                'visitDate': review.visit_date.isoformat(),
+                'partySize': review.party_size,
+                'entryTime': review.entry_time.strftime('%H:%M') if review.entry_time else '',
             },
+            'restaurant': restaurant_payload,
+            'food_festival': food_festival_payload,
             'rating': {
                 'overall': review.rating,
                 'title': review.title or '',
@@ -114,13 +150,21 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
         if validation_errors:
             return JsonResponse({'success': False, 'errors': validation_errors}, status=400)
 
-        restaurant, restaurant_error = resolve_restaurant(data.get('restaurant', {}), request.user)
-        if restaurant_error:
-            return JsonResponse({'success': False, 'errors': {'restaurant': restaurant_error}}, status=400)
+        target_type = data.get('targetType', 'restaurant')
+        if target_type == 'food_festival':
+            food_festival, target_error = resolve_food_festival(data.get('food_festival', {}), request.user)
+            restaurant = None
+            error_key = 'food_festival'
+        else:
+            restaurant, target_error = resolve_restaurant(data.get('restaurant', {}), request.user)
+            food_festival = None
+            error_key = 'restaurant'
+        if target_error:
+            return JsonResponse({'success': False, 'errors': {error_key: target_error}}, status=400)
 
         try:
             with transaction.atomic():
-                self._update_review(review, data, restaurant)
+                self._update_review(review, data, restaurant, food_festival)
 
                 image_errors = sync_review_images(review, data.get('rating', {}).get('images', []), request.user)
                 image_errors.extend(self._sync_dishes(review, data.get('dishes', []), request.user))
@@ -134,6 +178,12 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
                 response['image_warnings'] = image_errors
             return JsonResponse(response)
 
+        except DishRestaurantResolutionError as e:
+            return JsonResponse({
+                'success': False,
+                'errors': {f'dish_{e.dish_index}_restaurant': e.message}
+            }, status=400)
+
         except Exception as e:
             logger.error("Failed to update review %s: %s", pk, e, exc_info=True)
             return JsonResponse({
@@ -141,13 +191,14 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
                 'error': f'Failed to update review: {str(e)}'
             }, status=500)
 
-    def _update_review(self, review, data, restaurant):
+    def _update_review(self, review, data, restaurant, food_festival):
         basic_info = data.get('basicInfo', {})
         rating_data = data.get('rating', {})
 
         entry_time = basic_info.get('entryTime') or '12:00'
 
         review.restaurant = restaurant
+        review.food_festival = food_festival
         review.visit_date = basic_info['visitDate']
         review.entry_time = entry_time
         review.party_size = int(basic_info['partySize'])
@@ -165,7 +216,7 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
         image_errors = []
         submitted_ids = set()
 
-        for dish_data in dishes_data:
+        for i, dish_data in enumerate(dishes_data):
             encyclopedia_entry = resolve_encyclopedia_entry(dish_data)
             cost = dish_data.get('cost')
             dish_id = dish_data.get('id')
@@ -181,7 +232,15 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
                     notes=dish_data.get('notes', ''),
                     cost=cost if cost else None,
                 )
-                link_or_create_wishlist_dish(review, dish_data['name'], encyclopedia_entry)
+                if review.food_festival_id:
+                    dish_restaurant, dish_restaurant_error = resolve_dish_restaurant(dish_data, user)
+                    if dish_restaurant_error:
+                        raise DishRestaurantResolutionError(i, dish_restaurant_error)
+                else:
+                    dish_restaurant = review.restaurant
+                link_or_create_wishlist_dish(
+                    review, dish_data['name'], encyclopedia_entry, dish_restaurant, review.food_festival
+                )
             else:
                 review_dish.encyclopedia_entry = encyclopedia_entry
                 review_dish.dish_name = dish_data['name']

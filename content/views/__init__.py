@@ -10,6 +10,18 @@ from .restaurant_detail import (
 )
 from .restaurant_create import RestaurantCreateView
 from .restaurant_update import RestaurantUpdateView
+from .food_festival_list import FoodFestivalListView
+from .food_festival_create import FoodFestivalCreateView
+from .food_festival_detail import (
+    FoodFestivalDetailView,
+    FoodFestivalAddRestaurantView,
+    FoodFestivalRemoveRestaurantView,
+    FoodFestivalDishCreateView,
+    FoodFestivalDishUpdateView,
+    FoodFestivalDishDeleteView,
+    FoodFestivalDishMarkTriedView,
+)
+from .food_festival_search_api import FoodFestivalSearchApiView
 from .encyclopedia_list import EncyclopediaListView
 from .encyclopedia_detail import EncyclopediaDetailView
 from .encyclopedia_search import EncyclopediaSearchView
@@ -49,6 +61,16 @@ __all__ = [
     'RestaurantDishMarkTriedView',
     'RestaurantCreateView',
     'RestaurantUpdateView',
+    'FoodFestivalListView',
+    'FoodFestivalCreateView',
+    'FoodFestivalDetailView',
+    'FoodFestivalAddRestaurantView',
+    'FoodFestivalRemoveRestaurantView',
+    'FoodFestivalDishCreateView',
+    'FoodFestivalDishUpdateView',
+    'FoodFestivalDishDeleteView',
+    'FoodFestivalDishMarkTriedView',
+    'FoodFestivalSearchApiView',
     'EncyclopediaListView',
     'EncyclopediaDetailView',
     'EncyclopediaSearchView',

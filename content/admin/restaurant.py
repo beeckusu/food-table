@@ -31,8 +31,8 @@ class RestaurantAdmin(admin.ModelAdmin):
 
 @admin.register(RestaurantDish)
 class RestaurantDishAdmin(admin.ModelAdmin):
-    list_display = ['dish_name', 'restaurant', 'status', 'created_at']
+    list_display = ['dish_name', 'restaurant', 'food_festival', 'status', 'created_at']
     list_filter = ['status']
-    search_fields = ['dish_name', 'restaurant__name']
-    autocomplete_fields = ['restaurant', 'review']
+    search_fields = ['dish_name', 'restaurant__name', 'food_festival__name']
+    autocomplete_fields = ['restaurant', 'food_festival', 'review']
     inlines = [RestaurantDishReferenceInline]

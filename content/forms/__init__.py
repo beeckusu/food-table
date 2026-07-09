@@ -6,6 +6,7 @@ Each form class is in its own module for better organization.
 from .review_filter import ReviewFilterForm
 from .review_dish_filter import ReviewDishFilterForm
 from .restaurant import RestaurantForm, RestaurantDishForm, RestaurantDishInlineForm
+from .food_festival import FoodFestivalForm
 
 __all__ = [
     'ReviewFilterForm',
@@ -13,4 +14,5 @@ __all__ = [
     'RestaurantForm',
     'RestaurantDishForm',
     'RestaurantDishInlineForm',
+    'FoodFestivalForm',
 ]

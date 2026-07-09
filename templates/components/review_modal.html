@@ -19,6 +19,15 @@
                     <h6 class="mb-3">Basic Information</h6>
                     <form id="basicInfoForm">
                         <div class="mb-3">
+                            <label class="form-label mb-1">What are you reviewing? <span class="text-danger">*</span></label>
+                            <div class="btn-group d-flex mb-2" role="group" aria-label="Review target type">
+                                <input type="radio" class="btn-check" name="reviewTargetType" id="reviewTargetTypeRestaurant" value="restaurant" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="reviewTargetTypeRestaurant">Restaurant</label>
+                                <input type="radio" class="btn-check" name="reviewTargetType" id="reviewTargetTypeFoodFestival" value="food_festival" autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="reviewTargetTypeFoodFestival">Food Festival</label>
+                            </div>
+                        </div>
+                        <div class="mb-3" id="reviewRestaurantTargetContainer">
                             <label class="form-label">Restaurant <span class="text-danger">*</span></label>
                             <div id="reviewRestaurantSearchSection">
                                 <div class="position-relative">
@@ -67,6 +76,42 @@
                                         <div class="col"><input type="text" class="form-control" id="reviewCountry" placeholder="Country"></div>
                                         <div class="col"><input type="text" class="form-control" id="reviewPostalCode" placeholder="Postal Code"></div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3" id="reviewFoodFestivalTargetContainer" style="display: none;">
+                            <label class="form-label">Food Festival <span class="text-danger">*</span></label>
+                            <div id="reviewFoodFestivalSearchSection">
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" id="reviewFoodFestivalName" placeholder="Search food festivals…" autocomplete="off">
+                                    <input type="hidden" id="reviewFoodFestivalId">
+                                    <div id="foodFestivalSearchResults" class="list-group mt-2" style="display: none;"></div>
+                                </div>
+                                <div id="foodFestivalSearchStatus" class="form-text"></div>
+                                <button type="button" class="btn btn-link btn-sm ps-0 mt-1" id="reviewNewFoodFestivalBtn">
+                                    <i class="bi bi-plus-circle"></i> New food festival
+                                </button>
+                            </div>
+                            <div id="reviewNewFoodFestivalSection" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="form-text mb-0">New Food Festival</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0" id="reviewBackToFoodFestivalSearchBtn">
+                                        <i class="bi bi-arrow-left"></i> Back to search
+                                    </button>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="text" class="form-control" id="reviewNewFoodFestivalName" placeholder="Food festival name">
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col"><input type="text" class="form-control" id="reviewNewFoodFestivalCity" placeholder="City"></div>
+                                    <div class="col"><input type="text" class="form-control" id="reviewNewFoodFestivalCountry" placeholder="Country"></div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col"><input type="date" class="form-control" id="reviewNewFoodFestivalStartDate" placeholder="Start date"></div>
+                                    <div class="col"><input type="date" class="form-control" id="reviewNewFoodFestivalEndDate" placeholder="End date"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="url" class="form-control" id="reviewNewFoodFestivalWebsite" placeholder="Website (optional)">
                                 </div>
                             </div>
                         </div>
@@ -155,11 +200,90 @@
                         <i class="bi bi-info-circle"></i> Add dishes you tried during your visit. You can add multiple dishes.
                     </div>
                     <div id="dishesContainer">
-                        <!-- Dishes will be added here dynamically -->
+                        <!-- Dishes will be added here dynamically (restaurant-target reviews) -->
                     </div>
                     <button type="button" class="btn btn-outline-primary" id="addDishBtn">
                         <i class="bi bi-plus-circle"></i> Add Dish
                     </button>
+
+                    <div id="festivalGroupsContainer" style="display: none;">
+                        <!-- Restaurant groups will be added here dynamically (food-festival-target reviews) -->
+                    </div>
+                    <button type="button" class="btn btn-outline-primary" id="addGroupBtn" style="display: none;">
+                        <i class="bi bi-shop"></i> Add Restaurant
+                    </button>
+
+                    <div id="restaurantGroupTemplate" style="display: none;">
+                        <div class="card mb-4 restaurant-group-card border-primary">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h6 class="mb-0">Restaurant <span class="group-number"></span></h6>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-group-btn">
+                                        <i class="bi bi-trash"></i> Remove
+                                    </button>
+                                </div>
+                                <div class="mb-3 group-restaurant-field">
+                                    <label class="form-label">Restaurant <span class="text-danger">*</span></label>
+                                    <div class="group-restaurant-search-section">
+                                        <div class="position-relative">
+                                            <input type="text" class="form-control group-restaurant-name" placeholder="Search restaurants…" autocomplete="off">
+                                            <input type="hidden" class="group-restaurant-id">
+                                            <div class="list-group mt-2 group-restaurant-results" style="display: none;"></div>
+                                        </div>
+                                        <div class="form-text group-restaurant-status"></div>
+                                        <button type="button" class="btn btn-link btn-sm ps-0 mt-1 group-new-restaurant-btn">
+                                            <i class="bi bi-plus-circle"></i> New restaurant
+                                        </button>
+                                    </div>
+                                    <div class="group-new-restaurant-section" style="display: none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="form-text mb-0">New Restaurant</span>
+                                            <button type="button" class="btn btn-link btn-sm p-0 group-back-to-restaurant-search-btn">
+                                                <i class="bi bi-arrow-left"></i> Back to search
+                                            </button>
+                                        </div>
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control group-new-restaurant-name" placeholder="Restaurant name">
+                                            <input type="hidden" class="group-new-restaurant-place-id">
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input group-new-restaurant-is-pop-up" type="checkbox">
+                                            <label class="form-check-label small">Pop-up restaurant (no fixed address)</label>
+                                        </div>
+                                        <div class="mb-2 group-new-restaurant-website-section" style="display: none;">
+                                            <input type="url" class="form-control group-new-restaurant-website" placeholder="Website URL *">
+                                        </div>
+                                        <div class="group-new-restaurant-address-section">
+                                            {% if google_maps_api_key %}
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control group-places-search" placeholder="Search Google Places…" autocomplete="off">
+                                                <div class="form-text text-muted">Select a suggestion to fill the fields below automatically.</div>
+                                            </div>
+                                            {% endif %}
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control group-new-restaurant-address" placeholder="Street address">
+                                            </div>
+                                            <div class="row g-2 mb-2">
+                                                <div class="col"><input type="text" class="form-control group-new-restaurant-city" placeholder="City"></div>
+                                                <div class="col"><input type="text" class="form-control group-new-restaurant-province" placeholder="Province/State"></div>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col"><input type="text" class="form-control group-new-restaurant-country" placeholder="Country"></div>
+                                                <div class="col"><input type="text" class="form-control group-new-restaurant-postal-code" placeholder="Postal Code"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <h6 class="small text-uppercase text-muted mb-2">Dishes</h6>
+                                <div class="group-dishes-container"></div>
+                                <button type="button" class="btn btn-sm btn-outline-primary add-group-dish-btn">
+                                    <i class="bi bi-plus-circle"></i> Add Dish
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="dishFormTemplate" style="display: none;">
                         <div class="card mb-3 dish-card">
                             <div class="card-body">

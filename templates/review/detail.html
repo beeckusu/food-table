@@ -4,7 +4,7 @@
 {% load rtf_tags %}
 {% load static %}
 
-{% block title %}{{ review.restaurant.name }} - Reviews - Food Table{% endblock %}
+{% block title %}{% firstof review.restaurant.name review.food_festival.name %} - Reviews - Food Table{% endblock %}
 
 {% block extra_css %}
 {% if user.is_staff %}
@@ -18,7 +18,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'content:review_list' %}">Reviews</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ review.restaurant.name }}</li>
+        <li class="breadcrumb-item active" aria-current="page">{% firstof review.restaurant.name review.food_festival.name %}</li>
     </ol>
 </nav>
 
@@ -26,7 +26,11 @@
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-2">
+            {% if review.food_festival %}
+            <h1 class="mb-0"><a href="{% url 'content:food_festival_detail' pk=review.food_festival.pk %}" class="text-decoration-none link-dark">{{ review.food_festival.name }}</a></h1>
+            {% else %}
             <h1 class="mb-0"><a href="{% url 'content:restaurant_detail' pk=review.restaurant.pk %}" class="text-decoration-none link-dark">{{ review.restaurant.name }}</a></h1>
+            {% endif %}
             <div class="d-flex align-items-center gap-2">
                 {% if user.is_staff %}
                 <a href="{% url 'content:review_share' pk=review.pk %}" class="btn btn-outline-primary btn-sm">
@@ -53,16 +57,24 @@
             <span class="me-3">
                 <strong>Visited:</strong> {{ review.visit_date|date:"F d, Y" }}
             </span>
+            {% if review.food_festival %}
+            {% if review.food_festival.city %}
+            <span class="me-3">
+                <strong>Location:</strong> {{ review.food_festival.city }}{% if review.food_festival.country %}, {{ review.food_festival.country }}{% endif %}
+            </span>
+            {% endif %}
+            {% else %}
             {% if review.restaurant.city %}
             <span class="me-3">
                 <strong>Location:</strong> {{ review.restaurant.city }}{% if review.restaurant.province %}, {{ review.restaurant.province }}{% endif %}{% if review.restaurant.country %}, {{ review.restaurant.country }}{% endif %}
             </span>
             {% endif %}
+            {% endif %}
             <span class="me-3">
                 <strong>Party Size:</strong> {{ review.party_size }}
             </span>
         </div>
-        {% if review.restaurant.street_address %}
+        {% if not review.food_festival and review.restaurant.street_address %}
         <div class="mb-2">
             <strong>Address:</strong> {{ review.restaurant.street_address }}{% if review.restaurant.postal_code %} {{ review.restaurant.postal_code }}{% endif %}
         </div>
@@ -121,6 +133,14 @@
                                     <span class="text-muted">Unlinked Dish</span>
                                     {% endif %}
                                 </h5>
+                                {% if review.food_festival and dish.restaurant_for_display %}
+                                <div class="mb-2">
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="bi bi-shop"></i>
+                                        <a href="{% url 'content:restaurant_detail' pk=dish.restaurant_for_display.pk %}" class="text-decoration-none text-dark">{{ dish.restaurant_for_display.name }}</a>
+                                    </span>
+                                </div>
+                                {% endif %}
                                 {% if dish.encyclopedia_entry %}
                                 <div class="mb-2">
                                     <small class="text-muted">
@@ -238,7 +258,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title">Other Reviews at {{ review.restaurant.name }}</h4>
+                <h4 class="card-title">Other Reviews at {% firstof review.restaurant.name review.food_festival.name %}</h4>
                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
                     {% for related in related_reviews %}
                     <div class="col">

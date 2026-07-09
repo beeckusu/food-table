@@ -7,9 +7,33 @@ from zoneinfo import ZoneInfo
 from django.core.files.base import ContentFile
 from django.contrib.contenttypes.models import ContentType
 
-from content.models import Restaurant, Encyclopedia, Image, ApiUsageLog
+from content.models import Restaurant, FoodFestival, Encyclopedia, Image, ApiUsageLog
 
 logger = logging.getLogger(__name__)
+
+
+class DishRestaurantResolutionError(Exception):
+    def __init__(self, dish_index, message):
+        self.dish_index = dish_index
+        self.message = message
+        super().__init__(message)
+
+
+def _validate_restaurant_picker(restaurant_data):
+    """
+    Validate a restaurant picker payload (top-level or per-dish): same shape,
+    same rules. Returns an error message string, or None if valid.
+    """
+    mode = restaurant_data.get('mode', 'search')
+    if mode == 'new':
+        if not (restaurant_data.get('name') or '').strip():
+            return 'Restaurant name is required'
+        if restaurant_data.get('isPopUp') and not (restaurant_data.get('website') or '').strip():
+            return 'Website is required for pop-up restaurants'
+        return None
+    if not restaurant_data.get('id') and not (restaurant_data.get('name') or '').strip():
+        return 'Please select a restaurant or add a new one'
+    return None
 
 
 def validate_review_data(data, dishes_required=True):
@@ -31,16 +55,20 @@ def validate_review_data(data, dishes_required=True):
     if not party_size or int(party_size) < 1:
         errors['party_size'] = 'Party size must be at least 1'
 
-    restaurant_data = data.get('restaurant', {})
-    mode = restaurant_data.get('mode', 'search')
-    if mode == 'new':
-        if not (restaurant_data.get('name') or '').strip():
-            errors['restaurant'] = 'Restaurant name is required'
-        elif restaurant_data.get('isPopUp') and not (restaurant_data.get('website') or '').strip():
-            errors['restaurant'] = 'Website is required for pop-up restaurants'
+    target_type = data.get('targetType', 'restaurant')
+    if target_type == 'food_festival':
+        festival_data = data.get('food_festival', {})
+        mode = festival_data.get('mode', 'search')
+        if mode == 'new':
+            if not (festival_data.get('name') or '').strip():
+                errors['food_festival'] = 'Food festival name is required'
+        else:
+            if not festival_data.get('id') and not (festival_data.get('name') or '').strip():
+                errors['food_festival'] = 'Please select a food festival or add a new one'
     else:
-        if not restaurant_data.get('id') and not (restaurant_data.get('name') or '').strip():
-            errors['restaurant'] = 'Please select a restaurant or add a new one'
+        restaurant_error = _validate_restaurant_picker(data.get('restaurant', {}))
+        if restaurant_error:
+            errors['restaurant'] = restaurant_error
 
     rating_data = data.get('rating', {})
     overall_rating = rating_data.get('overall')
@@ -61,6 +89,10 @@ def validate_review_data(data, dishes_required=True):
         for i, dish in enumerate(dishes):
             if not dish.get('name'):
                 errors[f'dish_{i}_name'] = f'Dish {i+1} must have a name'
+            if target_type == 'food_festival':
+                dish_restaurant_error = _validate_restaurant_picker(dish.get('restaurant', {}))
+                if dish_restaurant_error:
+                    errors[f'dish_{i}_restaurant'] = dish_restaurant_error
 
     return errors
 
@@ -123,6 +155,44 @@ def resolve_restaurant(restaurant_data, user):
     return restaurant, None
 
 
+def resolve_food_festival(festival_data, user):
+    """
+    Resolve the FoodFestival instance for a review from the food festival picker payload.
+    Returns (food_festival, error_message). error_message is None on success.
+    """
+    mode = festival_data.get('mode', 'search')
+
+    if mode == 'new':
+        name = (festival_data.get('name') or '').strip()
+        festival, created = FoodFestival.objects.get_or_create(
+            name=name,
+            defaults={
+                'city': (festival_data.get('city') or '').strip(),
+                'country': (festival_data.get('country') or '').strip(),
+                'start_date': festival_data.get('startDate') or None,
+                'end_date': festival_data.get('endDate') or None,
+                'website': (festival_data.get('website') or '').strip(),
+                'created_by': user,
+            },
+        )
+        return festival, None
+
+    festival_id = festival_data.get('id')
+    if festival_id:
+        try:
+            festival = FoodFestival.objects.get(pk=festival_id)
+        except (FoodFestival.DoesNotExist, ValueError, TypeError):
+            return None, 'Selected food festival could not be found'
+        return festival, None
+
+    # No id selected but a name was typed (legacy "quick create by name" path)
+    name = (festival_data.get('name') or '').strip()
+    if not name:
+        return None, 'Please select a food festival or add a new one'
+    festival, created = FoodFestival.objects.get_or_create(name=name, defaults={'created_by': user})
+    return festival, None
+
+
 def save_review_images(review, images_data, user):
     """Save base64-encoded images attached to the review itself. Returns list of error strings."""
     errors = []
@@ -178,14 +248,28 @@ def save_dish_image(review_dish, image_data, user):
         return f"Image for '{review_dish.dish_name}' failed to save: {e}"
 
 
-def link_or_create_wishlist_dish(review, dish_name, encyclopedia_entry):
+def resolve_dish_restaurant(dish_data, user):
+    """
+    Resolve the Restaurant a single dish was tried at, from the dish's own
+    restaurant picker payload (used when the review's target is a food festival,
+    since a festival visit can involve dishes from several different vendors).
+    Returns (restaurant, error_message).
+    """
+    return resolve_restaurant(dish_data.get('restaurant', {}), user)
+
+
+def link_or_create_wishlist_dish(review, dish_name, encyclopedia_entry, restaurant, food_festival=None):
     """Promote an existing wishlist entry to 'had', or create a new RestaurantDish record."""
     from content.models import RestaurantDish, RestaurantDishReference
 
+    if food_festival:
+        food_festival.restaurants.add(restaurant)
+
     wishlist_dish = RestaurantDish.objects.filter(
-        restaurant=review.restaurant,
         dish_name=dish_name,
         status=RestaurantDish.STATUS_WISHLIST,
+        restaurant=restaurant,
+        food_festival=food_festival,
     ).first()
     if wishlist_dish:
         wishlist_dish.status = RestaurantDish.STATUS_HAD
@@ -196,11 +280,12 @@ def link_or_create_wishlist_dish(review, dish_name, encyclopedia_entry):
         return wishlist_dish
 
     new_dish = RestaurantDish.objects.create(
-        restaurant=review.restaurant,
         dish_name=dish_name,
         encyclopedia_entry=encyclopedia_entry,
         status=RestaurantDish.STATUS_HAD,
         review=review,
+        restaurant=restaurant,
+        food_festival=food_festival,
     )
     RestaurantDishReference.objects.create(
         dish=new_dish,

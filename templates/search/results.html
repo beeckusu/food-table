@@ -63,6 +63,15 @@
                         {% endif %}
                     </a>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {% if filter_type == 'food_festival' %}active{% endif %}"
+                       href="?q={{ query }}&type=food_festival">
+                        Food Festivals
+                        {% if food_festival_count %}
+                            <span class="badge bg-secondary ms-1">{{ food_festival_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
             </ul>
         {% else %}
             <div class="alert alert-warning">
@@ -89,6 +98,8 @@
                 <span class="badge bg-info">Review</span>
                 {% elif result.content_type == 'restaurant' %}
                 <span class="badge bg-warning text-dark">Restaurant</span>
+                {% elif result.content_type == 'food_festival' %}
+                <span class="badge bg-danger">Food Festival</span>
                 {% endif %}
             </div>
 
@@ -117,10 +128,10 @@
 
             <div class="card-body">
                 <!-- Title/Name -->
-                {% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' or result.content_type == 'restaurant' %}
+                {% if result.content_type == 'encyclopedia' or result.content_type == 'recipe' or result.content_type == 'restaurant' or result.content_type == 'food_festival' %}
                     <h5 class="card-title">{{ result.name }}</h5>
                 {% elif result.content_type == 'review' %}
-                    <h5 class="card-title">{{ result.restaurant.name }}</h5>
+                    <h5 class="card-title">{% firstof result.restaurant.name result.food_festival.name %}</h5>
                 {% endif %}
 
                 <!-- Type-specific Content -->
@@ -192,6 +203,18 @@
                     {% else %}
                     <span class="badge bg-primary"><i class="bi bi-bookmark"></i> Wishlist</span>
                     {% endif %}
+                {% elif result.content_type == 'food_festival' %}
+                    {% if result.city or result.country %}
+                    <p class="card-text text-muted small mb-2">
+                        <i class="bi bi-geo-alt"></i>
+                        {% if result.city %}{{ result.city }}{% if result.country %}, {% endif %}{% endif %}{{ result.country }}
+                    </p>
+                    {% endif %}
+                    {% if result.start_date %}
+                    <p class="card-text text-muted small mb-0">
+                        <i class="bi bi-calendar-event"></i> {{ result.start_date|date:"M d, Y" }}{% if result.end_date %} – {{ result.end_date|date:"M d, Y" }}{% endif %}
+                    </p>
+                    {% endif %}
                 {% endif %}
 
                 <!-- Relevance Score -->
@@ -210,6 +233,8 @@
                 <a href="{% url 'content:review_detail' result.pk %}" class="btn btn-primary btn-sm">View Review</a>
                 {% elif result.content_type == 'restaurant' %}
                 <a href="{% url 'content:restaurant_detail' result.pk %}" class="btn btn-primary btn-sm">View Restaurant</a>
+                {% elif result.content_type == 'food_festival' %}
+                <a href="{% url 'content:food_festival_detail' result.pk %}" class="btn btn-primary btn-sm">View Food Festival</a>
                 {% endif %}
             </div>
         </div>

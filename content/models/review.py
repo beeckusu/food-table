@@ -17,6 +17,15 @@ class Review(models.Model):
     restaurant = models.ForeignKey(
         'Restaurant',
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='reviews',
+    )
+    food_festival = models.ForeignKey(
+        'FoodFestival',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name='reviews',
     )
 
@@ -61,12 +70,23 @@ class Review(models.Model):
             models.Index(fields=['-visit_date']),
             models.Index(fields=['created_by']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(restaurant__isnull=False, food_festival__isnull=True)
+                    | models.Q(restaurant__isnull=True, food_festival__isnull=False)
+                ),
+                name='review_exactly_one_target',
+            ),
+        ]
 
     def __str__(self):
-        restaurant_name = self.restaurant.name if self.restaurant_id else ''
+        target_name = self.restaurant.name if self.restaurant_id else (
+            self.food_festival.name if self.food_festival_id else ''
+        )
         if self.title:
-            return f"{self.title} - {restaurant_name}"
-        return f"{restaurant_name} ({self.visit_date})"
+            return f"{self.title} - {target_name}"
+        return f"{target_name} ({self.visit_date})"
 
     def save(self, *args, **kwargs):
         """
@@ -164,9 +184,11 @@ def update_review_search_vector(sender, instance, **kwargs):
     if kwargs.get('update_fields') and 'search_vector' in kwargs['update_fields']:
         return
 
-    # Build search vector with restaurant name (A), title (B), and notes (C)
-    restaurant_name = instance.restaurant.name if instance.restaurant_id else ''
-    search_vector_expr = SearchVector(models.Value(restaurant_name), weight='A')
+    # Build search vector with restaurant/food festival name (A), title (B), and notes (C)
+    target_name = instance.restaurant.name if instance.restaurant_id else (
+        instance.food_festival.name if instance.food_festival_id else ''
+    )
+    search_vector_expr = SearchVector(models.Value(target_name), weight='A')
 
     # Add title if it exists
     if instance.title:

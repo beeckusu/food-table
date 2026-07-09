@@ -15,6 +15,14 @@ class RestaurantDish(models.Model):
         on_delete=models.CASCADE,
         related_name='dishes'
     )
+    food_festival = models.ForeignKey(
+        'FoodFestival',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='dishes',
+        help_text='Set when this dish was tried at the restaurant as part of a food festival',
+    )
     dish_name = models.CharField(max_length=255)
     encyclopedia_entry = models.ForeignKey(
         'Encyclopedia',
@@ -38,4 +46,7 @@ class RestaurantDish(models.Model):
         ordering = ['dish_name']
 
     def __str__(self):
-        return f"{self.dish_name} @ {self.restaurant.name} ({self.get_status_display()})"
+        target = self.restaurant.name
+        if self.food_festival_id:
+            target = f"{target} @ {self.food_festival.name}"
+        return f"{self.dish_name} @ {target} ({self.get_status_display()})"

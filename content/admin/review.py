@@ -50,15 +50,15 @@ class ReviewAdmin(admin.ModelAdmin):
 
     list_display = ['get_restaurant_name', 'visit_date', 'rating', 'created_at']
     list_filter = ['rating', 'visit_date', 'restaurant__city', 'restaurant__country']
-    search_fields = ['restaurant__name', 'restaurant__city', 'restaurant__country', 'notes']
+    search_fields = ['restaurant__name', 'restaurant__city', 'restaurant__country', 'food_festival__name', 'notes']
     date_hierarchy = 'visit_date'
     readonly_fields = ['created_at', 'updated_at', 'created_by']
-    autocomplete_fields = ['restaurant']
+    autocomplete_fields = ['restaurant', 'food_festival']
     actions = ['import_reviews_from_confluence']
 
     fieldsets = (
         ('Restaurant', {
-            'fields': ('restaurant',)
+            'fields': ('restaurant', 'food_festival')
         }),
         ('Visit Details', {
             'fields': ('visit_date', 'entry_time', 'party_size')
@@ -77,7 +77,11 @@ class ReviewAdmin(admin.ModelAdmin):
 
     @admin.display(description='Restaurant', ordering='restaurant__name')
     def get_restaurant_name(self, obj):
-        return obj.restaurant.name if obj.restaurant_id else '—'
+        if obj.restaurant_id:
+            return obj.restaurant.name
+        if obj.food_festival_id:
+            return f'{obj.food_festival.name} (festival)'
+        return '—'
 
     inlines = [ReviewDishInline, ImageInline, ReviewTagInline]
 

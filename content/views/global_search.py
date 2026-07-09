@@ -4,7 +4,7 @@ from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F, Value, CharField, Q
 from itertools import chain
 from operator import attrgetter
-from content.models import Encyclopedia, Recipe, Review, Restaurant
+from content.models import Encyclopedia, Recipe, Review, Restaurant, FoodFestival
 
 
 class GlobalSearchView(LoginRequiredMixin, ListView):
@@ -81,6 +81,16 @@ class GlobalSearchView(LoginRequiredMixin, ListView):
             ).order_by('-rank')
             results.extend(list(restaurant_results))
 
+        # Search FoodFestival (if not filtered or filtered to food_festival)
+        if not content_type or content_type == 'food_festival':
+            food_festival_results = FoodFestival.objects.annotate(
+                rank=SearchRank(F('search_vector'), search_query),
+                content_type=Value('food_festival', output_field=CharField())
+            ).filter(
+                search_vector=search_query
+            ).order_by('-rank')
+            results.extend(list(food_festival_results))
+
         # Sort combined results by rank (descending)
         results.sort(key=attrgetter('rank'), reverse=True)
 
@@ -98,10 +108,12 @@ class GlobalSearchView(LoginRequiredMixin, ListView):
             context['recipe_count'] = sum(1 for r in context['results'] if r.content_type == 'recipe')
             context['review_count'] = sum(1 for r in context['results'] if r.content_type == 'review')
             context['restaurant_count'] = sum(1 for r in context['results'] if r.content_type == 'restaurant')
+            context['food_festival_count'] = sum(1 for r in context['results'] if r.content_type == 'food_festival')
         else:
             context['encyclopedia_count'] = 0
             context['recipe_count'] = 0
             context['review_count'] = 0
             context['restaurant_count'] = 0
+            context['food_festival_count'] = 0
 
         return context

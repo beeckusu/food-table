@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ food_festival.name }} - Food Table{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'content:food_festival_list' %}">Food Festivals</a></li>
+                <li class="breadcrumb-item active">{{ food_festival.name }}</li>
+            </ol>
+        </nav>
+        <h1 class="mb-1">{{ food_festival.name }}</h1>
+        {% if food_festival.city or food_festival.country %}
+        <p class="text-muted mb-1">
+            <i class="bi bi-geo-alt"></i>
+            {% if food_festival.city %}{{ food_festival.city }}{% if food_festival.country %}, {% endif %}{% endif %}{{ food_festival.country }}
+        </p>
+        {% endif %}
+        {% if food_festival.start_date %}
+        <p class="text-muted mb-1">
+            <i class="bi bi-calendar-event"></i> {{ food_festival.start_date|date:"M d, Y" }}{% if food_festival.end_date %} – {{ food_festival.end_date|date:"M d, Y" }}{% endif %}
+        </p>
+        {% endif %}
+        {% if food_festival.website %}
+        <p class="mb-0"><a href="{{ food_festival.website }}" target="_blank" rel="noopener noreferrer">{{ food_festival.website }}</a></p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left column: restaurants, each with its own dishes -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-shop"></i> Restaurants</h5>
+                <span class="badge bg-secondary">{{ restaurant_groups|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if restaurant_groups %}
+                <div class="accordion" id="restaurantDishAccordion">
+                    {% for group in restaurant_groups %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#restaurantGroup{{ group.restaurant.pk }}">
+                                <span class="flex-grow-1">{{ group.restaurant.name }}</span>
+                                <span class="badge bg-success ms-2">{{ group.dishes_had|length }} had</span>
+                                <span class="badge bg-primary ms-1">{{ group.dishes_wishlist|length }} wishlist</span>
+                            </button>
+                        </h2>
+                        <div id="restaurantGroup{{ group.restaurant.pk }}" class="accordion-collapse collapse show">
+                            <div class="accordion-body">
+                                <a href="{% url 'content:restaurant_detail' pk=group.restaurant.pk %}" class="d-inline-block mb-3 small">
+                                    <i class="bi bi-box-arrow-up-right"></i> View restaurant page
+                                </a>
+
+                                <h6 class="text-success small text-uppercase"><i class="bi bi-check2-circle"></i> Had</h6>
+                                {% if group.dishes_had %}
+                                <ul class="list-group list-group-flush mb-3">
+                                    {% for dish in group.dishes_had %}
+                                    <li class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ dish.dish_name }}</strong>
+                                                {% if dish.review %}
+                                                <a href="{% url 'content:review_detail' pk=dish.review.pk %}" class="ms-2 badge bg-light text-dark text-decoration-none border">
+                                                    <i class="bi bi-journal-text"></i> Review
+                                                </a>
+                                                {% endif %}
+                                                {% if dish.notes %}
+                                                <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
+                                                {% endif %}
+                                            </div>
+                                            {% if user.is_staff %}
+                                            <form method="post" action="{% url 'content:food_festival_dish_delete' pk=food_festival.pk dish_pk=dish.pk %}"
+                                                onsubmit="return confirm('Delete this dish?')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="text-muted small mb-3">No dishes had yet.</p>
+                                {% endif %}
+
+                                <h6 class="text-primary small text-uppercase"><i class="bi bi-bookmark-fill"></i> Wishlist</h6>
+                                {% if group.dishes_wishlist %}
+                                <ul class="list-group list-group-flush mb-3">
+                                    {% for dish in group.dishes_wishlist %}
+                                    <li class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ dish.dish_name }}</strong>
+                                                {% if dish.notes %}
+                                                <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
+                                                {% endif %}
+                                            </div>
+                                            {% if user.is_staff %}
+                                            <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                                                <form method="post" action="{% url 'content:food_festival_dish_mark_tried' pk=food_festival.pk dish_pk=dish.pk %}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as tried">
+                                                        <i class="bi bi-check2"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="post" action="{% url 'content:food_festival_dish_delete' pk=food_festival.pk dish_pk=dish.pk %}"
+                                                    onsubmit="return confirm('Delete this dish?')">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="text-muted small mb-3">Nothing on the wishlist yet.</p>
+                                {% endif %}
+
+                                {% if user.is_staff %}
+                                <div class="d-flex gap-2 mb-3">
+                                    <button class="btn btn-sm btn-outline-success" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#addHadForm{{ group.restaurant.pk }}">
+                                        <i class="bi bi-plus"></i> Add Dish Had
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#addWishlistForm{{ group.restaurant.pk }}">
+                                        <i class="bi bi-plus"></i> Add to Wishlist
+                                    </button>
+                                </div>
+                                <div class="collapse mb-3" id="addHadForm{{ group.restaurant.pk }}">
+                                    <form method="post" action="{% url 'content:food_festival_dish_create' pk=food_festival.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="had">
+                                        <input type="hidden" name="restaurant_id" value="{{ group.restaurant.pk }}">
+                                        <div class="mb-2">
+                                            <input type="text" name="dish_name" class="form-control form-control-sm" placeholder="Dish name" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-success">Add</button>
+                                    </form>
+                                </div>
+                                <div class="collapse mb-3" id="addWishlistForm{{ group.restaurant.pk }}">
+                                    <form method="post" action="{% url 'content:food_festival_dish_create' pk=food_festival.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="wishlist">
+                                        <input type="hidden" name="restaurant_id" value="{{ group.restaurant.pk }}">
+                                        <div class="mb-2">
+                                            <input type="text" name="dish_name" class="form-control form-control-sm" placeholder="Dish name" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-primary">Add to Wishlist</button>
+                                    </form>
+                                </div>
+
+                                <form method="post" action="{% url 'content:food_festival_remove_restaurant' pk=food_festival.pk restaurant_pk=group.restaurant.pk %}"
+                                    onsubmit="return confirm('Remove this restaurant from the festival?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-x-circle"></i> Remove restaurant from festival
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-3">No restaurants added yet.</p>
+                {% endif %}
+
+                {% if user.is_staff %}
+                <hr>
+                <form method="post" action="{% url 'content:food_festival_add_restaurant' pk=food_festival.pk %}" class="d-flex gap-2 mt-3">
+                    {% csrf_token %}
+                    <input type="text" name="restaurant_name" class="form-control form-control-sm" placeholder="Restaurant name">
+                    <button type="submit" class="btn btn-sm btn-outline-primary flex-shrink-0">Add Restaurant</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: reviews -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-journal-text"></i> Reviews</h5>
+                <span class="badge bg-secondary">{{ reviews.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if reviews %}
+                <ul class="list-group list-group-flush">
+                    {% for review in reviews %}
+                    <li class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <a href="{% url 'content:review_detail' pk=review.pk %}" class="text-decoration-none fw-semibold">
+                                    {{ review.title|default:"Untitled review" }}
+                                </a>
+                                <div class="text-muted small">{{ review.visit_date }}</div>
+                            </div>
+                            {% if review.rating %}
+                            <span class="badge bg-dark ms-2">{{ review.rating }}</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No reviews yet for this food festival.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

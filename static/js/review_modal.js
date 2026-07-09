@@ -30,23 +30,31 @@ document.addEventListener('DOMContentLoaded', function() {
     let formData = {
         basicInfo: {},
         restaurant: {},
+        food_festival: {},
         rating: {},
         dishes: []
     };
     let hasUnsavedChanges = false;
     let restaurantSearchTimeout = null;
+    let foodFestivalSearchTimeout = null;
 
     // Editing an existing review (set by openModalForEdit); null means create mode
     let editingReviewId = null;
 
+    // What the review is about: 'restaurant' or 'food_festival'
+    let targetType = 'restaurant';
+
     // Restaurant picker mode: 'search' (pick existing) or 'new' (create restaurant)
     let restaurantMode = 'search';
 
-    // Google Places autocomplete for the "new restaurant" address fields
+    // Food festival picker mode: 'search' (pick existing) or 'new' (create food festival)
+    let foodFestivalMode = 'search';
+
+    // Google Places autocomplete for "new restaurant" address fields (top-level and per-dish)
     const MAPS_API_KEY = window.REVIEW_MAPS_API_KEY || '';
-    let placesAutocomplete = null;
     let mapsScriptLoaded = false;
-    let pendingPlaceInits = [];
+    let pendingPlaceInits = []; // {el, onPlaceSelected} pairs queued while the Maps script loads
+    const placesAutocompleteInstances = new WeakMap(); // el -> google.maps.places.Autocomplete
     let placesSessionUsed = false;
 
     // Quill editor for review notes — initialized lazily when Step 3 becomes visible
@@ -97,12 +105,16 @@ document.addEventListener('DOMContentLoaded', function() {
             formData = {
                 basicInfo: {},
                 restaurant: {},
+                food_festival: {},
                 rating: {},
                 dishes: []
             };
             hasUnsavedChanges = false;
+            targetType = 'restaurant';
             restaurantMode = 'search';
+            foodFestivalMode = 'search';
             placesSessionUsed = false;
+            applyTargetTypeUI();
 
             // Set default date to today
             const today = new Date().toISOString().split('T')[0];
@@ -129,16 +141,22 @@ document.addEventListener('DOMContentLoaded', function() {
         formData = {
             basicInfo: {},
             restaurant: {},
+            food_festival: {},
             rating: {},
             dishes: []
         };
         hasUnsavedChanges = false;
+        targetType = 'restaurant';
         restaurantMode = 'search';
+        foodFestivalMode = 'search';
         placesSessionUsed = false;
         dishCounter = 0;
+        groupCounter = 0;
+        applyTargetTypeUI();
 
         document.getElementById('reviewModalLabel').textContent = 'Edit Review';
         document.getElementById('dishesContainer').innerHTML = '';
+        document.getElementById('festivalGroupsContainer').innerHTML = '';
 
         showStep(currentStep);
         modal.show();
@@ -168,7 +186,25 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('reviewEntryTime').value = formData.basicInfo.entryTime || '';
         }
 
-        if (formData.restaurant) {
+        targetType = formData.targetType || 'restaurant';
+        applyTargetTypeUI();
+
+        if (targetType === 'food_festival' && formData.food_festival) {
+            const f = formData.food_festival;
+            if (f.mode === 'new') {
+                switchToNewFoodFestivalMode();
+                document.getElementById('reviewNewFoodFestivalName').value = f.name || '';
+                document.getElementById('reviewNewFoodFestivalCity').value = f.city || '';
+                document.getElementById('reviewNewFoodFestivalCountry').value = f.country || '';
+                document.getElementById('reviewNewFoodFestivalStartDate').value = f.startDate || '';
+                document.getElementById('reviewNewFoodFestivalEndDate').value = f.endDate || '';
+                document.getElementById('reviewNewFoodFestivalWebsite').value = f.website || '';
+            } else {
+                switchToSearchFoodFestivalMode();
+                document.getElementById('reviewFoodFestivalName').value = f.name || '';
+                document.getElementById('reviewFoodFestivalId').value = f.id || '';
+            }
+        } else if (formData.restaurant) {
             const r = formData.restaurant;
             if (r.mode === 'new') {
                 switchToNewRestaurantMode();
@@ -214,9 +250,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Restore dishes
         if (formData.dishes && formData.dishes.length > 0) {
-            formData.dishes.forEach(dishData => {
-                addDish(dishData);
-            });
+            if (targetType === 'food_festival') {
+                groupDishesByRestaurant(formData.dishes).forEach(group => {
+                    addRestaurantGroup(group.restaurant, group.dishes);
+                });
+            } else {
+                formData.dishes.forEach(dishData => {
+                    addDish(dishData);
+                });
+            }
         }
 
         hasUnsavedChanges = false;
@@ -295,6 +337,170 @@ document.addEventListener('DOMContentLoaded', function() {
         validateCurrentStep();
     }
 
+    // Review target type (restaurant vs food festival) helpers
+    function applyTargetTypeUI() {
+        document.getElementById('reviewTargetTypeRestaurant').checked = targetType === 'restaurant';
+        document.getElementById('reviewTargetTypeFoodFestival').checked = targetType === 'food_festival';
+        document.getElementById('reviewRestaurantTargetContainer').style.display = targetType === 'restaurant' ? 'block' : 'none';
+        document.getElementById('reviewFoodFestivalTargetContainer').style.display = targetType === 'food_festival' ? 'block' : 'none';
+
+        document.getElementById('dishesContainer').style.display = targetType === 'food_festival' ? 'none' : 'block';
+        document.getElementById('addDishBtn').style.display = targetType === 'food_festival' ? 'none' : 'inline-block';
+        document.getElementById('festivalGroupsContainer').style.display = targetType === 'food_festival' ? 'block' : 'none';
+        document.getElementById('addGroupBtn').style.display = targetType === 'food_festival' ? 'inline-block' : 'none';
+    }
+
+    document.getElementById('reviewTargetTypeRestaurant').addEventListener('change', function() {
+        if (!this.checked) return;
+        targetType = 'restaurant';
+        applyTargetTypeUI();
+        validateCurrentStep();
+    });
+
+    document.getElementById('reviewTargetTypeFoodFestival').addEventListener('change', function() {
+        if (!this.checked) return;
+        targetType = 'food_festival';
+        applyTargetTypeUI();
+        validateCurrentStep();
+    });
+
+    // Food festival picker helpers
+    function switchToNewFoodFestivalMode() {
+        foodFestivalMode = 'new';
+        document.getElementById('reviewFoodFestivalSearchSection').style.display = 'none';
+        document.getElementById('reviewNewFoodFestivalSection').style.display = 'block';
+        const typedName = document.getElementById('reviewFoodFestivalName').value.trim();
+        const newNameField = document.getElementById('reviewNewFoodFestivalName');
+        if (!newNameField.value) newNameField.value = typedName;
+        validateCurrentStep();
+    }
+
+    function switchToSearchFoodFestivalMode() {
+        foodFestivalMode = 'search';
+        document.getElementById('reviewNewFoodFestivalSection').style.display = 'none';
+        document.getElementById('reviewFoodFestivalSearchSection').style.display = 'block';
+        validateCurrentStep();
+    }
+
+    function isFoodFestivalSectionValid() {
+        if (foodFestivalMode === 'new') {
+            return !!document.getElementById('reviewNewFoodFestivalName').value.trim();
+        }
+        const id = document.getElementById('reviewFoodFestivalId').value;
+        const name = document.getElementById('reviewFoodFestivalName').value.trim();
+        return !!(id || name);
+    }
+
+    function collectFoodFestivalData() {
+        if (foodFestivalMode === 'new') {
+            return {
+                mode: 'new',
+                name: document.getElementById('reviewNewFoodFestivalName').value.trim(),
+                city: document.getElementById('reviewNewFoodFestivalCity').value.trim(),
+                country: document.getElementById('reviewNewFoodFestivalCountry').value.trim(),
+                startDate: document.getElementById('reviewNewFoodFestivalStartDate').value,
+                endDate: document.getElementById('reviewNewFoodFestivalEndDate').value,
+                website: document.getElementById('reviewNewFoodFestivalWebsite').value.trim(),
+            };
+        }
+        return {
+            mode: 'search',
+            id: document.getElementById('reviewFoodFestivalId').value || null,
+            name: document.getElementById('reviewFoodFestivalName').value.trim(),
+        };
+    }
+
+    document.getElementById('reviewNewFoodFestivalBtn').addEventListener('click', switchToNewFoodFestivalMode);
+    document.getElementById('reviewBackToFoodFestivalSearchBtn').addEventListener('click', switchToSearchFoodFestivalMode);
+    document.getElementById('reviewNewFoodFestivalName').addEventListener('input', validateCurrentStep);
+
+    // Food festival search with debounce (300ms)
+    const foodFestivalInput = document.getElementById('reviewFoodFestivalName');
+    const foodFestivalResults = document.getElementById('foodFestivalSearchResults');
+    const foodFestivalStatus = document.getElementById('foodFestivalSearchStatus');
+
+    foodFestivalInput.addEventListener('input', function() {
+        document.getElementById('reviewFoodFestivalId').value = '';
+        clearTimeout(foodFestivalSearchTimeout);
+        const query = this.value.trim();
+
+        validateCurrentStep();
+
+        if (query.length < 2) {
+            foodFestivalResults.style.display = 'none';
+            foodFestivalResults.innerHTML = '';
+            foodFestivalStatus.textContent = query.length === 1 ? 'Type at least 2 characters to search' : '';
+            return;
+        }
+
+        foodFestivalStatus.textContent = 'Searching...';
+
+        foodFestivalSearchTimeout = setTimeout(() => {
+            performFoodFestivalSearch(query);
+        }, 300);
+    });
+
+    function performFoodFestivalSearch(query) {
+        fetch(`/api/food-festivals/search/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                foodFestivalResults.innerHTML = '';
+                validateCurrentStep();
+
+                if (data.results && data.results.length > 0) {
+                    foodFestivalStatus.textContent = `${data.results.length} food festival(s) found`;
+                    foodFestivalResults.style.display = 'block';
+
+                    data.results.forEach(festival => {
+                        const location = [festival.city, festival.country].filter(Boolean).join(', ');
+                        const item = document.createElement('a');
+                        item.className = 'list-group-item list-group-item-action';
+                        item.href = '#';
+                        item.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>${festival.name}</strong>
+                                    ${location ? `<br><small class="text-muted">${location}</small>` : ''}
+                                </div>
+                                <span class="badge bg-secondary">${festival.review_count} review(s)</span>
+                            </div>
+                        `;
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            selectFoodFestival(festival);
+                        });
+                        foodFestivalResults.appendChild(item);
+                    });
+                } else {
+                    foodFestivalStatus.textContent = 'No food festivals found. Use "New food festival" below to add one.';
+                    foodFestivalResults.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Food festival search error:', error);
+                foodFestivalStatus.textContent = 'Error searching food festivals';
+                foodFestivalResults.style.display = 'none';
+                validateCurrentStep();
+            });
+    }
+
+    function selectFoodFestival(festival) {
+        foodFestivalInput.value = festival.name;
+        document.getElementById('reviewFoodFestivalId').value = festival.id;
+        foodFestivalResults.style.display = 'none';
+        foodFestivalResults.innerHTML = '';
+        foodFestivalStatus.textContent = '';
+
+        validateCurrentStep();
+    }
+
+    // Hide food festival search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!foodFestivalInput.contains(e.target) && !foodFestivalResults.contains(e.target)) {
+            foodFestivalResults.style.display = 'none';
+        }
+    });
+
     // Restaurant picker helpers
     function switchToNewRestaurantMode() {
         restaurantMode = 'new';
@@ -303,7 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const typedName = document.getElementById('reviewRestaurantName').value.trim();
         const newNameField = document.getElementById('reviewNewRestaurantName');
         if (!newNameField.value) newNameField.value = typedName;
-        initReviewPlacesAutocomplete();
+        initPlacesAutocomplete(document.getElementById('reviewPlacesSearch'), fillTopLevelRestaurantFromPlace);
         validateCurrentStep();
     }
 
@@ -325,6 +531,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const id = document.getElementById('reviewRestaurantId').value;
         const name = document.getElementById('reviewRestaurantName').value.trim();
         return !!(id || name);
+    }
+
+    // Validates a restaurant payload (top-level, or a food-festival dish group's), same rules throughout
+    function isDishRestaurantValid(r) {
+        if (!r) return false;
+        if (r.mode === 'new') {
+            if (!r.name) return false;
+            if (r.isPopUp && !r.website) return false;
+            return true;
+        }
+        return !!(r.id || r.name);
     }
 
     function collectRestaurantData() {
@@ -362,21 +579,20 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('reviewNewRestaurantName').addEventListener('input', validateCurrentStep);
     document.getElementById('reviewNewWebsite').addEventListener('input', validateCurrentStep);
 
-    // Google Places autocomplete for the "new restaurant" address fields (lazy-loaded)
-    function initReviewPlacesAutocomplete() {
-        if (placesAutocomplete || !MAPS_API_KEY) return;
-        const el = document.getElementById('reviewPlacesSearch');
-        if (!el) return;
+    // Google Places autocomplete for "new restaurant" address fields (lazy-loaded, reusable per input).
+    // onPlaceSelected receives {name, address, city, province, country, postalCode, placeId}.
+    function initPlacesAutocomplete(el, onPlaceSelected) {
+        if (!MAPS_API_KEY || !el || placesAutocompleteInstances.has(el)) return;
 
         if (mapsScriptLoaded) {
-            setupReviewPlaces(el);
+            setupPlacesAutocomplete(el, onPlaceSelected);
         } else {
-            pendingPlaceInits.push(el);
+            pendingPlaceInits.push({ el, onPlaceSelected });
             if (pendingPlaceInits.length === 1) {
                 window._reviewMapsLoaded = function() {
                     delete window._reviewMapsLoaded;
                     mapsScriptLoaded = true;
-                    pendingPlaceInits.forEach(setupReviewPlaces);
+                    pendingPlaceInits.forEach(p => setupPlacesAutocomplete(p.el, p.onPlaceSelected));
                     pendingPlaceInits = [];
                 };
                 const script = document.createElement('script');
@@ -388,17 +604,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function setupReviewPlaces(el) {
-        if (placesAutocomplete) return;
+    function setupPlacesAutocomplete(el, onPlaceSelected) {
+        if (placesAutocompleteInstances.has(el)) return;
         let sessionToken = new google.maps.places.AutocompleteSessionToken();
-        placesAutocomplete = new google.maps.places.Autocomplete(el, {
+        const autocomplete = new google.maps.places.Autocomplete(el, {
             types: ['establishment'],
             componentRestrictions: { country: ['ca', 'us'] },
             fields: ['address_components', 'name', 'place_id'],
             sessionToken: sessionToken,
         });
-        placesAutocomplete.addListener('place_changed', function() {
-            const place = placesAutocomplete.getPlace();
+        placesAutocompleteInstances.set(el, autocomplete);
+        autocomplete.addListener('place_changed', function() {
+            const place = autocomplete.getPlace();
             if (!place.address_components) return;
 
             function getComponent(types, nameType) {
@@ -409,19 +626,30 @@ document.addEventListener('DOMContentLoaded', function() {
             const streetNumber = getComponent(['street_number'], 'long_name');
             const route = getComponent(['route'], 'long_name');
 
-            if (place.name) document.getElementById('reviewNewRestaurantName').value = place.name;
-            document.getElementById('reviewAddress').value = [streetNumber, route].filter(Boolean).join(' ');
-            document.getElementById('reviewCity').value = getComponent(['locality', 'sublocality_level_1'], 'long_name');
-            document.getElementById('reviewProvince').value = getComponent(['administrative_area_level_1'], 'short_name');
-            document.getElementById('reviewCountry').value = getComponent(['country'], 'long_name');
-            document.getElementById('reviewPostalCode').value = getComponent(['postal_code'], 'long_name');
-            const placeIdEl = document.getElementById('reviewNewPlaceId');
-            if (place.place_id) placeIdEl.value = place.place_id;
+            onPlaceSelected({
+                name: place.name || '',
+                address: [streetNumber, route].filter(Boolean).join(' '),
+                city: getComponent(['locality', 'sublocality_level_1'], 'long_name'),
+                province: getComponent(['administrative_area_level_1'], 'short_name'),
+                country: getComponent(['country'], 'long_name'),
+                postalCode: getComponent(['postal_code'], 'long_name'),
+                placeId: place.place_id || '',
+            });
 
             placesSessionUsed = true;
             sessionToken = new google.maps.places.AutocompleteSessionToken();
             validateCurrentStep();
         });
+    }
+
+    function fillTopLevelRestaurantFromPlace(place) {
+        if (place.name) document.getElementById('reviewNewRestaurantName').value = place.name;
+        document.getElementById('reviewAddress').value = place.address;
+        document.getElementById('reviewCity').value = place.city;
+        document.getElementById('reviewProvince').value = place.province;
+        document.getElementById('reviewCountry').value = place.country;
+        document.getElementById('reviewPostalCode').value = place.postalCode;
+        if (place.placeId) document.getElementById('reviewNewPlaceId').value = place.placeId;
     }
 
     // Validate current step
@@ -436,7 +664,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const partySize = parseInt(document.getElementById('reviewPartySize').value);
                     const dateValidationError = document.getElementById('dateValidationError');
 
-                    isValid = isRestaurantSectionValid() && visitDate !== '';
+                    const targetValid = targetType === 'food_festival' ? isFoodFestivalSectionValid() : isRestaurantSectionValid();
+                    isValid = targetValid && visitDate !== '';
 
                     // Validate date is not in future
                     if (visitDate) {
@@ -465,10 +694,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
 
                 case 'dishes':
-                    // At least one dish is required
                     // Save dishes first to ensure formData is up to date
                     saveDishes();
-                    isValid = formData.dishes.length > 0;
+                    if (targetType === 'food_festival') {
+                        const groups = Array.from(document.querySelectorAll('.restaurant-group-card')).filter(
+                            g => g.parentElement.style.display !== 'none'
+                        );
+                        isValid = groups.length > 0 && groups.every(g => {
+                            const restaurantValid = isDishRestaurantValid(collectGroupRestaurantData(g));
+                            const hasDish = g.querySelectorAll('.group-dishes-container .dish-card').length > 0;
+                            return restaurantValid && hasDish;
+                        });
+                    } else {
+                        // At least one dish is required
+                        isValid = formData.dishes.length > 0;
+                    }
                     break;
 
                 case 'confirm':
@@ -498,7 +738,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     partySize: document.getElementById('reviewPartySize').value,
                     entryTime: document.getElementById('reviewEntryTime').value.trim()
                 };
-                formData.restaurant = collectRestaurantData();
+                formData.targetType = targetType;
+                if (targetType === 'food_festival') {
+                    formData.food_festival = collectFoodFestivalData();
+                    formData.restaurant = {};
+                } else {
+                    formData.restaurant = collectRestaurantData();
+                    formData.food_festival = {};
+                }
                 break;
 
             case 'rating':
@@ -624,21 +871,26 @@ document.addEventListener('DOMContentLoaded', function() {
         formData = {
             basicInfo: {},
             restaurant: {},
+            food_festival: {},
             rating: {},
             dishes: []
         };
         hasUnsavedChanges = false;
         editingReviewId = null;
+        targetType = 'restaurant';
         restaurantMode = 'search';
+        foodFestivalMode = 'search';
         placesSessionUsed = false;
+        applyTargetTypeUI();
 
         document.getElementById('reviewModalLabel').textContent = 'Create New Review';
 
         // Stop autosave
         draftManager.stopAutosave();
 
-        // Reset dish counter
+        // Reset dish/group counters
         dishCounter = 0;
+        groupCounter = 0;
 
         // Clear all form fields
         document.getElementById('basicInfoForm').reset();
@@ -648,6 +900,7 @@ document.addEventListener('DOMContentLoaded', function() {
             reviewNotesQuill.setContents([]);
         }
         document.getElementById('dishesContainer').innerHTML = '';
+        document.getElementById('festivalGroupsContainer').innerHTML = '';
 
         // Reset rating displays
         document.getElementById('ratingValue').textContent = '50';
@@ -672,13 +925,21 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('reviewNewWebsiteSection').style.display = 'none';
         document.getElementById('reviewNewAddressSection').style.display = 'block';
 
+        // Reset food festival picker to search mode
+        document.getElementById('foodFestivalSearchResults').style.display = 'none';
+        document.getElementById('foodFestivalSearchResults').innerHTML = '';
+        document.getElementById('foodFestivalSearchStatus').textContent = '';
+        document.getElementById('reviewNewFoodFestivalSection').style.display = 'none';
+        document.getElementById('reviewFoodFestivalSearchSection').style.display = 'block';
+
         hideError();
     }
 
     // Populate review summary
     function populateReviewSummary() {
         const summaryDiv = document.getElementById('reviewSummary');
-        const restaurant = formData.restaurant || {};
+        const isFoodFestival = (formData.targetType || 'restaurant') === 'food_festival';
+        const target = (isFoodFestival ? formData.food_festival : formData.restaurant) || {};
 
         let summaryHtml = '';
 
@@ -690,7 +951,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
         summaryHtml += '</div>';
         summaryHtml += '<div class="card-body">';
-        summaryHtml += `<p class="mb-2"><strong>Restaurant:</strong> ${restaurant.name || 'N/A'}</p>`;
+        summaryHtml += `<p class="mb-2"><strong>${isFoodFestival ? 'Food Festival' : 'Restaurant'}:</strong> ${target.name || 'N/A'}</p>`;
         summaryHtml += `<p class="mb-2"><strong>Visit Date:</strong> ${formData.basicInfo.visitDate || 'N/A'}</p>`;
         if (formData.basicInfo.entryTime) {
             summaryHtml += `<p class="mb-2"><strong>Time:</strong> ${formData.basicInfo.entryTime}</p>`;
@@ -699,7 +960,7 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryHtml += '</div></div>';
 
         // New Restaurant Address Section (only shown when adding a brand new restaurant)
-        if (restaurant.mode === 'new' && (restaurant.address || restaurant.city || restaurant.province || restaurant.country || restaurant.postalCode)) {
+        if (!isFoodFestival && target.mode === 'new' && (target.address || target.city || target.province || target.country || target.postalCode)) {
             summaryHtml += '<div class="card mb-3">';
             summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
             summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>New Restaurant Location</h6>';
@@ -707,11 +968,24 @@ document.addEventListener('DOMContentLoaded', function() {
             summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
             summaryHtml += '</div>';
             summaryHtml += '<div class="card-body">';
-            if (restaurant.address) summaryHtml += `<p class="mb-2"><strong>Address:</strong> ${restaurant.address}</p>`;
-            if (restaurant.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${restaurant.city}</p>`;
-            if (restaurant.province) summaryHtml += `<p class="mb-2"><strong>Province/State:</strong> ${restaurant.province}</p>`;
-            if (restaurant.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${restaurant.country}</p>`;
-            if (restaurant.postalCode) summaryHtml += `<p class="mb-0"><strong>Postal Code:</strong> ${restaurant.postalCode}</p>`;
+            if (target.address) summaryHtml += `<p class="mb-2"><strong>Address:</strong> ${target.address}</p>`;
+            if (target.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${target.city}</p>`;
+            if (target.province) summaryHtml += `<p class="mb-2"><strong>Province/State:</strong> ${target.province}</p>`;
+            if (target.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${target.country}</p>`;
+            if (target.postalCode) summaryHtml += `<p class="mb-0"><strong>Postal Code:</strong> ${target.postalCode}</p>`;
+            summaryHtml += '</div></div>';
+        } else if (isFoodFestival && target.mode === 'new' && (target.city || target.country || target.startDate || target.endDate)) {
+            summaryHtml += '<div class="card mb-3">';
+            summaryHtml += '<div class="card-header d-flex justify-content-between align-items-center bg-light">';
+            summaryHtml += '<h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>New Food Festival Details</h6>';
+            summaryHtml += '<button type="button" class="btn btn-sm btn-outline-primary edit-section-btn" data-target-step="0">';
+            summaryHtml += '<i class="bi bi-pencil"></i> Edit</button>';
+            summaryHtml += '</div>';
+            summaryHtml += '<div class="card-body">';
+            if (target.city) summaryHtml += `<p class="mb-2"><strong>City:</strong> ${target.city}</p>`;
+            if (target.country) summaryHtml += `<p class="mb-2"><strong>Country:</strong> ${target.country}</p>`;
+            if (target.startDate) summaryHtml += `<p class="mb-2"><strong>Start Date:</strong> ${target.startDate}</p>`;
+            if (target.endDate) summaryHtml += `<p class="mb-0"><strong>End Date:</strong> ${target.endDate}</p>`;
             summaryHtml += '</div></div>';
         }
 
@@ -763,6 +1037,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 const costBadge = dish.cost ? ` <span class="badge bg-success">$${parseFloat(dish.cost).toFixed(2)}</span>` : '';
                 summaryHtml += `<h6 class="mb-1">${index + 1}. ${dish.name} <span class="badge bg-primary">${dish.rating}/100</span>${costBadge}</h6>`;
+                if (isFoodFestival && dish.restaurant && dish.restaurant.name) {
+                    summaryHtml += `<div class="mb-2"><span class="badge bg-light text-dark border"><i class="bi bi-shop"></i> ${dish.restaurant.name}</span></div>`;
+                }
                 // Show encyclopedia link if any (only one allowed per dish)
                 if (dish.encyclopedia_ids && dish.encyclopedia_ids.length > 0) {
                     const entry = dish.encyclopedia_ids[0];
@@ -826,7 +1103,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Prepare data for submission
             const submissionData = {
                 basicInfo: formData.basicInfo,
+                targetType: formData.targetType || 'restaurant',
                 restaurant: formData.restaurant,
+                food_festival: formData.food_festival,
                 rating: formData.rating,
                 dishes: formData.dishes
             };
@@ -1086,12 +1365,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Dish management
     let dishCounter = 0;
+    let groupCounter = 0;
 
     document.getElementById('addDishBtn').addEventListener('click', function() {
         addDish();
     });
 
-    function addDish(dishData = null) {
+    document.getElementById('addGroupBtn').addEventListener('click', function() {
+        addRestaurantGroup();
+    });
+
+    function addDish(dishData = null, containerEl = null) {
+        containerEl = containerEl || document.getElementById('dishesContainer');
         dishCounter++;
 
         const template = document.getElementById('dishFormTemplate');
@@ -1137,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Add to container
-        document.getElementById('dishesContainer').appendChild(dishCard);
+        containerEl.appendChild(dishCard);
 
         // Initialize Quill for dish notes after appending to DOM
         const dishNotesQuill = initQuillEditor(
@@ -1176,7 +1461,6 @@ document.addEventListener('DOMContentLoaded', function() {
             saveDishes();
         });
 
-
         dishCard.querySelector('.remove-dish-btn').addEventListener('click', function() {
             const name = dishCard.querySelector('.dish-name').value.trim();
             const notes = dishCard.querySelector('.dish-notes').value.trim();
@@ -1188,8 +1472,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            const parentContainer = dishCard.parentElement;
             dishCard.remove();
-            updateDishNumbers();
+            updateDishNumbers(parentContainer);
             saveDishes();
             validateCurrentStep();
         });
@@ -1255,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Update dish numbers after adding to container
-        updateDishNumbers();
+        updateDishNumbers(containerEl);
 
         // Render encyclopedia chips if data was pre-filled
         renderEncyclopediaChips(dishCard);
@@ -1393,8 +1678,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function updateDishNumbers() {
-        const dishCards = document.querySelectorAll('.dish-card:not(#dishFormTemplate)');
+    function updateDishNumbers(containerEl) {
+        const dishCards = containerEl.querySelectorAll('.dish-card');
         dishCards.forEach((card, index) => {
             card.querySelector('.dish-number').textContent = index + 1;
         });
@@ -1404,7 +1689,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const prevCard = dishCard.previousElementSibling;
         if (prevCard && prevCard.id !== 'dishFormTemplate') {
             dishCard.parentNode.insertBefore(dishCard, prevCard);
-            updateDishNumbers();
+            updateDishNumbers(dishCard.parentNode);
             saveDishes();
         }
     }
@@ -1413,47 +1698,321 @@ document.addEventListener('DOMContentLoaded', function() {
         const nextCard = dishCard.nextElementSibling;
         if (nextCard) {
             dishCard.parentNode.insertBefore(nextCard, dishCard);
-            updateDishNumbers();
+            updateDishNumbers(dishCard.parentNode);
             saveDishes();
         }
+    }
+
+    function updateGroupNumbers() {
+        document.querySelectorAll('.restaurant-group-card').forEach((card, index) => {
+            card.querySelector('.group-number').textContent = index + 1;
+        });
+    }
+
+    // Groups the flat formData.dishes array (each dish carries its own restaurant payload)
+    // into restaurant groups for restoring the grouped UI from a draft or an edit load.
+    function groupDishesByRestaurant(dishes) {
+        const groups = [];
+        const indexByKey = new Map();
+        dishes.forEach(dish => {
+            const r = dish.restaurant || { mode: 'search', id: null, name: '' };
+            const key = r.mode === 'new'
+                ? `new:${r.name}|${r.address}|${r.city}`
+                : `search:${r.id || r.name}`;
+            if (!indexByKey.has(key)) {
+                indexByKey.set(key, groups.length);
+                groups.push({ restaurant: r, dishes: [] });
+            }
+            groups[indexByKey.get(key)].dishes.push(dish);
+        });
+        return groups;
+    }
+
+    // Reads the restaurant payload currently set on a restaurant group card (the inner
+    // .restaurant-group-card element; its mode/session state live on the outer wrapper).
+    function collectGroupRestaurantData(group) {
+        const wrapper = group.parentElement;
+        const mode = wrapper.dataset.restaurantMode || 'search';
+        if (mode === 'new') {
+            return {
+                mode: 'new',
+                name: group.querySelector('.group-new-restaurant-name').value.trim(),
+                isPopUp: group.querySelector('.group-new-restaurant-is-pop-up').checked,
+                website: group.querySelector('.group-new-restaurant-website').value.trim(),
+                address: group.querySelector('.group-new-restaurant-address').value.trim(),
+                city: group.querySelector('.group-new-restaurant-city').value.trim(),
+                province: group.querySelector('.group-new-restaurant-province').value.trim(),
+                country: group.querySelector('.group-new-restaurant-country').value.trim(),
+                postalCode: group.querySelector('.group-new-restaurant-postal-code').value.trim(),
+                googlePlaceId: group.querySelector('.group-new-restaurant-place-id').value,
+                placesSessionUsed: wrapper.dataset.placesSessionUsed === 'true',
+            };
+        }
+        return {
+            mode: 'search',
+            id: group.querySelector('.group-restaurant-id').value || null,
+            name: group.querySelector('.group-restaurant-name').value.trim(),
+        };
+    }
+
+    // Wires a restaurant group card's own restaurant picker: search existing restaurants, or
+    // switch to a "new restaurant" sub-form with Google Places autocomplete. One restaurant
+    // selection here applies to every dish added under this group.
+    function wireGroupRestaurantPicker(groupCard, restaurantData) {
+        const group = groupCard.querySelector('.restaurant-group-card');
+        groupCard.dataset.restaurantMode = 'search';
+        let searchTimeout = null;
+        const nameInput = group.querySelector('.group-restaurant-name');
+        const idInput = group.querySelector('.group-restaurant-id');
+        const results = group.querySelector('.group-restaurant-results');
+        const status = group.querySelector('.group-restaurant-status');
+        const searchSection = group.querySelector('.group-restaurant-search-section');
+        const newSection = group.querySelector('.group-new-restaurant-section');
+        const newName = group.querySelector('.group-new-restaurant-name');
+        const newIsPopUp = group.querySelector('.group-new-restaurant-is-pop-up');
+        const newWebsite = group.querySelector('.group-new-restaurant-website');
+        const newWebsiteSection = group.querySelector('.group-new-restaurant-website-section');
+        const newAddressSection = group.querySelector('.group-new-restaurant-address-section');
+        const newAddress = group.querySelector('.group-new-restaurant-address');
+        const newCity = group.querySelector('.group-new-restaurant-city');
+        const newProvince = group.querySelector('.group-new-restaurant-province');
+        const newCountry = group.querySelector('.group-new-restaurant-country');
+        const newPostalCode = group.querySelector('.group-new-restaurant-postal-code');
+        const newPlaceId = group.querySelector('.group-new-restaurant-place-id');
+        const placesSearch = group.querySelector('.group-places-search');
+
+        function switchToNew() {
+            groupCard.dataset.restaurantMode = 'new';
+            searchSection.style.display = 'none';
+            newSection.style.display = 'block';
+            const typedName = nameInput.value.trim();
+            if (!newName.value) newName.value = typedName;
+            if (placesSearch) {
+                initPlacesAutocomplete(placesSearch, function(place) {
+                    if (place.name) newName.value = place.name;
+                    newAddress.value = place.address;
+                    newCity.value = place.city;
+                    newProvince.value = place.province;
+                    newCountry.value = place.country;
+                    newPostalCode.value = place.postalCode;
+                    if (place.placeId) newPlaceId.value = place.placeId;
+                    groupCard.dataset.placesSessionUsed = 'true';
+                    saveDishes();
+                });
+            }
+            saveDishes();
+            validateCurrentStep();
+        }
+
+        function switchToSearch() {
+            groupCard.dataset.restaurantMode = 'search';
+            newSection.style.display = 'none';
+            searchSection.style.display = 'block';
+            saveDishes();
+            validateCurrentStep();
+        }
+
+        group.querySelector('.group-new-restaurant-btn').addEventListener('click', switchToNew);
+        group.querySelector('.group-back-to-restaurant-search-btn').addEventListener('click', switchToSearch);
+
+        newIsPopUp.addEventListener('change', function() {
+            newWebsiteSection.style.display = this.checked ? 'block' : 'none';
+            newAddressSection.style.display = this.checked ? 'none' : 'block';
+            saveDishes();
+            validateCurrentStep();
+        });
+
+        newName.addEventListener('input', function() {
+            saveDishes();
+            validateCurrentStep();
+        });
+        newWebsite.addEventListener('input', function() {
+            saveDishes();
+            validateCurrentStep();
+        });
+        [newAddress, newCity, newProvince, newCountry, newPostalCode].forEach(el => {
+            el.addEventListener('input', saveDishes);
+        });
+
+        nameInput.addEventListener('input', function() {
+            idInput.value = '';
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            saveDishes();
+            validateCurrentStep();
+
+            if (query.length < 2) {
+                results.style.display = 'none';
+                results.innerHTML = '';
+                status.textContent = query.length === 1 ? 'Type at least 2 characters to search' : '';
+                return;
+            }
+
+            status.textContent = 'Searching...';
+
+            searchTimeout = setTimeout(() => {
+                fetch(`/api/restaurants/search/?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        results.innerHTML = '';
+
+                        if (data.results && data.results.length > 0) {
+                            status.textContent = `${data.results.length} restaurant(s) found`;
+                            results.style.display = 'block';
+
+                            data.results.forEach(restaurant => {
+                                const item = document.createElement('a');
+                                item.className = 'list-group-item list-group-item-action';
+                                item.href = '#';
+                                item.innerHTML = `<strong>${restaurant.name}</strong>`;
+                                item.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    nameInput.value = restaurant.name;
+                                    idInput.value = restaurant.id;
+                                    results.style.display = 'none';
+                                    results.innerHTML = '';
+                                    status.textContent = '';
+                                    saveDishes();
+                                    validateCurrentStep();
+                                });
+                                results.appendChild(item);
+                            });
+                        } else {
+                            status.textContent = 'No restaurants found. Use "New restaurant" below to add one.';
+                            results.style.display = 'none';
+                        }
+                    })
+                    .catch(() => {
+                        status.textContent = 'Error searching restaurants';
+                        results.style.display = 'none';
+                    });
+            }, 300);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!nameInput.contains(e.target) && !results.contains(e.target)) {
+                results.style.display = 'none';
+            }
+        });
+
+        if (restaurantData) {
+            if (restaurantData.mode === 'new') {
+                switchToNew();
+                newName.value = restaurantData.name || '';
+                newIsPopUp.checked = !!restaurantData.isPopUp;
+                newWebsite.value = restaurantData.website || '';
+                newAddress.value = restaurantData.address || '';
+                newCity.value = restaurantData.city || '';
+                newProvince.value = restaurantData.province || '';
+                newCountry.value = restaurantData.country || '';
+                newPostalCode.value = restaurantData.postalCode || '';
+                newPlaceId.value = restaurantData.googlePlaceId || '';
+                newWebsiteSection.style.display = restaurantData.isPopUp ? 'block' : 'none';
+                newAddressSection.style.display = restaurantData.isPopUp ? 'none' : 'block';
+            } else {
+                switchToSearch();
+                nameInput.value = restaurantData.name || '';
+                idInput.value = restaurantData.id || '';
+            }
+        }
+    }
+
+    function addRestaurantGroup(restaurantData = null, dishesData = []) {
+        groupCounter++;
+
+        const template = document.getElementById('restaurantGroupTemplate');
+        const groupCard = template.cloneNode(true);
+        groupCard.style.display = 'block';
+        groupCard.id = `group-${groupCounter}`;
+        groupCard.dataset.groupId = groupCounter;
+
+        document.getElementById('festivalGroupsContainer').appendChild(groupCard);
+
+        wireGroupRestaurantPicker(groupCard, restaurantData);
+
+        const groupDishesContainer = groupCard.querySelector('.group-dishes-container');
+        groupCard.querySelector('.add-group-dish-btn').addEventListener('click', function() {
+            addDish(null, groupDishesContainer);
+        });
+
+        groupCard.querySelector('.remove-group-btn').addEventListener('click', function() {
+            const hasDishes = groupDishesContainer.querySelectorAll('.dish-card').length > 0;
+            if (hasDishes && !confirm('Remove this restaurant and all its dishes from the review?')) {
+                return;
+            }
+            groupCard.remove();
+            updateGroupNumbers();
+            saveDishes();
+            validateCurrentStep();
+        });
+
+        dishesData.forEach(d => addDish(d, groupDishesContainer));
+
+        updateGroupNumbers();
+        saveDishes();
+        validateCurrentStep();
+
+        return groupCard;
+    }
+
+    // Reads one dish card's own fields (name, rating, notes, cost, image, encyclopedia links).
+    // Restaurant is not part of a dish card anymore for food-festival reviews — it lives on
+    // the dish's parent restaurant group and is attached by the caller. Returns null if unnamed.
+    function extractDishFields(card) {
+        const name = card.querySelector('.dish-name').value.trim();
+        if (!name) return null;
+
+        const rating = card.querySelector('.dish-rating').value;
+        const notes = card.querySelector('.dish-notes').value.trim();
+        const cost = card.querySelector('.dish-cost').value.trim() || null;
+        const imagePreview = card.querySelector('.dish-preview-img');
+        const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
+        // Read tracking data from the parent element (the wrapper div where it's actually stored)
+        const wrapper = card.parentElement;
+        const encyclopediaIds = JSON.parse(wrapper.dataset.encyclopediaIds || '[]');
+        const reviewDishId = wrapper.dataset.reviewDishId
+            ? parseInt(wrapper.dataset.reviewDishId, 10)
+            : undefined;
+        const existingImageId = wrapper.dataset.existingImageId
+            ? parseInt(wrapper.dataset.existingImageId, 10)
+            : null;
+        const removeImage = wrapper.dataset.removeImage === 'true';
+
+        return {
+            id: reviewDishId,
+            name,
+            rating,
+            notes,
+            cost,
+            image: imageSrc,
+            existing_image_id: existingImageId,
+            remove_image: removeImage,
+            encyclopedia_ids: encyclopediaIds
+        };
     }
 
     function saveDishes() {
         formData.dishes = [];
 
-        document.querySelectorAll('.dish-card').forEach(card => {
-            if (card.id !== 'dishFormTemplate' && card.style.display !== 'none') {
-                const name = card.querySelector('.dish-name').value.trim();
-                const rating = card.querySelector('.dish-rating').value;
-                const notes = card.querySelector('.dish-notes').value.trim();
-                const cost = card.querySelector('.dish-cost').value.trim() || null;
-                const imagePreview = card.querySelector('.dish-preview-img');
-                const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
-                // Read tracking data from the parent element (the wrapper div where it's actually stored)
-                const encyclopediaIds = JSON.parse(card.parentElement.dataset.encyclopediaIds || '[]');
-                const reviewDishId = card.parentElement.dataset.reviewDishId
-                    ? parseInt(card.parentElement.dataset.reviewDishId, 10)
-                    : undefined;
-                const existingImageId = card.parentElement.dataset.existingImageId
-                    ? parseInt(card.parentElement.dataset.existingImageId, 10)
-                    : null;
-                const removeImage = card.parentElement.dataset.removeImage === 'true';
-
-                if (name) { // Only save dishes with a name
-                    formData.dishes.push({
-                        id: reviewDishId,
-                        name,
-                        rating,
-                        notes,
-                        cost,
-                        image: imageSrc,
-                        existing_image_id: existingImageId,
-                        remove_image: removeImage,
-                        encyclopedia_ids: encyclopediaIds
-                    });
-                }
-            }
-        });
+        if (targetType === 'food_festival') {
+            document.querySelectorAll('.restaurant-group-card').forEach(group => {
+                if (group.parentElement.style.display === 'none') return;
+                const restaurantData = collectGroupRestaurantData(group);
+                group.querySelectorAll('.group-dishes-container .dish-card').forEach(card => {
+                    const dish = extractDishFields(card);
+                    if (dish) {
+                        dish.restaurant = restaurantData;
+                        formData.dishes.push(dish);
+                    }
+                });
+            });
+        } else {
+            document.querySelectorAll('#dishesContainer .dish-card').forEach(card => {
+                const dish = extractDishFields(card);
+                if (dish) formData.dishes.push(dish);
+            });
+        }
 
         // Mark unsaved changes
         hasUnsavedChanges = true;
