@@ -29,3 +29,12 @@ class WishlistBulkPageViewTest(TestCase):
         self.client.login(username='staff', password='pw')
         response = self.client.get(self.url)
         self.assertIn('google_maps_api_key', response.context)
+
+    def test_add_restaurant_button_precedes_blocks_container(self):
+        self.client.login(username='staff', password='pw')
+        response = self.client.get(self.url)
+        html = response.content.decode()
+        self.assertLess(
+            html.index('id="wbAddRestaurantBtn"'),
+            html.index('id="wbBlocksContainer"'),
+        )
