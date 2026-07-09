@@ -33,6 +33,9 @@
                         <a class="nav-link" href="{% url 'content:review_list' %}">Reviews</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'content:review_dish_list' %}">Dishes</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'content:recipe_list' %}">Recipes</a>
                     </li>
                     {% if user.is_staff %}
