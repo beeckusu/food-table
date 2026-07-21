@@ -95,7 +95,17 @@
   var RESTAURANT_SEARCH_URL = '{% url "content:api_restaurant_search" %}';
   var BULK_API_URL = '{% url "content:api_wishlist_bulk_create" %}';
   var INSTAGRAM_PREVIEW_URL = '{% url "content:api_instagram_preview" %}';
+  var RESTAURANT_DISHES_URL_TMPL = '{% url "content:api_restaurant_dishes" 0 %}';
+  var DISH_TOGGLE_URL_TMPL = '{% url "content:api_dish_toggle_reference" 0 %}';
   var MAPS_API_KEY = '{{ google_maps_api_key|escapejs }}';
+
+  function restaurantDishesUrl(restaurantId) {
+    return RESTAURANT_DISHES_URL_TMPL.replace('/0/', '/' + restaurantId + '/');
+  }
+
+  function dishToggleUrl(dishId) {
+    return DISH_TOGGLE_URL_TMPL.replace('/0/', '/' + dishId + '/');
+  }
 
   var urls = [];
   var currentIdx = 0;
@@ -220,6 +230,7 @@
       '</div>' +
       '<button type="button" class="btn btn-link btn-sm ps-0 mt-1 wb-new-restaurant-btn">' +
       '<i class="bi bi-plus-circle"></i> New restaurant</button>' +
+      '<div class="wb-existing-dishes mt-2" style="display:none;"></div>' +
       '</div>' +
 
       '<div class="wb-new-restaurant-form" style="display:none;">' +
@@ -312,11 +323,13 @@
     var suggestions = block.querySelector('.wb-restaurant-suggestions');
     var searchSection = block.querySelector('.wb-restaurant-search');
     var newSection = block.querySelector('.wb-new-restaurant-form');
+    var existingDishes = block.querySelector('.wb-existing-dishes');
 
     // Restaurant search autocomplete
     var searchTimer;
     restaurantInput.addEventListener('input', function () {
       restaurantId.value = '';
+      clearExistingDishes(existingDishes);
       clearTimeout(searchTimer);
       var q = restaurantInput.value.trim();
       if (q.length < 2) { suggestions.style.display = 'none'; return; }
@@ -339,6 +352,7 @@
                 restaurantInput.value = r.name;
                 restaurantId.value = r.id;
                 suggestions.style.display = 'none';
+                loadExistingDishes(existingDishes, r.id);
               });
               suggestions.appendChild(a);
             });
@@ -361,6 +375,7 @@
       nameField.value = restaurantInput.value.trim();
       searchSection.style.display = 'none';
       newSection.style.display = '';
+      clearExistingDishes(existingDishes);
       initPlacesForBlock(block);
     });
 
@@ -403,6 +418,76 @@
         '<input type="text" class="form-control form-control-sm wb-dish-note mt-1" placeholder="Note (optional)">';
       row.querySelector('.remove-dish-btn').addEventListener('click', function () { row.remove(); });
       dishList.appendChild(row);
+    });
+  }
+
+  // ── Existing dishes on selected restaurant ─────────────────────────────────
+  var STATUS_LABELS = { had: 'Had', wishlist: 'Wishlisted' };
+
+  function clearExistingDishes(container) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+  }
+
+  function loadExistingDishes(container, restaurantId) {
+    container.innerHTML = '<p class="text-muted small mb-0">Loading existing dishes…</p>';
+    container.style.display = '';
+    fetch(restaurantDishesUrl(restaurantId) + '?source_detail=' + encodeURIComponent(urls[currentIdx]))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        renderExistingDishes(container, data.results || []);
+      })
+      .catch(function () {
+        container.innerHTML = '';
+        container.style.display = 'none';
+      });
+  }
+
+  function renderExistingDishes(container, dishes) {
+    if (!dishes.length) {
+      container.innerHTML = '';
+      container.style.display = 'none';
+      return;
+    }
+    container.innerHTML = '<label class="form-label fw-semibold small mb-1">Existing dishes</label>' +
+      '<div class="list-group">' +
+      dishes.map(function (d) {
+        return '<div class="list-group-item d-flex justify-content-between align-items-center py-1 px-2 wb-existing-dish" data-dish-id="' + d.id + '">' +
+          '<div>' +
+          '<span class="small">' + escHtml(d.name) + '</span> ' +
+          '<span class="badge bg-secondary-subtle text-secondary-emphasis">' + (STATUS_LABELS[d.status] || d.status) + '</span>' +
+          (d.notes ? '<div class="text-muted small">' + escHtml(d.notes) + '</div>' : '') +
+          '</div>' +
+          '<button type="button" class="btn btn-sm ' + (d.recommended ? 'btn-warning' : 'btn-outline-secondary') + ' wb-toggle-dish-ref-btn" title="Mark/unmark as recommended by this post">' +
+          '<i class="bi ' + (d.recommended ? 'bi-star-fill' : 'bi-star') + '"></i>' +
+          '</button>' +
+          '</div>';
+      }).join('') +
+      '</div>';
+    container.style.display = '';
+
+    container.querySelectorAll('.wb-toggle-dish-ref-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var row = btn.closest('.wb-existing-dish');
+        var dishId = row.dataset.dishId;
+        btn.disabled = true;
+        fetch(dishToggleUrl(dishId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+          body: JSON.stringify({ source: 'Instagram', source_detail: urls[currentIdx] }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          btn.disabled = false;
+          if (!data.success) return;
+          btn.classList.toggle('btn-warning', data.recommended);
+          btn.classList.toggle('btn-outline-secondary', !data.recommended);
+          btn.querySelector('i').className = data.recommended ? 'bi bi-star-fill' : 'bi bi-star';
+        })
+        .catch(function () {
+          btn.disabled = false;
+        });
+      });
     });
   }
 
@@ -466,7 +551,30 @@
 
       block._placesSessionUsed = true;
       sessionToken = new google.maps.places.AutocompleteSessionToken();
+
+      if (place.place_id) checkExistingByPlaceId(block, place.place_id);
     });
+  }
+
+  // If the selected Google Place already matches a restaurant we have on file,
+  // switch the block back to the "existing restaurant" flow instead of creating a duplicate.
+  function checkExistingByPlaceId(block, placeId) {
+    fetch(RESTAURANT_SEARCH_URL + '?place_id=' + encodeURIComponent(placeId))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var results = data.results || data;
+        if (results.length) switchToExistingRestaurant(block, results[0]);
+      })
+      .catch(function () {});
+  }
+
+  function switchToExistingRestaurant(block, r) {
+    block._mode = 'search';
+    block.querySelector('.wb-restaurant-input').value = r.name;
+    block.querySelector('.wb-restaurant-id').value = r.id;
+    block.querySelector('.wb-restaurant-search').style.display = '';
+    block.querySelector('.wb-new-restaurant-form').style.display = 'none';
+    loadExistingDishes(block.querySelector('.wb-existing-dishes'), r.id);
   }
 
   // ── Clear form ─────────────────────────────────────────────────────────────

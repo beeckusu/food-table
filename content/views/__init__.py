@@ -49,6 +49,8 @@ from .wishlist_bulk_page import WishlistBulkPageView
 from .instagram_preview_api import InstagramPreviewApiView
 from .review_share_page import ReviewSharePageView
 from .review_share_draft_api import ReviewShareDraftApiView
+from .restaurant_dishes_api import RestaurantDishesApiView
+from .dish_reference_toggle_api import DishReferenceToggleApiView
 
 __all__ = [
     'HomeView',
@@ -100,4 +102,6 @@ __all__ = [
     'InstagramPreviewApiView',
     'ReviewSharePageView',
     'ReviewShareDraftApiView',
+    'RestaurantDishesApiView',
+    'DishReferenceToggleApiView',
 ]

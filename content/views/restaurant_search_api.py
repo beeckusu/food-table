@@ -12,14 +12,18 @@ class RestaurantSearchApiView(LoginRequiredMixin, View):
     """
 
     def get(self, request, *args, **kwargs):
-        query = request.GET.get('q', '').strip()
+        place_id = request.GET.get('place_id', '').strip()
+        if place_id:
+            restaurants = Restaurant.objects.filter(google_place_id=place_id)[:5]
+        else:
+            query = request.GET.get('q', '').strip()
 
-        if not query or len(query) < 2:
-            return JsonResponse({'results': []})
+            if not query or len(query) < 2:
+                return JsonResponse({'results': []})
 
-        restaurants = Restaurant.objects.filter(
-            name__icontains=query
-        ).order_by('name')[:20]
+            restaurants = Restaurant.objects.filter(
+                name__icontains=query
+            ).order_by('name')[:20]
 
         results = [
             {
