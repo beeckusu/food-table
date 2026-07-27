@@ -257,6 +257,7 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
                 bool(dish_data.get('remove_image')),
                 dish_data.get('image'),
                 user,
+                filename=dish_data.get('image_filename'),
             )
             if error:
                 image_errors.append(error)

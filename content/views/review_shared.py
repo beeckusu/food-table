@@ -6,10 +6,25 @@ from zoneinfo import ZoneInfo
 
 from django.core.files.base import ContentFile
 from django.contrib.contenttypes.models import ContentType
+from django.utils.text import get_valid_filename
 
 from content.models import Restaurant, FoodFestival, Encyclopedia, Image, ApiUsageLog
 
 logger = logging.getLogger(__name__)
+
+
+def _build_image_filename(prefix, ext, original_filename=None):
+    """
+    Preserve a user's original file name when available, matching the plain
+    multipart dish-image upload path (DishImageUploadApiView), which stores
+    request.FILES's name as-is and lets storage dedupe collisions. Falls back
+    to the old uuid-only scheme when no filename was supplied.
+    """
+    if original_filename:
+        safe_name = get_valid_filename(original_filename)
+        if safe_name:
+            return safe_name
+    return f'{prefix}_{uuid.uuid4()}.{ext}'
 
 
 class DishRestaurantResolutionError(Exception):
@@ -194,18 +209,30 @@ def resolve_food_festival(festival_data, user):
 
 
 def save_review_images(review, images_data, user):
-    """Save base64-encoded images attached to the review itself. Returns list of error strings."""
+    """
+    Save base64-encoded images attached to the review itself. Each entry in
+    images_data may be a plain data-URL string, or a {src, filename} dict
+    where filename is the original client-side file name to preserve.
+    Returns list of error strings.
+    """
     errors = []
     for image_data in images_data:
-        if not (isinstance(image_data, str) and image_data.startswith('data:image/')):
+        if isinstance(image_data, dict):
+            src = image_data.get('src')
+            original_filename = image_data.get('filename')
+        else:
+            src = image_data
+            original_filename = None
+
+        if not (isinstance(src, str) and src.startswith('data:image/')):
             continue
         try:
-            format_type, imgstr = image_data.split(';base64,')
+            format_type, imgstr = src.split(';base64,')
             ext = format_type.split('/')[-1]
 
             image_file = ContentFile(
                 base64.b64decode(imgstr),
-                name=f'review_{uuid.uuid4()}.{ext}'
+                name=_build_image_filename('review', ext, original_filename)
             )
 
             content_type = ContentType.objects.get_for_model(review)
@@ -221,7 +248,7 @@ def save_review_images(review, images_data, user):
     return errors
 
 
-def save_dish_image(review_dish, image_data, user):
+def save_dish_image(review_dish, image_data, user, filename=None):
     """Convert base64 image to Image model and attach to dish. Returns error string or None."""
     try:
         format_type, imgstr = image_data.split(';base64,')
@@ -229,7 +256,7 @@ def save_dish_image(review_dish, image_data, user):
 
         image_file = ContentFile(
             base64.b64decode(imgstr),
-            name=f'dish_{uuid.uuid4()}.{ext}'
+            name=_build_image_filename('dish', ext, filename)
         )
 
         content_type = ContentType.objects.get_for_model(review_dish)
@@ -306,14 +333,14 @@ def sync_review_images(review, images_data, user):
     }
     Image.objects.filter(content_type=content_type, object_id=review.id).exclude(id__in=kept_ids).delete()
 
-    new_sources = [
-        item.get('src') for item in images_data
+    new_images = [
+        item for item in images_data
         if isinstance(item, dict) and not item.get('id')
     ]
-    return save_review_images(review, new_sources, user)
+    return save_review_images(review, new_images, user)
 
 
-def sync_dish_image(review_dish, existing_image_id, remove_image, new_image_data, user):
+def sync_dish_image(review_dish, existing_image_id, remove_image, new_image_data, user, filename=None):
     """Reconcile a dish's single image on update: remove/replace/keep. Returns error string or None."""
     has_new_image = bool(new_image_data and new_image_data.startswith('data:image/'))
 
@@ -322,7 +349,7 @@ def sync_dish_image(review_dish, existing_image_id, remove_image, new_image_data
         Image.objects.filter(content_type=content_type, object_id=review_dish.id, id=existing_image_id).delete()
 
     if has_new_image:
-        return save_dish_image(review_dish, new_image_data, user)
+        return save_dish_image(review_dish, new_image_data, user, filename=filename)
     return None
 
 

@@ -72,11 +72,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 review = self._create_review(data, restaurant, food_festival, request.user)
 
                 review_images_data = data.get('rating', {}).get('images', [])
-                review_image_srcs = [
-                    img.get('src') if isinstance(img, dict) else img
-                    for img in review_images_data
-                ]
-                image_errors = save_review_images(review, review_image_srcs, request.user)
+                image_errors = save_review_images(review, review_images_data, request.user)
 
                 image_errors.extend(self._create_dishes(review, data.get('dishes', []), request.user))
 
@@ -170,7 +166,7 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
 
             image_data = dish_data.get('image')
             if image_data and image_data.startswith('data:image/'):
-                error = save_dish_image(review_dish, image_data, user)
+                error = save_dish_image(review_dish, image_data, user, filename=dish_data.get('image_filename'))
                 if error:
                     image_errors.append(error)
 

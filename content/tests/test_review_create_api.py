@@ -5,7 +5,13 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from content.models import Restaurant, Review, ReviewDish, RestaurantDish
+from content.models import Restaurant, Review, ReviewDish, RestaurantDish, Image
+
+# 1x1 transparent PNG
+TINY_PNG_DATA_URL = (
+    'data:image/png;base64,'
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+)
 
 
 class ReviewCreateApiViewTest(TestCase):
@@ -119,3 +125,46 @@ class ReviewCreateApiViewTest(TestCase):
         dish = ReviewDish.objects.get(review=review)
         self.assertEqual(dish.dish_name, 'Ramen')
         self.assertEqual(dish.dish_rating, 90)
+
+    def test_review_image_preserves_original_filename(self):
+        response = self.post(self.base_payload(
+            rating={
+                'overall': 80, 'title': '', 'notes': '', 'ambiance': 70, 'service': 60,
+                'images': [{'id': None, 'src': TINY_PNG_DATA_URL, 'filename': 'sunset-ramen.png'}],
+            },
+        ))
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+
+        review = Review.objects.get(pk=data['review_id'])
+        image = Image.objects.get(object_id=review.id, content_type__model='review')
+        self.assertEqual(image.image.name.rsplit('/', 1)[-1], 'sunset-ramen.png')
+
+    def test_dish_image_preserves_original_filename(self):
+        response = self.post(self.base_payload(
+            dishes=[{
+                'name': 'Ramen', 'rating': 90, 'notes': '', 'cost': None, 'encyclopedia_ids': [],
+                'image': TINY_PNG_DATA_URL, 'image_filename': 'bowl-of-ramen.png',
+            }],
+        ))
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+
+        review = Review.objects.get(pk=data['review_id'])
+        dish = ReviewDish.objects.get(review=review)
+        image = Image.objects.get(object_id=dish.id, content_type__model='reviewdish')
+        self.assertEqual(image.image.name.rsplit('/', 1)[-1], 'bowl-of-ramen.png')
+
+    def test_review_image_without_filename_falls_back_to_uuid_name(self):
+        response = self.post(self.base_payload(
+            rating={
+                'overall': 80, 'title': '', 'notes': '', 'ambiance': 70, 'service': 60,
+                'images': [{'id': None, 'src': TINY_PNG_DATA_URL}],
+            },
+        ))
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+
+        review = Review.objects.get(pk=data['review_id'])
+        image = Image.objects.get(object_id=review.id, content_type__model='review')
+        self.assertIn('review_', image.image.name)

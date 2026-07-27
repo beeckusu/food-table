@@ -1533,6 +1533,7 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImg.src = '';
             imagePreview.style.display = 'none';
             imageDropZone.style.display = 'block';
+            delete dishCard.dataset.imageFilename;
             if (dishCard.dataset.existingImageId) {
                 dishCard.dataset.removeImage = 'true';
             }
@@ -1588,6 +1589,7 @@ document.addEventListener('DOMContentLoaded', function() {
             previewImg.src = e.target.result;
             imagePreview.style.display = 'block';
             imageDropZone.style.display = 'none';
+            dishCard.dataset.imageFilename = file.name;
             saveDishes();
         };
         reader.readAsDataURL(file);
@@ -1638,7 +1640,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            reviewImages.push({ id: null, src: e.target.result });
+            reviewImages.push({ id: null, src: e.target.result, filename: file.name });
             renderReviewImagePreviews();
             saveCurrentStepData();
         };
@@ -1978,6 +1980,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ? parseInt(wrapper.dataset.existingImageId, 10)
             : null;
         const removeImage = wrapper.dataset.removeImage === 'true';
+        const imageFilename = imageSrc ? (wrapper.dataset.imageFilename || null) : null;
 
         return {
             id: reviewDishId,
@@ -1986,6 +1989,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notes,
             cost,
             image: imageSrc,
+            image_filename: imageFilename,
             existing_image_id: existingImageId,
             remove_image: removeImage,
             encyclopedia_ids: encyclopediaIds

@@ -106,6 +106,7 @@ if _r2_bucket and not DEBUG:
     AWS_SECRET_ACCESS_KEY = env('CLOUDFLARE_R2_SECRET_ACCESS_KEY', default='')
     AWS_S3_CUSTOM_DOMAIN = env('CLOUDFLARE_R2_CUSTOM_DOMAIN', default='')
     AWS_QUERYSTRING_AUTH = False  # Use public URLs, not presigned URLs
+    AWS_S3_FILE_OVERWRITE = False  # Append a suffix on name collisions instead of overwriting
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/' if AWS_S3_CUSTOM_DOMAIN else f'{AWS_S3_ENDPOINT_URL}/{_r2_bucket}/'
 else:
     MEDIA_ROOT = BASE_DIR / 'media'

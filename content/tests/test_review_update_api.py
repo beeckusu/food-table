@@ -5,7 +5,13 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from content.models import Restaurant, Review, ReviewDish, RestaurantDish
+from content.models import Restaurant, Review, ReviewDish, RestaurantDish, Image
+
+# 1x1 transparent PNG
+TINY_PNG_DATA_URL = (
+    'data:image/png;base64,'
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+)
 
 
 class ReviewEditDataApiViewTest(TestCase):
@@ -165,3 +171,25 @@ class ReviewUpdateApiViewTest(TestCase):
         url = reverse('content:api_review_update', kwargs={'pk': 999999})
         response = self.client.patch(url, data=json.dumps(self.base_payload()), content_type='application/json')
         self.assertEqual(response.status_code, 404)
+
+    def test_new_dish_image_preserves_original_filename(self):
+        payload = self.base_payload(dishes=[{
+            'id': self.dish.pk, 'name': 'Ramen Deluxe', 'rating': 95, 'notes': '', 'cost': None,
+            'encyclopedia_ids': [], 'image': TINY_PNG_DATA_URL, 'image_filename': 'new-bowl.png',
+        }])
+        response = self.patch(payload)
+        self.assertEqual(response.status_code, 200, response.content)
+
+        image = Image.objects.get(object_id=self.dish.id, content_type__model='reviewdish')
+        self.assertEqual(image.image.name.rsplit('/', 1)[-1], 'new-bowl.png')
+
+    def test_new_review_image_preserves_original_filename(self):
+        payload = self.base_payload(rating={
+            'overall': 85, 'title': 'Updated title', 'notes': 'Updated notes', 'ambiance': 70, 'service': 60,
+            'images': [{'id': None, 'src': TINY_PNG_DATA_URL, 'filename': 'new-review-photo.png'}],
+        })
+        response = self.patch(payload)
+        self.assertEqual(response.status_code, 200, response.content)
+
+        image = Image.objects.get(object_id=self.review.id, content_type__model='review')
+        self.assertEqual(image.image.name.rsplit('/', 1)[-1], 'new-review-photo.png')
