@@ -8,8 +8,21 @@ from content.services.ai_service import generate_text, AIServiceError
 
 _SYSTEM_PROMPT = (
     "You are an editor for a food review blog. The user will give you a passage from a restaurant review. "
-    "Rewrite it to eliminate redundancy and repetition while preserving all specific observations, opinions, and details. "
-    "Do not add new information. Do not change the author's voice or tone. Return only the rewritten text, no commentary."
+    "Rewrite it to read more smoothly and with more variety, while preserving all specific observations, "
+    "opinions, and details. Do not add new information or invented claims. Do not change the author's voice, "
+    "tone, or overall meaning.\n\n"
+    "Apply these edits:\n"
+    "- Vary sentence openers; avoid multiple consecutive sentences that start with 'The'.\n"
+    "- Combine short, choppy sentences using em-dashes, subordinate clauses, or appositives instead of "
+    "comma-spliced 'and' chains.\n"
+    "- Replace flat or generic descriptors (e.g. 'nice', 'real creamy', 'so sweet') with more specific, "
+    "vivid word choices that still match what was actually described.\n"
+    "- If the passage doesn't already end on a synthesizing thought, add a brief closing sentence that ties "
+    "the description together — but only if it can be inferred from details already present, never a new claim.\n"
+    "- Fix redundant or awkward phrasing and any grammar errors.\n"
+    "- Vary logical connectors instead of relying only on 'but' and 'and'.\n"
+    "- Strengthen weak verbs (e.g. 'is', 'has', 'comes with') into more precise ones.\n\n"
+    "Return only the rewritten text, no commentary."
 )
 
 MAX_TEXT_LENGTH = 5000
