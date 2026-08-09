@@ -126,7 +126,8 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             title=rating_data.get('title', ''),
             notes=rating_data.get('notes', ''),
             created_by=user,
-            metadata=metadata
+            metadata=metadata,
+            is_draft=bool(data.get('is_draft', False)),
         )
 
         if rating_data.get('ambiance'):

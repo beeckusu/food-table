@@ -58,6 +58,16 @@ class ReviewEditDataApiViewTest(TestCase):
         self.assertEqual(len(data['dishes']), 1)
         self.assertEqual(data['dishes'][0]['name'], 'Ramen')
         self.assertEqual(data['dishes'][0]['id'], self.dish.pk)
+        self.assertFalse(data['is_draft'])
+
+    def test_returns_is_draft_true_for_draft_review(self):
+        self.review.is_draft = True
+        self.review.save()
+
+        self.client.login(username='staff', password='pw')
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['review']['is_draft'])
 
 
 class ReviewUpdateApiViewTest(TestCase):
@@ -113,6 +123,34 @@ class ReviewUpdateApiViewTest(TestCase):
         self.assertEqual(self.review.party_size, 3)
         self.assertEqual(self.review.rating, 85)
         self.assertEqual(self.review.title, 'Updated title')
+
+    def test_can_mark_final_review_as_draft(self):
+        response = self.patch(self.base_payload(is_draft=True))
+        self.assertEqual(response.status_code, 200, response.content)
+
+        self.review.refresh_from_db()
+        self.assertTrue(self.review.is_draft)
+
+    def test_can_finalize_draft_review(self):
+        self.review.is_draft = True
+        self.review.save()
+
+        response = self.patch(self.base_payload(is_draft=False))
+        self.assertEqual(response.status_code, 200, response.content)
+
+        self.review.refresh_from_db()
+        self.assertFalse(self.review.is_draft)
+
+    def test_omitting_is_draft_preserves_current_state(self):
+        self.review.is_draft = True
+        self.review.save()
+
+        payload = self.base_payload()
+        response = self.patch(payload)
+        self.assertEqual(response.status_code, 200, response.content)
+
+        self.review.refresh_from_db()
+        self.assertTrue(self.review.is_draft)
 
     def test_updates_existing_dish_in_place_without_duplicating(self):
         response = self.patch(self.base_payload())

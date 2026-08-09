@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextBtn = document.getElementById('reviewNextBtn');
     const cancelBtn = document.getElementById('reviewCancelBtn');
     const submitBtn = document.getElementById('reviewSubmitBtn');
+    const saveDraftBtn = document.getElementById('reviewSaveDraftBtn');
     const errorDiv = document.getElementById('reviewFormError');
 
     // Step configuration
@@ -330,8 +331,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Next button
         nextBtn.style.display = isLastStep ? 'none' : 'inline-block';
 
-        // Submit button
+        // Submit / save-as-draft buttons
         submitBtn.style.display = isLastStep ? 'inline-block' : 'none';
+        saveDraftBtn.style.display = isLastStep ? 'inline-block' : 'none';
 
         // Validate current step and enable/disable next button
         validateCurrentStep();
@@ -882,6 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
         foodFestivalMode = 'search';
         placesSessionUsed = false;
         applyTargetTypeUI();
+        resetSubmitButtons();
 
         document.getElementById('reviewModalLabel').textContent = 'Create New Review';
 
@@ -1085,8 +1088,17 @@ document.addEventListener('DOMContentLoaded', function() {
         showStep(currentStep);
     }
 
-    // Submit review
-    async function submitReview() {
+    // Reset the submit / save-as-draft buttons back to their default enabled labels
+    function resetSubmitButtons() {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Review';
+        saveDraftBtn.disabled = false;
+        saveDraftBtn.innerHTML = '<i class="bi bi-file-earmark"></i> Save as Draft';
+    }
+
+    // Submit review. When saveAsDraft is true, the review is persisted with is_draft=true
+    // instead of being finalized.
+    async function submitReview(saveAsDraft = false) {
         // Save final step data
         saveCurrentStepData();
 
@@ -1094,10 +1106,12 @@ document.addEventListener('DOMContentLoaded', function() {
         saveDishes();
 
         const isEdit = !!editingReviewId;
+        const clickedBtn = saveAsDraft ? saveDraftBtn : submitBtn;
 
-        // Disable submit button
+        // Disable both buttons while the request is in flight
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isEdit ? 'Saving...' : 'Submitting...'}`;
+        saveDraftBtn.disabled = true;
+        clickedBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${isEdit ? 'Saving...' : 'Submitting...'}`;
 
         try {
             // Prepare data for submission
@@ -1107,7 +1121,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 restaurant: formData.restaurant,
                 food_festival: formData.food_festival,
                 rating: formData.rating,
-                dishes: formData.dishes
+                dishes: formData.dishes,
+                is_draft: saveAsDraft
             };
             if (!isEdit) {
                 submissionData.draft_id = draftManager.getDraftId();
@@ -1131,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Success! Reset draft manager (create mode only)
                 if (!isEdit) draftManager.reset();
 
-                const actionWord = isEdit ? 'updated' : 'submitted';
+                const actionWord = saveAsDraft ? 'saved as draft' : (isEdit ? 'updated' : 'submitted');
                 const toastMsg = result.image_warnings
                     ? `Review ${actionWord}, but some images failed to upload: ${result.image_warnings.join('; ')}`
                     : `Review ${actionWord} successfully!`;
@@ -1165,17 +1180,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     showError(result.error || `Failed to ${isEdit ? 'update' : 'submit'} review. Please try again.`);
                 }
 
-                // Re-enable submit button
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Review';
+                // Re-enable buttons
+                resetSubmitButtons();
             }
         } catch (error) {
             console.error('Error submitting review:', error);
             showError('Network error. Please check your connection and try again.');
 
-            // Re-enable submit button
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Review';
+            // Re-enable buttons
+            resetSubmitButtons();
         }
     }
 
@@ -1211,7 +1224,8 @@ document.addEventListener('DOMContentLoaded', function() {
     backBtn.addEventListener('click', goToPreviousStep);
     skipBtn.addEventListener('click', skipStep);
     cancelBtn.addEventListener('click', closeModal);
-    submitBtn.addEventListener('click', submitReview);
+    submitBtn.addEventListener('click', () => submitReview(false));
+    saveDraftBtn.addEventListener('click', () => submitReview(true));
 
     // Modal close event
     modalElement.addEventListener('hidden.bs.modal', function() {

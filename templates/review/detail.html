@@ -31,6 +31,9 @@
             {% else %}
             <h1 class="mb-0"><a href="{% url 'content:restaurant_detail' pk=review.restaurant.pk %}" class="text-decoration-none link-dark">{{ review.restaurant.name }}</a></h1>
             {% endif %}
+            {% if user.is_staff and review.is_draft %}
+            <span class="badge bg-warning text-dark">Draft</span>
+            {% endif %}
             <div class="d-flex align-items-center gap-2">
                 {% if user.is_staff %}
                 <a href="{% url 'content:review_share' pk=review.pk %}" class="btn btn-outline-primary btn-sm">

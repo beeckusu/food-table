@@ -23,7 +23,12 @@
     {% endwith %}
 
     <div class="card-body">
-        <h5 class="card-title">{% firstof review.restaurant.name review.food_festival.name %}</h5>
+        <h5 class="card-title">
+            {% firstof review.restaurant.name review.food_festival.name %}
+            {% if user.is_staff and review.is_draft %}
+            <span class="badge bg-warning text-dark">Draft</span>
+            {% endif %}
+        </h5>
         <p class="card-text text-muted mb-2">
             <small>{{ review.visit_date|date:"F d, Y" }}</small>
             {% if review.restaurant.city %}

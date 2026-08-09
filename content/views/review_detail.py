@@ -13,8 +13,11 @@ class ReviewDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'review'
 
     def get_queryset(self):
-        """Only show public reviews."""
-        return Review.objects.filter(is_private=False)
+        """Only show public reviews. Draft reviews are only visible to staff."""
+        queryset = Review.objects.filter(is_private=False)
+        if not self.request.user.is_staff:
+            queryset = queryset.exclude(is_draft=True)
+        return queryset
 
     def get_context_data(self, **kwargs):
         """Add additional context for dishes, images, tags, and related reviews."""
@@ -47,6 +50,8 @@ class ReviewDetailView(LoginRequiredMixin, DetailView):
             related_qs = Review.objects.filter(food_festival=review.food_festival, is_private=False)
         else:
             related_qs = Review.objects.filter(restaurant=review.restaurant, is_private=False)
+        if not self.request.user.is_staff:
+            related_qs = related_qs.exclude(is_draft=True)
         context['related_reviews'] = related_qs.exclude(
             id=review.id
         ).prefetch_related(

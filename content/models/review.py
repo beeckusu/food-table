@@ -54,6 +54,7 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_private = models.BooleanField(default=False)
+    is_draft = models.BooleanField(default=False, help_text="Draft reviews are only visible to staff")
 
     # Extensibility and Search
     metadata = models.JSONField(default=dict, blank=True)

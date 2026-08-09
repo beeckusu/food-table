@@ -241,7 +241,10 @@ class ReviewListView(LoginRequiredMixin, ListView):
         # Base queryset
         queryset = Review.objects.filter(
             is_private=False
-        ).select_related(
+        )
+        if not self.request.user.is_staff:
+            queryset = queryset.exclude(is_draft=True)
+        queryset = queryset.select_related(
             'created_by'
         ).prefetch_related(
             'images',
@@ -298,9 +301,12 @@ class ReviewListView(LoginRequiredMixin, ListView):
         """
         Get restaurant names for dropdown from the Restaurant model.
         """
+        if self.request.user.is_staff:
+            restaurants = Restaurant.objects.filter(reviews__is_private=False)
+        else:
+            restaurants = Restaurant.objects.filter(reviews__is_private=False, reviews__is_draft=False)
         return list(
-            Restaurant.objects.filter(reviews__is_private=False)
-            .values_list('name', flat=True)
+            restaurants.values_list('name', flat=True)
             .distinct()
             .order_by('name')
         )
@@ -310,9 +316,10 @@ class ReviewListView(LoginRequiredMixin, ListView):
         Get distinct tags for checkboxes.
         Returns sorted list of unique tags from public reviews.
         """
-        tags = ReviewTag.objects.filter(
-            review__is_private=False
-        ).values_list('tag', flat=True).distinct().order_by('tag')
+        tags_qs = ReviewTag.objects.filter(review__is_private=False)
+        if not self.request.user.is_staff:
+            tags_qs = tags_qs.exclude(review__is_draft=True)
+        tags = tags_qs.values_list('tag', flat=True).distinct().order_by('tag')
 
         # Filter out None and empty strings
         return [t for t in tags if t]
@@ -340,7 +347,10 @@ class ReviewListView(LoginRequiredMixin, ListView):
         context['active_filters'] = self._get_active_filters()
 
         # Add total count for "Showing X of Y" indicator
-        context['total_reviews'] = Review.objects.filter(is_private=False).count()
+        total_reviews_qs = Review.objects.filter(is_private=False)
+        if not self.request.user.is_staff:
+            total_reviews_qs = total_reviews_qs.exclude(is_draft=True)
+        context['total_reviews'] = total_reviews_qs.count()
 
         context['google_maps_api_key'] = getattr(settings, 'GOOGLE_MAPS_API_KEY', '')
 

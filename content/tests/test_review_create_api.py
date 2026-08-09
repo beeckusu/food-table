@@ -126,6 +126,22 @@ class ReviewCreateApiViewTest(TestCase):
         self.assertEqual(dish.dish_name, 'Ramen')
         self.assertEqual(dish.dish_rating, 90)
 
+    def test_create_review_as_draft(self):
+        response = self.post(self.base_payload(is_draft=True))
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+
+        review = Review.objects.get(pk=data['review_id'])
+        self.assertTrue(review.is_draft)
+
+    def test_create_review_without_draft_flag_is_not_draft(self):
+        response = self.post(self.base_payload())
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+
+        review = Review.objects.get(pk=data['review_id'])
+        self.assertFalse(review.is_draft)
+
     def test_review_image_preserves_original_filename(self):
         response = self.post(self.base_payload(
             rating={

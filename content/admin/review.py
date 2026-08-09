@@ -48,8 +48,8 @@ import_reviews_from_confluence.short_description = "Import reviews from Confluen
 class ReviewAdmin(admin.ModelAdmin):
     """Admin interface for Review model"""
 
-    list_display = ['get_restaurant_name', 'visit_date', 'rating', 'created_at']
-    list_filter = ['rating', 'visit_date', 'restaurant__city', 'restaurant__country']
+    list_display = ['get_restaurant_name', 'visit_date', 'rating', 'is_draft', 'created_at']
+    list_filter = ['rating', 'is_draft', 'visit_date', 'restaurant__city', 'restaurant__country']
     search_fields = ['restaurant__name', 'restaurant__city', 'restaurant__country', 'food_festival__name', 'notes']
     date_hierarchy = 'visit_date'
     readonly_fields = ['created_at', 'updated_at', 'created_by']
@@ -67,7 +67,7 @@ class ReviewAdmin(admin.ModelAdmin):
             'fields': ('rating', 'notes', 'title')
         }),
         ('Privacy', {
-            'fields': ('is_private',)
+            'fields': ('is_private', 'is_draft')
         }),
         ('Metadata', {
             'fields': ('created_by', 'created_at', 'updated_at', 'metadata'),

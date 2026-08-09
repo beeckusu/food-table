@@ -121,6 +121,7 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
                 'images': [{'id': img.id, 'src': img.image.url} for img in review.images.all()],
             },
             'dishes': dishes,
+            'is_draft': review.is_draft,
         }
         return JsonResponse({'success': True, 'review': data})
 
@@ -209,6 +210,7 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
             review.metadata['ambiance_rating'] = int(rating_data['ambiance'])
         if rating_data.get('service'):
             review.metadata['service_rating'] = int(rating_data['service'])
+        review.is_draft = bool(data.get('is_draft', review.is_draft))
         review.save()
 
     def _sync_dishes(self, review, dishes_data, user):
