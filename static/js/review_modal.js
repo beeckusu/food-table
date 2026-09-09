@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let reviewImages = [];
     let reviewImageHandlersInitialized = false;
 
+    // Bulk dish-photo drop zone (Step 3) — initialized lazily, once, like the review image handlers
+    let bulkDishHandlersInitialized = false;
+
     // AI rewrite — populated once the modal element is found
     let openAiRewriteModal = null;
 
@@ -294,6 +297,10 @@ document.addEventListener('DOMContentLoaded', function() {
             initReviewImageHandlers();
         }
 
+        if (REVIEW_STEPS[stepIndex].id === 'dishes') {
+            initBulkDishDropZone();
+        }
+
         // Update progress indicator
         const stepNumber = stepIndex + 1;
         const totalSteps = REVIEW_STEPS.length;
@@ -348,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('dishesContainer').style.display = targetType === 'food_festival' ? 'none' : 'block';
         document.getElementById('addDishBtn').style.display = targetType === 'food_festival' ? 'none' : 'inline-block';
+        document.getElementById('bulkDishDropZoneWrapper').style.display = targetType === 'food_festival' ? 'none' : 'block';
         document.getElementById('festivalGroupsContainer').style.display = targetType === 'food_festival' ? 'block' : 'none';
         document.getElementById('addGroupBtn').style.display = targetType === 'food_festival' ? 'inline-block' : 'none';
     }
@@ -1548,6 +1556,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 dishCard.querySelector('.dish-name').focus();
             }, 100);
         }
+
+        return dishCard;
     }
 
     function handleImageFile(file, dishCard) {
@@ -1586,6 +1596,79 @@ document.addEventListener('DOMContentLoaded', function() {
             renderDishImagePreviews(dishCard);
             saveDishes();
         });
+    }
+
+    // Bulk dish-photo drop zone (Step 3): each dropped/selected image becomes its own new
+    // dish, with that image pre-attached via the existing per-dish image attach flow.
+    function initBulkDishDropZone() {
+        if (bulkDishHandlersInitialized) return;
+        bulkDishHandlersInitialized = true;
+
+        const dropZone = document.getElementById('bulkDishDropZone');
+        const fileInput = document.getElementById('bulkDishImageInput');
+        if (!dropZone || !fileInput) return;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function() {
+            handleBulkDishFiles(Array.from(this.files));
+            this.value = '';
+        });
+
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleBulkDishFiles(Array.from(e.dataTransfer.files));
+        });
+    }
+
+    function handleBulkDishFiles(files) {
+        const statusDiv = document.getElementById('bulkDishDropStatus');
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const skipped = [];
+        const containerEl = document.getElementById('dishesContainer');
+        let addedCount = 0;
+
+        files.forEach(file => {
+            if (!allowedTypes.includes(file.type)) {
+                skipped.push(`${file.name} (unsupported file type)`);
+                return;
+            }
+            if (file.size > maxSize) {
+                skipped.push(`${file.name} (too large, max 10MB)`);
+                return;
+            }
+            const dishCard = addDish(null, containerEl);
+            handleImageFile(file, dishCard);
+            addedCount++;
+        });
+
+        if (!statusDiv) return;
+
+        if (addedCount === 0 && skipped.length === 0) {
+            statusDiv.style.display = 'none';
+            return;
+        }
+
+        statusDiv.style.display = 'block';
+        if (skipped.length > 0) {
+            statusDiv.className = 'form-text mt-1 text-danger';
+            const addedMsg = addedCount > 0 ? `Added ${addedCount} dish(es). ` : '';
+            statusDiv.textContent = `${addedMsg}Skipped: ${skipped.join(', ')}`;
+        } else {
+            statusDiv.className = 'form-text mt-1 text-success';
+            statusDiv.textContent = `Added ${addedCount} dish(es) from photos.`;
+        }
     }
 
     function initReviewImageHandlers() {
