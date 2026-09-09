@@ -1,6 +1,9 @@
+import base64
 import json
 from datetime import date, time
 
+from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -213,13 +216,61 @@ class ReviewUpdateApiViewTest(TestCase):
     def test_new_dish_image_preserves_original_filename(self):
         payload = self.base_payload(dishes=[{
             'id': self.dish.pk, 'name': 'Ramen Deluxe', 'rating': 95, 'notes': '', 'cost': None,
-            'encyclopedia_ids': [], 'image': TINY_PNG_DATA_URL, 'image_filename': 'new-bowl.png',
+            'encyclopedia_ids': [], 'images': [{'id': None, 'src': TINY_PNG_DATA_URL, 'filename': 'new-bowl.png'}],
         }])
         response = self.patch(payload)
         self.assertEqual(response.status_code, 200, response.content)
 
         image = Image.objects.get(object_id=self.dish.id, content_type__model='reviewdish')
         self.assertEqual(image.image.name.rsplit('/', 1)[-1], 'new-bowl.png')
+
+    def test_dish_image_kept_when_resubmitted_with_id(self):
+        content_type = ContentType.objects.get_for_model(ReviewDish)
+        existing_image = Image.objects.create(
+            image=SimpleUploadedFile('existing.png', base64.b64decode(TINY_PNG_DATA_URL.split(';base64,')[1])),
+            content_type=content_type,
+            object_id=self.dish.id,
+        )
+        payload = self.base_payload(dishes=[{
+            'id': self.dish.pk, 'name': 'Ramen Deluxe', 'rating': 95, 'notes': '', 'cost': None,
+            'encyclopedia_ids': [], 'images': [{'id': existing_image.id, 'src': existing_image.image.url}],
+        }])
+        response = self.patch(payload)
+        self.assertEqual(response.status_code, 200, response.content)
+
+        self.assertTrue(Image.objects.filter(pk=existing_image.pk).exists())
+        self.assertEqual(Image.objects.filter(object_id=self.dish.id, content_type=content_type).count(), 1)
+
+    def test_dish_image_removed_when_omitted_from_resubmission(self):
+        content_type = ContentType.objects.get_for_model(ReviewDish)
+        existing_image = Image.objects.create(
+            image=SimpleUploadedFile('existing.png', base64.b64decode(TINY_PNG_DATA_URL.split(';base64,')[1])),
+            content_type=content_type,
+            object_id=self.dish.id,
+        )
+        payload = self.base_payload(dishes=[{
+            'id': self.dish.pk, 'name': 'Ramen Deluxe', 'rating': 95, 'notes': '', 'cost': None,
+            'encyclopedia_ids': [], 'images': [],
+        }])
+        response = self.patch(payload)
+        self.assertEqual(response.status_code, 200, response.content)
+
+        self.assertFalse(Image.objects.filter(pk=existing_image.pk).exists())
+
+    def test_edit_data_returns_all_dish_images(self):
+        content_type = ContentType.objects.get_for_model(ReviewDish)
+        image_bytes = base64.b64decode(TINY_PNG_DATA_URL.split(';base64,')[1])
+        Image.objects.create(
+            image=SimpleUploadedFile('one.png', image_bytes), content_type=content_type, object_id=self.dish.id,
+        )
+        Image.objects.create(
+            image=SimpleUploadedFile('two.png', image_bytes), content_type=content_type, object_id=self.dish.id,
+        )
+        url = reverse('content:api_review_edit_data', kwargs={'pk': self.review.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()['review']
+        self.assertEqual(len(data['dishes'][0]['images']), 2)
 
     def test_new_review_image_preserves_original_filename(self):
         payload = self.base_payload(rating={

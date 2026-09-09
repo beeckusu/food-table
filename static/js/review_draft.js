@@ -83,7 +83,7 @@ class ReviewDraftManager {
         // Strip base64 image data from dishes — images must be re-uploaded on submission
         const draftData = { ...data };
         if (draftData.dishes) {
-            draftData.dishes = draftData.dishes.map(({ image, ...rest }) => rest);
+            draftData.dishes = draftData.dishes.map(({ images, ...rest }) => rest);
         }
 
         try {

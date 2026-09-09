@@ -16,7 +16,7 @@ from content.views.review_shared import (
     resolve_food_festival,
     resolve_dish_restaurant,
     sync_review_images,
-    sync_dish_image,
+    sync_dish_images,
     link_or_create_wishlist_dish,
     resolve_encyclopedia_entry,
     DishRestaurantResolutionError,
@@ -49,7 +49,6 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
 
         dishes = []
         for dish in review.review_dishes.all():
-            dish_image = dish.images.first()
             dish_payload = {
                 'id': dish.id,
                 'name': dish.dish_name or (dish.encyclopedia_entry.name if dish.encyclopedia_entry else ''),
@@ -63,7 +62,7 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
                         'slug': dish.encyclopedia_entry.slug,
                     }] if dish.encyclopedia_entry else []
                 ),
-                'image': {'id': dish_image.id, 'src': dish_image.image.url} if dish_image else None,
+                'images': [{'id': img.id, 'src': img.image.url} for img in dish.images.all()],
             }
             if food_festival:
                 dish_restaurant = dish_restaurants.get(dish.dish_name)
@@ -253,16 +252,7 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
 
             submitted_ids.add(review_dish.id)
 
-            error = sync_dish_image(
-                review_dish,
-                dish_data.get('existing_image_id'),
-                bool(dish_data.get('remove_image')),
-                dish_data.get('image'),
-                user,
-                filename=dish_data.get('image_filename'),
-            )
-            if error:
-                image_errors.append(error)
+            image_errors.extend(sync_dish_images(review_dish, dish_data.get('images', []), user))
 
         review.review_dishes.exclude(id__in=submitted_ids).delete()
         return image_errors

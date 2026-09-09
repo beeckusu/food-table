@@ -160,7 +160,7 @@ class ReviewCreateApiViewTest(TestCase):
         response = self.post(self.base_payload(
             dishes=[{
                 'name': 'Ramen', 'rating': 90, 'notes': '', 'cost': None, 'encyclopedia_ids': [],
-                'image': TINY_PNG_DATA_URL, 'image_filename': 'bowl-of-ramen.png',
+                'images': [{'id': None, 'src': TINY_PNG_DATA_URL, 'filename': 'bowl-of-ramen.png'}],
             }],
         ))
         self.assertEqual(response.status_code, 200, response.content)
@@ -170,6 +170,28 @@ class ReviewCreateApiViewTest(TestCase):
         dish = ReviewDish.objects.get(review=review)
         image = Image.objects.get(object_id=dish.id, content_type__model='reviewdish')
         self.assertEqual(image.image.name.rsplit('/', 1)[-1], 'bowl-of-ramen.png')
+
+    def test_dish_with_multiple_images_saves_all(self):
+        response = self.post(self.base_payload(
+            dishes=[{
+                'name': 'Ramen', 'rating': 90, 'notes': '', 'cost': None, 'encyclopedia_ids': [],
+                'images': [
+                    {'id': None, 'src': TINY_PNG_DATA_URL, 'filename': 'first.png'},
+                    {'id': None, 'src': TINY_PNG_DATA_URL, 'filename': 'second.png'},
+                ],
+            }],
+        ))
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+
+        review = Review.objects.get(pk=data['review_id'])
+        dish = ReviewDish.objects.get(review=review)
+        images = Image.objects.filter(object_id=dish.id, content_type__model='reviewdish')
+        self.assertEqual(images.count(), 2)
+        self.assertEqual(
+            sorted(img.image.name.rsplit('/', 1)[-1] for img in images),
+            ['first.png', 'second.png'],
+        )
 
     def test_review_image_without_filename_falls_back_to_uuid_name(self):
         response = self.post(self.base_payload(

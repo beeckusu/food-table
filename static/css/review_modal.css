@@ -171,25 +171,6 @@
     position: relative;
 }
 
-.dish-image-preview {
-    position: relative;
-    margin-top: 0.5rem;
-}
-
-.dish-preview-img {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 0.375rem;
-    border: 2px solid #dee2e6;
-    display: block;
-    margin-bottom: 0.5rem;
-    object-fit: cover;
-}
-
-.dish-image-preview .remove-image-btn {
-    margin-top: 0.25rem;
-}
-
 /* Dish summary images */
 .dish-summary-item {
     padding: 0.75rem;
@@ -576,19 +557,6 @@
     padding-bottom: 0;
     margin-bottom: 0;
     border-bottom: none;
-}
-
-/* Dish Image Preview Improvements */
-.dish-image-preview {
-    text-align: center;
-}
-
-.dish-preview-img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 250px;
-    margin: 0 auto;
 }
 
 /* Toast Notification Styling (if not already defined globally) */

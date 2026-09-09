@@ -248,31 +248,45 @@ def save_review_images(review, images_data, user):
     return errors
 
 
-def save_dish_image(review_dish, image_data, user, filename=None):
-    """Convert base64 image to Image model and attach to dish. Returns error string or None."""
-    try:
-        format_type, imgstr = image_data.split(';base64,')
-        ext = format_type.split('/')[-1]  # jpeg, png, webp
+def save_dish_images(review_dish, images_data, user):
+    """
+    Save base64-encoded images attached to a dish. Each entry in images_data
+    may be a plain data-URL string, or a {src, filename} dict where filename
+    is the original client-side file name to preserve. Returns list of error strings.
+    """
+    errors = []
+    for image_data in images_data:
+        if isinstance(image_data, dict):
+            src = image_data.get('src')
+            original_filename = image_data.get('filename')
+        else:
+            src = image_data
+            original_filename = None
 
-        image_file = ContentFile(
-            base64.b64decode(imgstr),
-            name=_build_image_filename('dish', ext, filename)
-        )
+        if not (isinstance(src, str) and src.startswith('data:image/')):
+            continue
+        try:
+            format_type, imgstr = src.split(';base64,')
+            ext = format_type.split('/')[-1]
 
-        content_type = ContentType.objects.get_for_model(review_dish)
-        Image.objects.create(
-            image=image_file,
-            content_type=content_type,
-            object_id=review_dish.id,
-            uploaded_by=user,
-            caption=review_dish.dish_name,
-            alt_text=f'Photo of {review_dish.dish_name}'
-        )
-        return None
+            image_file = ContentFile(
+                base64.b64decode(imgstr),
+                name=_build_image_filename('dish', ext, original_filename)
+            )
 
-    except Exception as e:
-        logger.error("Error saving dish image for dish %s: %s", review_dish.id, e, exc_info=True)
-        return f"Image for '{review_dish.dish_name}' failed to save: {e}"
+            content_type = ContentType.objects.get_for_model(review_dish)
+            Image.objects.create(
+                image=image_file,
+                content_type=content_type,
+                object_id=review_dish.id,
+                uploaded_by=user,
+                caption=review_dish.dish_name,
+                alt_text=f'Photo of {review_dish.dish_name}'
+            )
+        except Exception as e:
+            logger.error("Error saving dish image for dish %s: %s", review_dish.id, e, exc_info=True)
+            errors.append(f"Image for '{review_dish.dish_name}' failed to save: {e}")
+    return errors
 
 
 def resolve_dish_restaurant(dish_data, user):
@@ -340,17 +354,23 @@ def sync_review_images(review, images_data, user):
     return save_review_images(review, new_images, user)
 
 
-def sync_dish_image(review_dish, existing_image_id, remove_image, new_image_data, user, filename=None):
-    """Reconcile a dish's single image on update: remove/replace/keep. Returns error string or None."""
-    has_new_image = bool(new_image_data and new_image_data.startswith('data:image/'))
+def sync_dish_images(review_dish, images_data, user):
+    """
+    Reconcile a dish's images on update: delete existing images the user removed,
+    save any newly-added base64 images. Returns list of error strings.
+    """
+    content_type = ContentType.objects.get_for_model(review_dish)
+    kept_ids = {
+        int(item['id']) for item in images_data
+        if isinstance(item, dict) and item.get('id')
+    }
+    Image.objects.filter(content_type=content_type, object_id=review_dish.id).exclude(id__in=kept_ids).delete()
 
-    if (remove_image or has_new_image) and existing_image_id:
-        content_type = ContentType.objects.get_for_model(review_dish)
-        Image.objects.filter(content_type=content_type, object_id=review_dish.id, id=existing_image_id).delete()
-
-    if has_new_image:
-        return save_dish_image(review_dish, new_image_data, user, filename=filename)
-    return None
+    new_images = [
+        item for item in images_data
+        if isinstance(item, dict) and not item.get('id')
+    ]
+    return save_dish_images(review_dish, new_images, user)
 
 
 def resolve_encyclopedia_entry(dish_data):

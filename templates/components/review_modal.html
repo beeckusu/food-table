@@ -331,22 +331,17 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Image <span class="badge bg-secondary">Optional</span></label>
+                                    <label class="form-label">Photos <span class="badge bg-secondary">Optional</span></label>
                                     <div class="dish-image-upload-container">
                                         <div class="dish-image-drop-zone">
-                                            <input type="file" class="form-control dish-image" accept="image/jpeg,image/png,image/webp">
+                                            <input type="file" class="form-control dish-image" accept="image/jpeg,image/png,image/webp" multiple>
                                             <div class="drop-zone-text">
                                                 <i class="bi bi-cloud-upload"></i>
-                                                <p class="mb-0">Click to select or drag & drop an image</p>
-                                                <small class="text-muted">JPEG, PNG, WebP (max 10MB)</small>
+                                                <p class="mb-0">Click to select or drag &amp; drop photos</p>
+                                                <small class="text-muted">JPEG, PNG, WebP (max 10MB each)</small>
                                             </div>
                                         </div>
-                                        <div class="dish-image-preview" style="display: none;">
-                                            <img src="" alt="Dish preview" class="dish-preview-img">
-                                            <button type="button" class="btn btn-sm btn-outline-danger remove-image-btn">
-                                                <i class="bi bi-x-circle"></i> Remove Image
-                                            </button>
-                                        </div>
+                                        <div class="dish-image-previews d-flex flex-wrap gap-2 mt-2"></div>
                                     </div>
                                 </div>
                                 <div class="mb-3">

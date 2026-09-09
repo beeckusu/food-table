@@ -1030,10 +1030,14 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.dishes.forEach((dish, index) => {
                 summaryHtml += '<div class="dish-summary-item mb-3 pb-3 border-bottom">';
                 summaryHtml += '<div class="row">';
-                if (dish.image) {
+                if (dish.images && dish.images.length > 0) {
                     summaryHtml += '<div class="col-md-3 mb-2 mb-md-0">';
-                    summaryHtml += `<img src="${dish.image}" alt="${dish.name}" class="img-fluid rounded" style="max-height: 120px; object-fit: cover; width: 100%;">`;
-                    summaryHtml += '</div>';
+                    summaryHtml += '<div class="d-flex flex-wrap gap-1">';
+                    dish.images.forEach(img => {
+                        const src = typeof img === 'string' ? img : img.src;
+                        summaryHtml += `<img src="${src}" alt="${dish.name}" class="dish-summary-image" style="max-height: 80px; width: 80px;">`;
+                    });
+                    summaryHtml += '</div></div>';
                     summaryHtml += '<div class="col-md-9">';
                 } else {
                     summaryHtml += '<div class="col-12">';
@@ -1399,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dishCard.id = `dish-${dishCounter}`;
         dishCard.dataset.dishId = dishCounter;
         dishCard.dataset.encyclopediaIds = '[]'; // Store encyclopedia IDs as JSON
+        dishCard._dishImages = []; // {id, src, filename} entries; id is null for newly-added images
 
         // Pre-fill data if provided
         if (dishData) {
@@ -1418,21 +1423,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 dishCard.dataset.encyclopediaIds = JSON.stringify(dishData.encyclopedia_ids);
             }
 
-            // Pre-fill image if provided (edit mode sends {id, src}; drafts never include dish images)
-            if (dishData.image) {
-                const imagePreview = dishCard.querySelector('.dish-image-preview');
-                const previewImg = dishCard.querySelector('.dish-preview-img');
-                const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
-
-                const img = dishData.image;
-                const src = typeof img === 'string' ? img : img.src;
-                const imgId = typeof img === 'string' ? null : img.id;
-                if (imgId) dishCard.dataset.existingImageId = imgId;
-
-                previewImg.src = src;
-                imagePreview.style.display = 'block';
-                imageDropZone.style.display = 'none';
-            }
+            // Pre-fill images if provided (edit mode sends [{id, src}, ...]; drafts never include dish images)
+            const providedImages = dishData.images || (dishData.image ? [dishData.image] : []);
+            dishCard._dishImages = providedImages.map(
+                img => (typeof img === 'string' ? { id: null, src: img } : img)
+            );
         }
 
         // Add to container
@@ -1478,8 +1473,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dishCard.querySelector('.remove-dish-btn').addEventListener('click', function() {
             const name = dishCard.querySelector('.dish-name').value.trim();
             const notes = dishCard.querySelector('.dish-notes').value.trim();
-            const previewImg = dishCard.querySelector('.dish-preview-img');
-            const hasImage = previewImg && previewImg.src && (previewImg.src.startsWith('data:') || dishCard.dataset.existingImageId);
+            const hasImage = dishCard._dishImages && dishCard._dishImages.length > 0;
             const hasData = name !== '' || notes !== '' || hasImage;
 
             if (hasData && !confirm('Remove this dish? All data for this dish will be lost.')) {
@@ -1510,12 +1504,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Image upload handler with validation
         const imageInput = dishCard.querySelector('.dish-image');
         const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
-        const imagePreview = dishCard.querySelector('.dish-image-preview');
-        const previewImg = dishCard.querySelector('.dish-preview-img');
-        const removeImageBtn = dishCard.querySelector('.remove-image-btn');
 
         imageInput.addEventListener('change', function(e) {
-            handleImageFile(e.target.files[0], dishCard);
+            Array.from(e.target.files).forEach(file => handleImageFile(file, dishCard));
+            e.target.value = '';
         });
 
         // Drag & drop support
@@ -1536,28 +1528,14 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             imageDropZone.classList.remove('drag-over');
 
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleImageFile(file, dishCard);
-            }
-        });
-
-        removeImageBtn.addEventListener('click', function() {
-            imageInput.value = '';
-            previewImg.src = '';
-            imagePreview.style.display = 'none';
-            imageDropZone.style.display = 'block';
-            delete dishCard.dataset.imageFilename;
-            if (dishCard.dataset.existingImageId) {
-                dishCard.dataset.removeImage = 'true';
-            }
-            saveDishes();
+            Array.from(e.dataTransfer.files).forEach(file => handleImageFile(file, dishCard));
         });
 
         // Update dish numbers after adding to container
         updateDishNumbers(containerEl);
 
-        // Render encyclopedia chips if data was pre-filled
+        // Render pre-filled images and encyclopedia chips
+        renderDishImagePreviews(dishCard);
         renderEncyclopediaChips(dishCard);
 
         // Save dishes and validate
@@ -1574,11 +1552,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleImageFile(file, dishCard) {
         if (!file) return;
-
-        const imageInput = dishCard.querySelector('.dish-image');
-        const imageDropZone = dishCard.querySelector('.dish-image-drop-zone');
-        const imagePreview = dishCard.querySelector('.dish-image-preview');
-        const previewImg = dishCard.querySelector('.dish-preview-img');
 
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -1600,13 +1573,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Read and preview image
         const reader = new FileReader();
         reader.onload = function(e) {
-            previewImg.src = e.target.result;
-            imagePreview.style.display = 'block';
-            imageDropZone.style.display = 'none';
-            dishCard.dataset.imageFilename = file.name;
+            dishCard._dishImages.push({ id: null, src: e.target.result, filename: file.name });
+            renderDishImagePreviews(dishCard);
             saveDishes();
         };
         reader.readAsDataURL(file);
+    }
+
+    function renderDishImagePreviews(dishCard) {
+        renderImagePreviews(dishCard.querySelector('.dish-image-previews'), dishCard._dishImages, function(idx) {
+            dishCard._dishImages.splice(idx, 1);
+            renderDishImagePreviews(dishCard);
+            saveDishes();
+        });
     }
 
     function initReviewImageHandlers() {
@@ -1661,11 +1640,13 @@ document.addEventListener('DOMContentLoaded', function() {
         reader.readAsDataURL(file);
     }
 
-    function renderReviewImagePreviews() {
-        const container = document.getElementById('reviewImagePreviews');
+    // Renders a row of removable image thumbnails into container from a list of
+    // {id, src} objects (or plain data-URL strings). onRemove(idx) is called when
+    // a thumbnail's remove button is clicked. Shared by review-level and dish-level photos.
+    function renderImagePreviews(container, images, onRemove) {
         if (!container) return;
         container.innerHTML = '';
-        reviewImages.forEach((item, idx) => {
+        images.forEach((item, idx) => {
             const src = typeof item === 'string' ? item : item.src;
 
             const wrapper = document.createElement('div');
@@ -1683,14 +1664,20 @@ document.addEventListener('DOMContentLoaded', function() {
             removeBtn.style.cssText = 'width: 20px; height: 20px; font-size: 10px; line-height: 1;';
             removeBtn.innerHTML = '&times;';
             removeBtn.addEventListener('click', function() {
-                reviewImages.splice(idx, 1);
-                renderReviewImagePreviews();
-                saveCurrentStepData();
+                onRemove(idx);
             });
 
             wrapper.appendChild(img);
             wrapper.appendChild(removeBtn);
             container.appendChild(wrapper);
+        });
+    }
+
+    function renderReviewImagePreviews() {
+        renderImagePreviews(document.getElementById('reviewImagePreviews'), reviewImages, function(idx) {
+            reviewImages.splice(idx, 1);
+            renderReviewImagePreviews();
+            saveCurrentStepData();
         });
     }
 
@@ -1982,19 +1969,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const rating = card.querySelector('.dish-rating').value;
         const notes = card.querySelector('.dish-notes').value.trim();
         const cost = card.querySelector('.dish-cost').value.trim() || null;
-        const imagePreview = card.querySelector('.dish-preview-img');
-        const imageSrc = imagePreview && imagePreview.src && imagePreview.src.startsWith('data:') ? imagePreview.src : null;
         // Read tracking data from the parent element (the wrapper div where it's actually stored)
         const wrapper = card.parentElement;
         const encyclopediaIds = JSON.parse(wrapper.dataset.encyclopediaIds || '[]');
         const reviewDishId = wrapper.dataset.reviewDishId
             ? parseInt(wrapper.dataset.reviewDishId, 10)
             : undefined;
-        const existingImageId = wrapper.dataset.existingImageId
-            ? parseInt(wrapper.dataset.existingImageId, 10)
-            : null;
-        const removeImage = wrapper.dataset.removeImage === 'true';
-        const imageFilename = imageSrc ? (wrapper.dataset.imageFilename || null) : null;
 
         return {
             id: reviewDishId,
@@ -2002,10 +1982,7 @@ document.addEventListener('DOMContentLoaded', function() {
             rating,
             notes,
             cost,
-            image: imageSrc,
-            image_filename: imageFilename,
-            existing_image_id: existingImageId,
-            remove_image: removeImage,
+            images: [...(wrapper._dishImages || [])],
             encyclopedia_ids: encyclopediaIds
         };
     }

@@ -15,7 +15,7 @@ from content.views.review_shared import (
     resolve_food_festival,
     resolve_dish_restaurant,
     save_review_images,
-    save_dish_image,
+    save_dish_images,
     link_or_create_wishlist_dish,
     resolve_encyclopedia_entry,
     DishRestaurantResolutionError,
@@ -165,10 +165,6 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
                 review, dish_data['name'], encyclopedia_entry, dish_restaurant, review.food_festival
             )
 
-            image_data = dish_data.get('image')
-            if image_data and image_data.startswith('data:image/'):
-                error = save_dish_image(review_dish, image_data, user, filename=dish_data.get('image_filename'))
-                if error:
-                    image_errors.append(error)
+            image_errors.extend(save_dish_images(review_dish, dish_data.get('images', []), user))
 
         return image_errors
