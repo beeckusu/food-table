@@ -24,7 +24,7 @@ class ReviewSharePageView(View):
             Review.objects.select_related('restaurant'),
             pk=pk,
         )
-        dishes = review.review_dishes.select_related('encyclopedia_entry').prefetch_related('images').all()
+        dishes = review.review_dishes.select_related('menu_item__encyclopedia_entry').prefetch_related('images').all()
         images = review.images.all()
         share_draft = review.metadata.get('share_draft')
 

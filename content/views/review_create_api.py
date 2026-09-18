@@ -18,6 +18,7 @@ from content.views.review_shared import (
     save_dish_images,
     link_or_create_wishlist_dish,
     resolve_encyclopedia_entry,
+    resolve_menu_item,
     DishRestaurantResolutionError,
 )
 
@@ -151,18 +152,19 @@ class ReviewCreateApiView(LoginRequiredMixin, View):
             else:
                 dish_restaurant = review.restaurant
 
+            menu_item = resolve_menu_item(dish_restaurant, dish_data['name'], encyclopedia_entry)
+
             cost = dish_data.get('cost')
             review_dish = ReviewDish.objects.create(
                 review=review,
-                encyclopedia_entry=encyclopedia_entry,
-                dish_name=dish_data['name'],
+                menu_item=menu_item,
                 dish_rating=int(dish_data.get('rating', 50)),
                 notes=dish_data.get('notes', ''),
                 cost=cost if cost else None
             )
 
             link_or_create_wishlist_dish(
-                review, dish_data['name'], encyclopedia_entry, dish_restaurant, review.food_festival
+                review, dish_data['name'], menu_item.encyclopedia_entry, dish_restaurant, review.food_festival
             )
 
             image_errors.extend(save_dish_images(review_dish, dish_data.get('images', []), user))

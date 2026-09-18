@@ -18,8 +18,8 @@ class ReviewDishInline(admin.TabularInline):
     """Inline for managing dishes attached to reviews"""
     model = ReviewDish
     extra = 1
-    fields = ['dish_name', 'encyclopedia_entry', 'dish_rating', 'cost', 'notes']
-    autocomplete_fields = ['encyclopedia_entry']
+    fields = ['menu_item', 'dish_rating', 'cost', 'notes']
+    autocomplete_fields = ['menu_item']
 
 
 class ReviewTagInline(admin.TabularInline):
@@ -98,12 +98,12 @@ class ReviewDishAdmin(admin.ModelAdmin):
 
     list_display = ['dish_name', 'review', 'dish_rating', 'cost']
     list_filter = ['dish_rating', 'review__visit_date']
-    search_fields = ['dish_name', 'notes', 'review__restaurant__name']
-    autocomplete_fields = ['encyclopedia_entry', 'review']
+    search_fields = ['menu_item__name', 'notes', 'review__restaurant__name']
+    autocomplete_fields = ['menu_item', 'review']
 
     fieldsets = (
         ('Dish Information', {
-            'fields': ('review', 'dish_name', 'encyclopedia_entry')
+            'fields': ('review', 'menu_item')
         }),
         ('Rating and Cost', {
             'fields': ('dish_rating', 'cost')

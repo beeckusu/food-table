@@ -6,7 +6,7 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from content.models import FoodFestival, Restaurant, RestaurantDish, Review, ReviewDish
+from content.models import FoodFestival, MenuItem, Restaurant, RestaurantDish, Review, ReviewDish
 
 
 class ReviewModalTemplateRenderTest(TestCase):
@@ -390,7 +390,9 @@ class ReviewUpdateApiFoodFestivalTest(TestCase):
             title='Fun day',
             created_by=self.staff,
         )
-        ReviewDish.objects.create(review=self.review, dish_name='Corn Dog', dish_rating=90)
+        vendor = Restaurant.objects.create(name='Vendor Stall')
+        menu_item = MenuItem.objects.create(restaurant=vendor, name='Corn Dog')
+        ReviewDish.objects.create(review=self.review, menu_item=menu_item, dish_rating=90)
         self.client = Client()
         self.client.login(username='staff', password='pw')
 
@@ -445,8 +447,10 @@ class ReviewDetailFoodFestivalTest(TestCase):
             rating=80,
             created_by=self.staff,
         )
-        ReviewDish.objects.create(review=self.review, dish_name='Poutine', dish_rating=90)
-        ReviewDish.objects.create(review=self.review, dish_name='Ramen', dish_rating=70)
+        poutine_menu_item = MenuItem.objects.create(restaurant=self.vendor_a, name='Poutine')
+        ramen_menu_item = MenuItem.objects.create(restaurant=self.vendor_b, name='Ramen')
+        ReviewDish.objects.create(review=self.review, menu_item=poutine_menu_item, dish_rating=90)
+        ReviewDish.objects.create(review=self.review, menu_item=ramen_menu_item, dish_rating=70)
         RestaurantDish.objects.create(
             restaurant=self.vendor_a, food_festival=self.festival, review=self.review,
             dish_name='Poutine', status=RestaurantDish.STATUS_HAD,

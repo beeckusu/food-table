@@ -60,12 +60,12 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
             'date_asc': ['review__visit_date', 'review__entry_time'],
             'cost_desc': ['-cost'],
             'cost_asc': ['cost'],
-            'name_asc': ['dish_name'],
-            'name_desc': ['-dish_name'],
+            'name_asc': ['menu_item__name'],
+            'name_desc': ['-menu_item__name'],
             'restaurant_asc': ['review__restaurant__name'],
             'restaurant_desc': ['-review__restaurant__name'],
-            'link_asc': ['encyclopedia_entry__name'],  # Nulls last for asc (unlinked at bottom)
-            'link_desc': ['-encyclopedia_entry__name'],  # Nulls first for desc (unlinked at bottom after reversing)
+            'link_asc': ['menu_item__encyclopedia_entry__name'],  # Nulls last for asc (unlinked at bottom)
+            'link_desc': ['-menu_item__encyclopedia_entry__name'],  # Nulls first for desc (unlinked at bottom after reversing)
         }
 
         # Default to newest first
@@ -242,7 +242,7 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
             review__is_private=False
         ).select_related(
             'review',  # Parent review
-            'encyclopedia_entry',  # Encyclopedia link (if present)
+            'menu_item__encyclopedia_entry',  # Encyclopedia link (if present)
             'review__created_by'  # Review author
         ).prefetch_related(
             'images'  # Dish images
@@ -255,8 +255,8 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
         if cleaned_data.get('search'):
             search_term = cleaned_data['search']
             queryset = queryset.filter(
-                Q(dish_name__icontains=search_term) |
-                Q(encyclopedia_entry__name__icontains=search_term)
+                Q(menu_item__name__icontains=search_term) |
+                Q(menu_item__encyclopedia_entry__name__icontains=search_term)
             )
 
         # Restaurant search filter - searches restaurant names
@@ -269,9 +269,9 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
         # Link status filter
         link_status = cleaned_data.get('link_status')
         if link_status == 'linked':
-            queryset = queryset.filter(encyclopedia_entry__isnull=False)
+            queryset = queryset.filter(menu_item__encyclopedia_entry__isnull=False)
         elif link_status == 'unlinked':
-            queryset = queryset.filter(encyclopedia_entry__isnull=True)
+            queryset = queryset.filter(menu_item__encyclopedia_entry__isnull=True)
         # 'all' means no filter
 
         # Dish rating range filters (validated by form)
@@ -304,17 +304,17 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
             # Annotate with a field to push nulls to the end
             queryset = queryset.annotate(
                 has_link=Case(
-                    When(encyclopedia_entry__isnull=True, then=Value(1)),
+                    When(menu_item__encyclopedia_entry__isnull=True, then=Value(1)),
                     default=Value(0),
                     output_field=IntegerField()
                 )
             )
             if sort_key == 'link_asc':
                 # Unlinked last, then sort linked by name ascending
-                order_by_fields = ['has_link', 'encyclopedia_entry__name']
+                order_by_fields = ['has_link', 'menu_item__encyclopedia_entry__name']
             else:  # link_desc
                 # Unlinked last, then sort linked by name descending
-                order_by_fields = ['has_link', '-encyclopedia_entry__name']
+                order_by_fields = ['has_link', '-menu_item__encyclopedia_entry__name']
         # Special handling for cost sorting to ensure null costs go to bottom
         elif sort_key in ['cost_asc', 'cost_desc']:
             # Annotate with a field to push nulls to the end

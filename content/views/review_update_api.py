@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from content.models import Review, ReviewDish, RestaurantDish
+from content.models import Review, ReviewDish
 from content.views.review_shared import (
     validate_review_data,
     resolve_restaurant,
@@ -19,6 +19,7 @@ from content.views.review_shared import (
     sync_dish_images,
     link_or_create_wishlist_dish,
     resolve_encyclopedia_entry,
+    resolve_menu_item,
     DishRestaurantResolutionError,
 )
 
@@ -34,7 +35,10 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
 
         try:
             review = Review.objects.select_related('restaurant', 'food_festival').prefetch_related(
-                'review_dishes__encyclopedia_entry', 'review_dishes__images', 'images'
+                'review_dishes__menu_item__encyclopedia_entry',
+                'review_dishes__menu_item__restaurant',
+                'review_dishes__images',
+                'images',
             ).get(pk=pk)
         except Review.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Review not found'}, status=404)
@@ -42,16 +46,11 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
         restaurant = review.restaurant
         food_festival = review.food_festival
 
-        dish_restaurants = {}
-        if food_festival:
-            for rd in RestaurantDish.objects.filter(review=review).select_related('restaurant'):
-                dish_restaurants.setdefault(rd.dish_name, rd.restaurant)
-
         dishes = []
         for dish in review.review_dishes.all():
             dish_payload = {
                 'id': dish.id,
-                'name': dish.dish_name or (dish.encyclopedia_entry.name if dish.encyclopedia_entry else ''),
+                'name': dish.dish_name,
                 'rating': dish.dish_rating if dish.dish_rating is not None else 50,
                 'notes': dish.notes or '',
                 'cost': str(dish.cost) if dish.cost is not None else None,
@@ -65,7 +64,7 @@ class ReviewEditDataApiView(LoginRequiredMixin, View):
                 'images': [{'id': img.id, 'src': img.image.url} for img in dish.images.all()],
             }
             if food_festival:
-                dish_restaurant = dish_restaurants.get(dish.dish_name)
+                dish_restaurant = dish.restaurant
                 dish_payload['restaurant'] = (
                     {'mode': 'search', 'id': dish_restaurant.id, 'name': dish_restaurant.name}
                     if dish_restaurant else {}
@@ -222,29 +221,30 @@ class ReviewUpdateApiView(LoginRequiredMixin, View):
             cost = dish_data.get('cost')
             dish_id = dish_data.get('id')
 
+            if review.food_festival_id:
+                dish_restaurant, dish_restaurant_error = resolve_dish_restaurant(dish_data, user)
+                if dish_restaurant_error:
+                    raise DishRestaurantResolutionError(i, dish_restaurant_error)
+            else:
+                dish_restaurant = review.restaurant
+
+            menu_item = resolve_menu_item(dish_restaurant, dish_data['name'], encyclopedia_entry)
+
             review_dish = ReviewDish.objects.filter(id=dish_id, review=review).first() if dish_id else None
 
             if review_dish is None:
                 review_dish = ReviewDish.objects.create(
                     review=review,
-                    encyclopedia_entry=encyclopedia_entry,
-                    dish_name=dish_data['name'],
+                    menu_item=menu_item,
                     dish_rating=int(dish_data.get('rating', 50)),
                     notes=dish_data.get('notes', ''),
                     cost=cost if cost else None,
                 )
-                if review.food_festival_id:
-                    dish_restaurant, dish_restaurant_error = resolve_dish_restaurant(dish_data, user)
-                    if dish_restaurant_error:
-                        raise DishRestaurantResolutionError(i, dish_restaurant_error)
-                else:
-                    dish_restaurant = review.restaurant
                 link_or_create_wishlist_dish(
-                    review, dish_data['name'], encyclopedia_entry, dish_restaurant, review.food_festival
+                    review, dish_data['name'], menu_item.encyclopedia_entry, dish_restaurant, review.food_festival
                 )
             else:
-                review_dish.encyclopedia_entry = encyclopedia_entry
-                review_dish.dish_name = dish_data['name']
+                review_dish.menu_item = menu_item
                 review_dish.dish_rating = int(dish_data.get('rating', 50))
                 review_dish.notes = dish_data.get('notes', '')
                 review_dish.cost = cost if cost else None

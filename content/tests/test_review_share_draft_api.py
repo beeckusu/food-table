@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from content.models import Image, Restaurant, Review, ReviewDish
+from content.models import Image, MenuItem, Restaurant, Review, ReviewDish
 
 _GIF_BYTES = (
     b'GIF87a\x01\x00\x01\x00\x80\x01\x00\xff\xff\xff\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
@@ -28,7 +28,8 @@ class ReviewShareDraftApiViewTest(TestCase):
             rating=80,
             notes='Great pizza.',
         )
-        self.dish = ReviewDish.objects.create(review=self.review, dish_name='Margherita')
+        menu_item = MenuItem.objects.create(restaurant=self.restaurant, name='Margherita')
+        self.dish = ReviewDish.objects.create(review=self.review, menu_item=menu_item)
 
         self.review_image = Image.objects.create(
             image=SimpleUploadedFile('review.gif', _GIF_BYTES, content_type='image/gif'),

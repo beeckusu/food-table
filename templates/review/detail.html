@@ -136,11 +136,11 @@
                                     <span class="text-muted">Unlinked Dish</span>
                                     {% endif %}
                                 </h5>
-                                {% if review.food_festival and dish.restaurant_for_display %}
+                                {% if review.food_festival and dish.restaurant %}
                                 <div class="mb-2">
                                     <span class="badge bg-light text-dark border">
                                         <i class="bi bi-shop"></i>
-                                        <a href="{% url 'content:restaurant_detail' pk=dish.restaurant_for_display.pk %}" class="text-decoration-none text-dark">{{ dish.restaurant_for_display.name }}</a>
+                                        <a href="{% url 'content:restaurant_detail' pk=dish.restaurant.pk %}" class="text-decoration-none text-dark">{{ dish.restaurant.name }}</a>
                                     </span>
                                 </div>
                                 {% endif %}

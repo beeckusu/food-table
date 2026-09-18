@@ -1,6 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
-from content.models import Encyclopedia
+from content.models import Encyclopedia, ReviewDish
 from content.utils.encyclopedia import build_encyclopedia_tree
 
 
@@ -43,10 +43,13 @@ class EncyclopediaDetailView(LoginRequiredMixin, DetailView):
         # Add related recipes with optimized query
         context['related_recipes'] = entry.recipes.prefetch_related('images').all()
 
-        # Add related review dishes with optimized query to avoid N+1 queries
+        # Add related review dishes across every MenuItem linked to this entry, so
+        # repeat reviews of the same dish (at the same restaurant) show up together
+        # instead of only the review whose dish row happens to point here (FT-192).
         context['related_review_dishes'] = (
-            entry.dish_reviews
-            .select_related('review')
+            ReviewDish.objects
+            .filter(menu_item__encyclopedia_entry=entry)
+            .select_related('review', 'menu_item')
             .prefetch_related('images', 'review__images')
             .order_by('-review__visit_date', '-review__entry_time')
         )

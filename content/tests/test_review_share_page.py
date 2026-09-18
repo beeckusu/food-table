@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from content.models import Restaurant, Review, ReviewDish
+from content.models import MenuItem, Restaurant, Review, ReviewDish
 
 
 class ReviewSharePageViewTest(TestCase):
@@ -19,7 +19,8 @@ class ReviewSharePageViewTest(TestCase):
             rating=80,
             notes='Great <strong>pizza</strong> tonight.',
         )
-        ReviewDish.objects.create(review=self.review, dish_name='Margherita', notes='Crispy crust.')
+        menu_item = MenuItem.objects.create(restaurant=self.restaurant, name='Margherita')
+        ReviewDish.objects.create(review=self.review, menu_item=menu_item, notes='Crispy crust.')
         self.client = Client()
         self.url = reverse('content:review_share', kwargs={'pk': self.review.pk})
 

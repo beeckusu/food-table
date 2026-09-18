@@ -4,6 +4,7 @@ from .encyclopedia_tag import EncyclopediaTag
 from .encyclopedia_version import EncyclopediaVersion
 from .food_festival import FoodFestival
 from .image import Image
+from .menu_item import MenuItem
 from .recipe import Recipe
 from .recipe_tag import RecipeTag
 from .recipe_version import RecipeVersion
@@ -15,4 +16,4 @@ from .review_dish import ReviewDish
 from .review_draft import ReviewDraft
 from .review_tag import ReviewTag
 from .tag import Tag
-__all__ = ['ApiUsageLog', 'Encyclopedia', 'EncyclopediaTag', 'EncyclopediaVersion', 'FoodFestival', 'Image', 'Recipe', 'RecipeTag', 'RecipeVersion', 'Restaurant', 'RestaurantDish', 'RestaurantDishReference', 'Review', 'ReviewDish', 'ReviewDraft', 'ReviewTag', 'Tag']
+__all__ = ['ApiUsageLog', 'Encyclopedia', 'EncyclopediaTag', 'EncyclopediaVersion', 'FoodFestival', 'Image', 'MenuItem', 'Recipe', 'RecipeTag', 'RecipeVersion', 'Restaurant', 'RestaurantDish', 'RestaurantDishReference', 'Review', 'ReviewDish', 'ReviewDraft', 'ReviewTag', 'Tag']

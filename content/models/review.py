@@ -201,7 +201,7 @@ def update_review_search_vector(sender, instance, **kwargs):
 
     # Collect dish names and notes from related ReviewDish entries
     dish_text_parts = []
-    for review_dish in instance.review_dishes.select_related('encyclopedia_entry').all():
+    for review_dish in instance.review_dishes.select_related('menu_item__encyclopedia_entry').all():
         # Add dish name
         if review_dish.encyclopedia_entry:
             dish_text_parts.append(review_dish.encyclopedia_entry.name)

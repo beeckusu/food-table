@@ -4,6 +4,13 @@ from datetime import date, time
 from content.models.restaurant import Restaurant
 from content.models.review import Review
 from content.models.review_dish import ReviewDish
+from content.models.menu_item import MenuItem
+
+
+def make_review_dish(review, dish_name, **kwargs):
+    """Create a ReviewDish for a test, resolving its MenuItem at the review's restaurant."""
+    menu_item = MenuItem.objects.create(restaurant=review.restaurant, name=dish_name)
+    return ReviewDish.objects.create(review=review, menu_item=menu_item, **kwargs)
 
 
 class ReviewRatingCalculationTestCase(TestCase):
@@ -57,11 +64,7 @@ class ReviewRatingCalculationTestCase(TestCase):
         )
 
         # Add a dish with rating
-        ReviewDish.objects.create(
-            review=review,
-            dish_name="Pasta",
-            dish_rating=80
-        )
+        make_review_dish(review, "Pasta", dish_rating=80)
 
         # Refresh from database
         review.refresh_from_db()
@@ -79,9 +82,9 @@ class ReviewRatingCalculationTestCase(TestCase):
         )
 
         # Add multiple dishes with different ratings
-        ReviewDish.objects.create(review=review, dish_name="Pasta", dish_rating=80)
-        ReviewDish.objects.create(review=review, dish_name="Pizza", dish_rating=90)
-        ReviewDish.objects.create(review=review, dish_name="Salad", dish_rating=70)
+        make_review_dish(review, "Pasta", dish_rating=80)
+        make_review_dish(review, "Pizza", dish_rating=90)
+        make_review_dish(review, "Salad", dish_rating=70)
 
         # Refresh from database
         review.refresh_from_db()
@@ -100,9 +103,9 @@ class ReviewRatingCalculationTestCase(TestCase):
         )
 
         # Add dishes that average to 83.333...
-        ReviewDish.objects.create(review=review, dish_name="Dish 1", dish_rating=80)
-        ReviewDish.objects.create(review=review, dish_name="Dish 2", dish_rating=85)
-        ReviewDish.objects.create(review=review, dish_name="Dish 3", dish_rating=85)
+        make_review_dish(review, "Dish 1", dish_rating=80)
+        make_review_dish(review, "Dish 2", dish_rating=85)
+        make_review_dish(review, "Dish 3", dish_rating=85)
 
         review.refresh_from_db()
         # Average: (80 + 85 + 85) / 3 = 83.333... -> rounds to 83
@@ -120,9 +123,9 @@ class ReviewRatingCalculationTestCase(TestCase):
         )
 
         # Add mix of rated and unrated dishes
-        ReviewDish.objects.create(review=review, dish_name="Pasta", dish_rating=80)
-        ReviewDish.objects.create(review=review, dish_name="Pizza", dish_rating=None)  # No rating
-        ReviewDish.objects.create(review=review, dish_name="Salad", dish_rating=90)
+        make_review_dish(review, "Pasta", dish_rating=80)
+        make_review_dish(review, "Pizza", dish_rating=None)  # No rating
+        make_review_dish(review, "Salad", dish_rating=90)
 
         review.refresh_from_db()
         # Average: (80 + 90) / 2 = 85 (ignoring unrated Pizza)
@@ -140,8 +143,8 @@ class ReviewRatingCalculationTestCase(TestCase):
         )
 
         # Add dishes without ratings
-        ReviewDish.objects.create(review=review, dish_name="Pasta", dish_rating=None)
-        ReviewDish.objects.create(review=review, dish_name="Pizza", dish_rating=None)
+        make_review_dish(review, "Pasta", dish_rating=None)
+        make_review_dish(review, "Pizza", dish_rating=None)
 
         review.refresh_from_db()
         self.assertEqual(review.rating, 50)
@@ -157,11 +160,7 @@ class ReviewRatingCalculationTestCase(TestCase):
             created_by=self.user
         )
 
-        dish = ReviewDish.objects.create(
-            review=review,
-            dish_name="Pasta",
-            dish_rating=80
-        )
+        dish = make_review_dish(review, "Pasta", dish_rating=80)
 
         review.refresh_from_db()
         self.assertEqual(review.rating, 80)
@@ -184,8 +183,8 @@ class ReviewRatingCalculationTestCase(TestCase):
             created_by=self.user
         )
 
-        dish1 = ReviewDish.objects.create(review=review, dish_name="Pasta", dish_rating=80)
-        dish2 = ReviewDish.objects.create(review=review, dish_name="Pizza", dish_rating=90)
+        dish1 = make_review_dish(review, "Pasta", dish_rating=80)
+        dish2 = make_review_dish(review, "Pizza", dish_rating=90)
 
         review.refresh_from_db()
         self.assertEqual(review.rating, 85)  # Average: (80 + 90) / 2
@@ -207,7 +206,7 @@ class ReviewRatingCalculationTestCase(TestCase):
             created_by=self.user
         )
 
-        dish = ReviewDish.objects.create(review=review, dish_name="Pasta", dish_rating=80)
+        dish = make_review_dish(review, "Pasta", dish_rating=80)
 
         review.refresh_from_db()
         self.assertEqual(review.rating, 80)
@@ -233,7 +232,7 @@ class ReviewRatingCalculationTestCase(TestCase):
         self.assertFalse(review.metadata.get('rating_auto_calculated', False))
 
         # Add a dish with lower rating
-        ReviewDish.objects.create(review=review, dish_name="Pasta", dish_rating=70)
+        make_review_dish(review, "Pasta", dish_rating=70)
 
         # The review rating should NOT change because it was explicitly set
         review.refresh_from_db()
@@ -250,8 +249,8 @@ class ReviewRatingCalculationTestCase(TestCase):
             created_by=self.user
         )
 
-        ReviewDish.objects.create(review=review, dish_name="Terrible", dish_rating=0)
-        ReviewDish.objects.create(review=review, dish_name="Perfect", dish_rating=100)
+        make_review_dish(review, "Terrible", dish_rating=0)
+        make_review_dish(review, "Perfect", dish_rating=100)
 
         review.refresh_from_db()
         # Average: (0 + 100) / 2 = 50

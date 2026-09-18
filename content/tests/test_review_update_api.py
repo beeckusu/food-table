@@ -8,7 +8,7 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from content.models import Restaurant, Review, ReviewDish, RestaurantDish, Image
+from content.models import Restaurant, Review, ReviewDish, RestaurantDish, Image, MenuItem
 
 # 1x1 transparent PNG
 TINY_PNG_DATA_URL = (
@@ -31,7 +31,8 @@ class ReviewEditDataApiViewTest(TestCase):
             notes='Loved it',
             created_by=self.staff,
         )
-        self.dish = ReviewDish.objects.create(review=self.review, dish_name='Ramen', dish_rating=90)
+        menu_item = MenuItem.objects.create(restaurant=self.restaurant, name='Ramen')
+        self.dish = ReviewDish.objects.create(review=self.review, menu_item=menu_item, dish_rating=90)
         self.client = Client()
         self.url = reverse('content:api_review_edit_data', kwargs={'pk': self.review.pk})
 
@@ -87,7 +88,8 @@ class ReviewUpdateApiViewTest(TestCase):
             notes='Loved it',
             created_by=self.staff,
         )
-        self.dish = ReviewDish.objects.create(review=self.review, dish_name='Ramen', dish_rating=90)
+        menu_item = MenuItem.objects.create(restaurant=self.restaurant, name='Ramen')
+        self.dish = ReviewDish.objects.create(review=self.review, menu_item=menu_item, dish_rating=90)
         self.client = Client()
         self.url = reverse('content:api_review_update', kwargs={'pk': self.review.pk})
         self.client.login(username='staff', password='pw')
@@ -190,7 +192,8 @@ class ReviewUpdateApiViewTest(TestCase):
         self.assertEqual(response.status_code, 400)  # dishes_required=True
 
     def test_replacing_dish_list_deletes_removed_dish(self):
-        second_dish = ReviewDish.objects.create(review=self.review, dish_name='Gyoza', dish_rating=60)
+        second_menu_item = MenuItem.objects.create(restaurant=self.restaurant, name='Gyoza')
+        second_dish = ReviewDish.objects.create(review=self.review, menu_item=second_menu_item, dish_rating=60)
         payload = self.base_payload()  # only references self.dish, not second_dish
         response = self.patch(payload)
         self.assertEqual(response.status_code, 200, response.content)

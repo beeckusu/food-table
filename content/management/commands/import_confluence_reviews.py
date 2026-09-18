@@ -18,6 +18,7 @@ from content.models import Restaurant, Review, ReviewDish, Image
 from content.utils.importers import ConfluenceAPIImporter, JSONFileImporter
 from content.utils.parsers import ConfluenceStorageParser, ConfluenceMarkdownParser
 from content.utils.confluence_api import ConfluenceClient
+from content.views.review_shared import resolve_menu_item
 
 
 class Command(BaseCommand):
@@ -224,10 +225,10 @@ class Command(BaseCommand):
             review_dishes = []
             for dish in parsed_data.dishes:
                 try:
+                    menu_item = resolve_menu_item(restaurant, dish.name)  # Encyclopedia linking done manually later
                     review_dish = ReviewDish.objects.create(
                         review=review,
-                        encyclopedia_entry=None,  # Manual linking later
-                        dish_name=dish.name,
+                        menu_item=menu_item,
                         dish_rating=dish.rating,
                         cost=dish.cost,
                         notes=dish.notes

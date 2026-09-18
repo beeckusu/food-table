@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from django.contrib.contenttypes.models import ContentType
 from django.utils.text import get_valid_filename
 
-from content.models import Restaurant, FoodFestival, Encyclopedia, Image, ApiUsageLog
+from content.models import Restaurant, FoodFestival, Encyclopedia, Image, ApiUsageLog, MenuItem
 
 logger = logging.getLogger(__name__)
 
@@ -384,3 +384,20 @@ def resolve_encyclopedia_entry(dish_data):
     except (Encyclopedia.DoesNotExist, ValueError, KeyError, IndexError) as e:
         logger.warning("Failed to link encyclopedia entry: %s", e)
         return None
+
+
+def resolve_menu_item(restaurant, name, encyclopedia_entry=None):
+    """
+    Get or create the MenuItem for a dish name at a restaurant, so saving a
+    review reuses the same dish record every other review of it uses instead
+    of creating a disconnected one (FT-192).
+    """
+    menu_item, created = MenuItem.objects.get_or_create(
+        restaurant=restaurant,
+        name_key=name.strip().lower(),
+        defaults={'name': name.strip(), 'encyclopedia_entry': encyclopedia_entry},
+    )
+    if not created and encyclopedia_entry and not menu_item.encyclopedia_entry_id:
+        menu_item.encyclopedia_entry = encyclopedia_entry
+        menu_item.save(update_fields=['encyclopedia_entry'])
+    return menu_item

@@ -23,7 +23,7 @@ class Command(BaseCommand):
 
         review_dishes = (
             ReviewDish.objects
-            .select_related('review__restaurant', 'encyclopedia_entry')
+            .select_related('review__restaurant', 'menu_item__encyclopedia_entry')
             .all()
         )
 

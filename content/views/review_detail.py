@@ -1,6 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
-from content.models import Review, RestaurantDish
+from content.models import Review
 
 
 class ReviewDetailView(LoginRequiredMixin, DetailView):
@@ -24,18 +24,15 @@ class ReviewDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         review = self.object
 
-        # Add dishes with encyclopedia entries and images
-        dishes = list(review.review_dishes.select_related('encyclopedia_entry').prefetch_related('images').all())
-
-        if review.food_festival_id:
-            # A food-festival review's dishes can each come from a different vendor; look up
-            # which restaurant each dish was tried at (matched by name, same as the edit-data API).
-            dish_restaurants = {
-                rd.dish_name: rd.restaurant
-                for rd in RestaurantDish.objects.filter(review=review).select_related('restaurant')
-            }
-            for dish in dishes:
-                dish.restaurant_for_display = dish_restaurants.get(dish.dish_name)
+        # Add dishes with encyclopedia entries and images. Each dish's MenuItem carries
+        # its own restaurant, which is how a food-festival review's dishes (each possibly
+        # from a different vendor) know which restaurant to display.
+        dishes = list(
+            review.review_dishes
+            .select_related('menu_item__encyclopedia_entry', 'menu_item__restaurant')
+            .prefetch_related('images')
+            .all()
+        )
 
         context['dishes'] = dishes
 

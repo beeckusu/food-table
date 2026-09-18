@@ -4,12 +4,12 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.fields import GenericRelation
 from .review import Review
-from .encyclopedia import Encyclopedia
+from .menu_item import MenuItem
 
 
 class ReviewDish(models.Model):
     """
-    Junction table linking Reviews to Encyclopedia entries (dishes).
+    Junction table linking Reviews to MenuItems (dishes at a specific restaurant).
     Allows one review to reference multiple dishes with optional per-dish ratings and costs.
     """
     review = models.ForeignKey(
@@ -17,18 +17,11 @@ class ReviewDish(models.Model):
         on_delete=models.CASCADE,
         related_name='review_dishes'
     )
-    encyclopedia_entry = models.ForeignKey(
-        Encyclopedia,
-        on_delete=models.CASCADE,
-        related_name='dish_reviews',
-        null=True,
-        blank=True,
-        help_text="Optional link to encyclopedia entry (can be set manually after import)"
-    )
-    dish_name = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="Dish name as parsed from import (used when encyclopedia_entry is not linked)"
+    menu_item = models.ForeignKey(
+        MenuItem,
+        on_delete=models.PROTECT,
+        related_name='review_dishes',
+        help_text="The restaurant-scoped dish being reviewed, shared with every other review of it."
     )
     dish_rating = models.IntegerField(
         null=True,
@@ -57,13 +50,29 @@ class ReviewDish(models.Model):
         verbose_name_plural = 'Review Dishes'
 
     def __str__(self):
-        if self.encyclopedia_entry:
-            dish_display = self.encyclopedia_entry.name
-        elif self.dish_name:
-            dish_display = self.dish_name
-        else:
-            dish_display = "Unlinked Dish"
-        return f"{self.review} - {dish_display}"
+        return f"{self.review} - {self.dish_name}"
+
+    @property
+    def dish_name(self):
+        """The dish's name, read through its MenuItem (the single source of truth)."""
+        return self.menu_item.name
+
+    @property
+    def encyclopedia_entry(self):
+        """The encyclopedia entry linked to this dish's MenuItem, if any."""
+        return self.menu_item.encyclopedia_entry
+
+    @encyclopedia_entry.setter
+    def encyclopedia_entry(self, value):
+        # Written through to the MenuItem (not this row) so every review sharing
+        # the same dish picks up the link, per FT-192.
+        self.menu_item.encyclopedia_entry = value
+        self.menu_item.save(update_fields=['encyclopedia_entry'])
+
+    @property
+    def restaurant(self):
+        """The restaurant this dish was tried at (from its MenuItem)."""
+        return self.menu_item.restaurant
 
 
 @receiver(post_save, sender=ReviewDish)
