@@ -11,6 +11,18 @@
                 <h1 class="mb-2">Review Dishes</h1>
                 <p class="lead mb-0">Browse and manage dishes from reviews</p>
             </div>
+            <ul class="nav nav-pills" id="dishKindToggle">
+                <li class="nav-item">
+                    <a class="nav-link {% if not is_anticipated %}active{% endif %}" href="{{ tried_url }}">
+                        <i class="bi bi-check2-circle"></i> Tried <span class="badge {% if not is_anticipated %}bg-light text-dark{% else %}bg-secondary{% endif %}">{{ tried_total }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if is_anticipated %}active{% endif %}" href="{{ anticipated_url }}">
+                        <i class="bi bi-bookmark-fill"></i> Anticipated <span class="badge {% if is_anticipated %}bg-light text-dark{% else %}bg-secondary{% endif %}">{{ anticipated_total }}</span>
+                    </a>
+                </li>
+            </ul>
             <div class="d-flex gap-2">
                 <!-- Mobile Filter Button -->
                 <button class="btn btn-primary d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar" aria-controls="filterSidebar">
@@ -63,7 +75,7 @@
                     </a>
                 </span>
                 {% endfor %}
-                <a href="{% url 'content:review_dish_list' %}" class="btn btn-sm btn-outline-secondary">
+                <a href="{% url 'content:review_dish_list' %}{% if is_anticipated %}?dish_kind=anticipated{% endif %}" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-x-circle"></i> Clear All
                 </a>
             </div>
@@ -80,6 +92,11 @@
                 <p class="text-muted mb-0">
                     <strong>{{ total_dishes }}</strong> dishes
                 </p>
+            {% endif %}
+            {% if is_anticipated and unrated_total and filter_params.excitement_status != 'unrated' %}
+                <a href="{{ unrated_url }}" class="small text-decoration-none">
+                    <i class="bi bi-fire"></i> {{ unrated_total }} not rated yet &mdash; rate them now
+                </a>
             {% endif %}
         </div>
 
@@ -113,6 +130,20 @@
                                     {% endif %}
                                 </a>
                             </th>
+                            {% if is_anticipated %}
+                            <th scope="col" class="text-center" style="width: 12%;">
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'excitement_desc' %}excitement_asc{% else %}excitement_desc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                                    Excitement
+                                    {% if filter_params.sort == 'excitement_asc' %}
+                                        <i class="bi bi-arrow-up"></i>
+                                    {% elif filter_params.sort == 'excitement_desc' %}
+                                        <i class="bi bi-arrow-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted opacity-50"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
                             <th scope="col" class="d-none d-md-table-cell" style="width: 20%;">
                                 <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'restaurant_asc' %}restaurant_desc{% else %}restaurant_asc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
                                     Restaurant
@@ -125,6 +156,9 @@
                                     {% endif %}
                                 </a>
                             </th>
+                            {% if is_anticipated %}
+                            <th scope="col" class="d-none d-lg-table-cell" style="width: 25%;">Notes</th>
+                            {% else %}
                             <th scope="col" class="text-center" style="width: 10%;">
                                 <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'rating_desc' %}rating_asc{% else %}rating_desc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
                                     Rating
@@ -149,9 +183,10 @@
                                     {% endif %}
                                 </a>
                             </th>
+                            {% endif %}
                             <th scope="col" class="text-center d-none d-lg-table-cell" style="width: 10%;">
                                 <a href="?{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}sort={% if filter_params.sort == 'date_desc' %}date_asc{% else %}date_desc{% endif %}" class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
-                                    Visit Date
+                                    {% if is_anticipated %}Added{% else %}Visit Date{% endif %}
                                     {% if filter_params.sort == 'date_asc' %}
                                         <i class="bi bi-arrow-up"></i>
                                     {% elif filter_params.sort == 'date_desc' %}
@@ -165,6 +200,9 @@
                     </thead>
                     <tbody>
                         {% for dish in review_dishes %}
+                        {% if is_anticipated %}
+                        {% include 'review_dish/_anticipated_row.html' %}
+                        {% else %}
                         <tr>
                             <!-- Dish Name -->
                             <td>
@@ -200,42 +238,7 @@
 
                             <!-- Encyclopedia Link Status -->
                             <td class="text-center">
-                                {% if dish.encyclopedia_entry %}
-                                    {% if user.is_staff %}
-                                        <button type="button"
-                                                class="badge bg-success border-0 encyclopedia-badge-linked"
-                                                style="cursor: pointer;"
-                                                title="Linked to: {{ dish.encyclopedia_entry.name }}. Click to unlink."
-                                                data-dish-id="{{ dish.id }}"
-                                                data-encyclopedia-id="{{ dish.encyclopedia_entry.id }}"
-                                                data-encyclopedia-name="{{ dish.encyclopedia_entry.name }}">
-                                            <i class="bi bi-check-circle-fill"></i>
-                                            <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
-                                        </button>
-                                    {% else %}
-                                        <span class="badge bg-success" title="Linked to: {{ dish.encyclopedia_entry.name }}">
-                                            <i class="bi bi-check-circle-fill"></i>
-                                            <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
-                                        </span>
-                                    {% endif %}
-                                {% else %}
-                                    {% if user.is_staff %}
-                                        <button type="button"
-                                                class="badge bg-warning text-dark border-0 encyclopedia-badge-unlinked"
-                                                style="cursor: pointer;"
-                                                title="Click to link to encyclopedia"
-                                                data-dish-id="{{ dish.id }}"
-                                                data-dish-name="{% if dish.dish_name %}{{ dish.dish_name }}{% elif dish.encyclopedia_entry %}{{ dish.encyclopedia_entry.name }}{% else %}Unnamed Dish{% endif %}">
-                                            <i class="bi bi-exclamation-circle-fill"></i>
-                                            <span class="d-none d-xl-inline"> Unlinked</span>
-                                        </button>
-                                    {% else %}
-                                        <span class="badge bg-warning text-dark" title="Not Linked">
-                                            <i class="bi bi-exclamation-circle-fill"></i>
-                                            <span class="d-none d-xl-inline"> Unlinked</span>
-                                        </span>
-                                    {% endif %}
-                                {% endif %}
+                                {% include 'components/encyclopedia_link_badge.html' %}
                             </td>
 
                             <!-- Restaurant (Desktop only) -->
@@ -287,6 +290,7 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% endif %}
                         {% empty %}
                         <tr>
                             <td colspan="6" class="text-center py-5">
@@ -400,6 +404,7 @@
 <script src="{% static 'js/encyclopedia_similar_dishes.js' %}"></script>
 <script src="{% static 'js/encyclopedia_ai_prefill.js' %}"></script>
 <script src="{% static 'js/review_dish_link.js' %}"></script>
+<script src="{% static 'js/dish_excitement.js' %}"></script>
 <script>
 // Initialize noUiSlider for rating range
 document.addEventListener('DOMContentLoaded', function() {
@@ -423,6 +428,11 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         step: 1,
         tooltips: false
+    });
+
+    // Apply once the user lets go of a handle
+    ratingSlider.noUiSlider.on('change', function() {
+        ratingSlider.closest('form').submit();
     });
 
     ratingSlider.noUiSlider.on('update', function(values, handle) {
@@ -450,6 +460,7 @@ function setDateRange(days) {
 
     document.getElementById('date_from').value = formatDate(dateFrom);
     document.getElementById('date_to').value = formatDate(today);
+    document.getElementById('filterForm').submit();
 }
 
 function setDateRangeThisYear() {
@@ -458,6 +469,7 @@ function setDateRangeThisYear() {
 
     document.getElementById('date_from').value = formatDate(yearStart);
     document.getElementById('date_to').value = formatDate(today);
+    document.getElementById('filterForm').submit();
 }
 
 function formatDate(date) {
@@ -466,6 +478,54 @@ function formatDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
+
+// Apply filters instantly: selects/dates on change, text/number inputs after
+// a short typing pause. Focus and caret are restored after the reload so you
+// can keep typing.
+(function() {
+    const TYPING_DELAY_MS = 600;
+    const FOCUS_KEY = 'reviewDishFilterFocus';
+    let typingTimer = null;
+
+    function isFilterField(el) {
+        return el && el.form && el.form.id === 'filterForm' && el.name;
+    }
+
+    function submitFrom(el) {
+        clearTimeout(typingTimer);
+        sessionStorage.setItem(FOCUS_KEY, JSON.stringify({
+            name: el.name,
+            inOffcanvas: Boolean(el.closest('.offcanvas')),
+            typing: el.matches('input[type=text], input[type=number], input[type=search]'),
+        }));
+        el.form.submit();
+    }
+
+    document.addEventListener('input', function(e) {
+        const el = e.target;
+        if (!isFilterField(el) || !el.matches('input[type=text], input[type=number], input[type=search]')) return;
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => submitFrom(el), TYPING_DELAY_MS);
+    });
+
+    document.addEventListener('change', function(e) {
+        const el = e.target;
+        if (!isFilterField(el) || !el.matches('select, input[type=date]')) return;
+        submitFrom(el);
+    });
+
+    // Restore focus to the field being typed in before the reload
+    const saved = JSON.parse(sessionStorage.getItem(FOCUS_KEY) || 'null');
+    sessionStorage.removeItem(FOCUS_KEY);
+    if (saved && saved.typing && !saved.inOffcanvas) {
+        const field = document.querySelector(`.d-none.d-md-block #filterForm [name="${saved.name}"]`);
+        if (field) {
+            field.focus();
+            const end = field.value.length;
+            try { field.setSelectionRange(end, end); } catch (err) { /* number inputs */ }
+        }
+    }
+}());
 
 // Auto-close offcanvas on form submit (mobile)
 var filterForm = document.getElementById('filterForm');

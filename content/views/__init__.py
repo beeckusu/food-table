@@ -32,6 +32,8 @@ from .encyclopedia_create_api import EncyclopediaCreateApiView
 from .encyclopedia_parent_api import EncyclopediaParentApiView
 from .encyclopedia_quick_create_api import EncyclopediaQuickCreateApiView
 from .dish_link_api import DishLinkApiView
+from .restaurant_dish_link_api import RestaurantDishLinkApiView
+from .restaurant_dish_excitement_api import RestaurantDishExcitementApiView
 from .dish_image_api import DishImageUploadApiView
 from .review_list import ReviewListView
 from .review_detail import ReviewDetailView
@@ -83,6 +85,8 @@ __all__ = [
     'EncyclopediaParentApiView',
     'EncyclopediaQuickCreateApiView',
     'DishLinkApiView',
+    'RestaurantDishLinkApiView',
+    'RestaurantDishExcitementApiView',
     'DishImageUploadApiView',
     'ReviewListView',
     'ReviewDetailView',

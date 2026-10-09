@@ -5,6 +5,27 @@ class ReviewDishFilterForm(forms.Form):
     """
     Form for filtering and sorting review dishes on the review dish list page.
     """
+    # Which dishes to list: ones tried in reviews, or anticipated (wishlist) ones
+    DISH_KIND_TRIED = 'tried'
+    DISH_KIND_ANTICIPATED = 'anticipated'
+    DISH_KIND_CHOICES = [
+        (DISH_KIND_TRIED, 'Tried'),
+        (DISH_KIND_ANTICIPATED, 'Anticipated'),
+    ]
+    dish_kind = forms.ChoiceField(
+        required=False,
+        choices=DISH_KIND_CHOICES,
+        initial=DISH_KIND_TRIED,
+        widget=forms.HiddenInput(attrs={'id': 'dish_kind'})
+    )
+
+    # Filters that only make sense for tried dishes (anticipated dishes have
+    # no rating, cost, or visit date)
+    TRIED_ONLY_FIELDS = ['rating_min', 'rating_max', 'cost_min', 'cost_max', 'date_from', 'date_to']
+
+    # ...and the reverse: only anticipated dishes have an excitement score
+    ANTICIPATED_ONLY_FIELDS = ['excitement_status']
+
     # Text search filter - searches across dish name and encyclopedia name
     search = forms.CharField(
         required=False,
@@ -40,6 +61,22 @@ class ReviewDishFilterForm(forms.Form):
         widget=forms.Select(attrs={
             'class': 'form-select',
             'id': 'link_status'
+        })
+    )
+
+    # Excitement status filter (anticipated dishes only) - find dishes still to rate
+    EXCITEMENT_STATUS_CHOICES = [
+        ('all', 'All Dishes'),
+        ('rated', 'Rated'),
+        ('unrated', 'Not Rated Yet'),
+    ]
+    excitement_status = forms.ChoiceField(
+        required=False,
+        choices=EXCITEMENT_STATUS_CHOICES,
+        initial='all',
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'id': 'excitement_status'
         })
     )
 
@@ -97,6 +134,8 @@ class ReviewDishFilterForm(forms.Form):
         ('restaurant_desc', 'Restaurant: Z-A'),
         ('link_asc', 'Encyclopedia Link: A-Z'),
         ('link_desc', 'Encyclopedia Link: Z-A'),
+        ('excitement_desc', 'Excitement: High to Low'),
+        ('excitement_asc', 'Excitement: Low to High'),
     ]
 
     sort = forms.ChoiceField(

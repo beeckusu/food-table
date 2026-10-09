@@ -99,6 +99,7 @@
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
                                                 <strong>{{ dish.dish_name }}</strong>
+                                                <div class="small">{% include 'components/excitement_flames.html' %}</div>
                                                 {% if dish.notes %}
                                                 <p class="text-muted small mb-0 mt-1">{{ dish.notes }}</p>
                                                 {% endif %}
@@ -160,6 +161,10 @@
                                         <input type="hidden" name="restaurant_id" value="{{ group.restaurant.pk }}">
                                         <div class="mb-2">
                                             <input type="text" name="dish_name" class="form-control form-control-sm" placeholder="Dish name" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label form-label-sm mb-1 d-block">Excitement</label>
+                                            {% include 'components/excitement_flames.html' with field_name='excitement' %}
                                         </div>
                                         <div class="mb-2">
                                             <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Notes (optional)"></textarea>
@@ -230,4 +235,10 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if user.is_staff %}
+<script src="{% static 'js/dish_excitement.js' %}"></script>
+{% endif %}
 {% endblock %}

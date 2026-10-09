@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseForbidden
 from content.models import FoodFestival, Restaurant, RestaurantDish, RestaurantDishReference
 from content.forms import RestaurantDishForm
+from content.views.restaurant_detail import carry_classification_to_menu_item
 
 
 class FoodFestivalDetailView(LoginRequiredMixin, DetailView):
@@ -130,6 +131,7 @@ class FoodFestivalDishMarkTriedView(LoginRequiredMixin, View):
             except Review.DoesNotExist:
                 pass
         dish.save()
+        carry_classification_to_menu_item(dish)
         return redirect('content:food_festival_detail', pk=pk)
 
 

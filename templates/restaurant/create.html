@@ -153,8 +153,9 @@
                 <table class="table table-sm dish-table mb-0" id="wishlist-table">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:30%">Dish Name</th>
-                            <th style="width:18%">Source</th>
+                            <th style="width:25%">Dish Name</th>
+                            <th style="width:1%">Excitement</th>
+                            <th style="width:15%">Source</th>
                             <th style="width:20%">Link</th>
                             <th>Notes</th>
                             <th style="width:32px"></th>
@@ -164,6 +165,7 @@
                         {% for form in wishlist_formset %}
                         <tr class="dish-row">
                             <td>{{ form.dish_name }}{{ form.id }}</td>
+                            <td class="align-middle">{% include 'components/excitement_flames.html' with field_name=form.excitement.html_name field_value=form.excitement.value %}</td>
                             <td>{{ form.source }}</td>
                             <td>{{ form.source_detail }}</td>
                             <td>{{ form.notes }}</td>
@@ -178,6 +180,7 @@
                     <tbody id="wishlist-empty-template" class="d-none">
                         <tr class="dish-row">
                             <td><input type="text" name="wishlist-__prefix__-dish_name" class="form-control form-control-sm" placeholder="Dish name"></td>
+                            <td class="align-middle">{% include 'components/excitement_flames.html' with field_name='wishlist-__prefix__-excitement' %}</td>
                             <td><input type="text" name="wishlist-__prefix__-source" class="form-control form-control-sm" placeholder="e.g. friend, article"></td>
                             <td><input type="url" name="wishlist-__prefix__-source_detail" class="form-control form-control-sm" placeholder="Link (optional)"></td>
                             <td><textarea name="wishlist-__prefix__-notes" class="form-control form-control-sm" rows="1" placeholder="Notes"></textarea></td>
@@ -204,6 +207,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/dish_excitement.js' %}"></script>
 {% if google_maps_api_key %}
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initAutocomplete&loading=async" async defer></script>
 <script src="{% static 'js/address_autocomplete.js' %}"></script>

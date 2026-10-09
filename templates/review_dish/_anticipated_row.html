@@ -1,0 +1,54 @@
+<tr>
+    <!-- Dish Name -->
+    <td>
+        <div class="fw-semibold">
+            <a href="{% url 'content:restaurant_detail' dish.restaurant.pk %}" class="text-decoration-none text-dark">
+                {{ dish.dish_name }}
+            </a>
+            {% if dish.food_festival %}
+            <span class="badge bg-info text-dark ms-1 small" title="Food festival">
+                <i class="bi bi-calendar-event"></i> {{ dish.food_festival.name }}
+            </span>
+            {% endif %}
+        </div>
+        {% for ref in dish.references.all %}
+            {% if ref.source_detail %}
+            <a href="{{ ref.source_detail }}" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border small text-decoration-none">via {{ ref.source|default:"link" }} <i class="bi bi-box-arrow-up-right"></i></a>
+            {% elif ref.source %}
+            <span class="badge bg-light text-dark border small">via {{ ref.source }}</span>
+            {% endif %}
+        {% endfor %}
+        <!-- Mobile-only: Show restaurant name -->
+        <div class="d-md-none small text-muted">
+            <i class="bi bi-shop"></i> {{ dish.restaurant.name }}
+        </div>
+    </td>
+
+    <!-- Encyclopedia Link Status -->
+    <td class="text-center">
+        {% url 'content:api_restaurant_dish_link' dish.pk as link_url %}
+        {% include 'components/encyclopedia_link_badge.html' with link_url=link_url %}
+    </td>
+
+    <!-- Excitement -->
+    <td class="text-center">
+        {% include 'components/excitement_flames.html' %}
+    </td>
+
+    <!-- Restaurant (Desktop only) -->
+    <td class="d-none d-md-table-cell">
+        <a href="{% url 'content:restaurant_detail' dish.restaurant.pk %}" class="text-decoration-none">
+            {{ dish.restaurant.name }}
+        </a>
+    </td>
+
+    <!-- Notes (Large screens only) -->
+    <td class="d-none d-lg-table-cell small text-muted">
+        {{ dish.notes|truncatechars:80|default:"—" }}
+    </td>
+
+    <!-- Date Added (Large screens only) -->
+    <td class="text-center d-none d-lg-table-cell">
+        {{ dish.created_at|date:"Y-m-d" }}
+    </td>
+</tr>

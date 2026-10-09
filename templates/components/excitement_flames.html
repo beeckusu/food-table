@@ -1,0 +1,34 @@
+{% load excitement_tags %}
+{% comment %}
+Excitement flames for an anticipated RestaurantDish, driven by
+static/js/dish_excitement.js. Clicking the current level clears it.
+
+Two modes:
+- Saved dish: pass dish. Staff get clickable flames that save via the API;
+  everyone else sees read-only flames (if rated).
+- Form field: pass field_name (and optionally field_value). Clicks write to a hidden input
+  with that name, for dish create/edit forms.
+{% endcomment %}
+{% excitement_levels as levels %}
+{% if field_name %}
+    {% firstof field_value "" as current %}
+{% else %}
+    {% firstof dish.excitement '' as current %}
+{% endif %}
+{% if field_name or user.is_staff %}
+<span class="excitement-rating text-nowrap"
+      {% if not field_name %}data-url="{% url 'content:api_restaurant_dish_excitement' dish.pk %}"{% endif %}
+      data-value="{{ current }}"
+      title="{% if current %}Excitement: {{ current }}/{{ levels|length }} (click the same flame to clear){% else %}Rate your excitement{% endif %}">
+    {% if field_name %}<input type="hidden" class="excitement-value" name="{{ field_name }}" value="{{ current }}">{% endif %}
+    {% for level in levels %}
+    <button type="button" class="btn btn-link p-0 border-0 excitement-flame" data-level="{{ level }}" aria-label="Excitement {{ level }} of {{ levels|length }}" style="line-height: 1;">
+        <i class="bi {% if current and current|add:0 >= level %}bi-fire text-danger{% else %}bi-fire text-body-tertiary opacity-50{% endif %}"></i>
+    </button>
+    {% endfor %}
+</span>
+{% elif current %}
+<span class="text-nowrap" title="Excitement: {{ current }}/{{ levels|length }}">
+    {% for level in levels %}<i class="bi bi-fire {% if current|add:0 >= level %}text-danger{% else %}text-body-tertiary opacity-50{% endif %}"></i>{% endfor %}
+</span>
+{% endif %}

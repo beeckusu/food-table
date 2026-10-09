@@ -29,12 +29,21 @@ class RestaurantForm(forms.ModelForm):
 class RestaurantDishForm(forms.ModelForm):
     class Meta:
         model = RestaurantDish
-        fields = ['dish_name', 'status', 'notes']
+        fields = ['dish_name', 'status', 'notes', 'excitement']
         widgets = {
             'dish_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Dish name'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Notes (optional)'}),
+            'excitement': forms.HiddenInput(),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Several hand-written dish forms (e.g. "had" dishes) don't post
+        # excitement at all; keep the saved value rather than wiping it.
+        if 'excitement' not in self.data:
+            cleaned_data['excitement'] = self.instance.excitement
+        return cleaned_data
 
 
 class RestaurantDishInlineForm(forms.ModelForm):
@@ -50,8 +59,9 @@ class RestaurantDishInlineForm(forms.ModelForm):
 
     class Meta:
         model = RestaurantDish
-        fields = ['dish_name', 'notes']
+        fields = ['dish_name', 'notes', 'excitement']
         widgets = {
+            'excitement': forms.HiddenInput(),
             'dish_name': forms.TextInput(attrs={'class': 'form-control form-control-sm', 'placeholder': 'Dish name'}),
             'notes': forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 2, 'placeholder': 'Notes (optional)'}),
         }

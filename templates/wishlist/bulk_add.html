@@ -88,11 +88,24 @@
 {% endblock %}
 
 {% block extra_js %}
+<template id="wbExcitementTemplate">
+  <div class="wb-dish-excitement mt-1 small">
+    <span class="text-muted me-1">Excitement</span>
+    {% include 'components/excitement_flames.html' with field_name='excitement' %}
+  </div>
+</template>
+{% load static %}
+<script src="{% static 'js/dish_excitement.js' %}"></script>
 <script async src="//www.instagram.com/embed.js"></script>
 
 <script>
 (function () {
   var RESTAURANT_SEARCH_URL = '{% url "content:api_restaurant_search" %}';
+
+  // Flame picker markup (components/excitement_flames.html), rendered once server-side
+  function excitementPickerHtml() {
+    return document.getElementById('wbExcitementTemplate').innerHTML;
+  }
   var BULK_API_URL = '{% url "content:api_wishlist_bulk_create" %}';
   var INSTAGRAM_PREVIEW_URL = '{% url "content:api_instagram_preview" %}';
   var RESTAURANT_DISHES_URL_TMPL = '{% url "content:api_restaurant_dishes" 0 %}';
@@ -272,6 +285,7 @@
       '<div class="dish-row">' +
       '<input type="text" class="form-control form-control-sm wb-dish" placeholder="Dish name">' +
       '<input type="text" class="form-control form-control-sm wb-dish-note mt-1" placeholder="Note (optional)">' +
+      excitementPickerHtml() +
       '</div>' +
       '</div>' +
       '<button type="button" class="btn btn-link btn-sm ps-0 mt-1 wb-add-dish-btn">' +
@@ -415,7 +429,8 @@
         '<input type="text" class="form-control wb-dish" placeholder="Dish name">' +
         '<button type="button" class="btn btn-outline-secondary remove-dish-btn"><i class="bi bi-x"></i></button>' +
         '</div>' +
-        '<input type="text" class="form-control form-control-sm wb-dish-note mt-1" placeholder="Note (optional)">';
+        '<input type="text" class="form-control form-control-sm wb-dish-note mt-1" placeholder="Note (optional)">' +
+        excitementPickerHtml();
       row.querySelector('.remove-dish-btn').addEventListener('click', function () { row.remove(); });
       dishList.appendChild(row);
     });
@@ -618,9 +633,11 @@
   function getBlockBody(block) {
     var dishes = Array.from(block.querySelectorAll('.dish-row')).map(function (row) {
       var noteEl = row.querySelector('.wb-dish-note');
+      var excitementEl = row.querySelector('.excitement-value');
       return {
         name: row.querySelector('.wb-dish').value.trim(),
         note: noteEl ? noteEl.value.trim() : '',
+        excitement: excitementEl && excitementEl.value ? parseInt(excitementEl.value, 10) : null,
       };
     }).filter(function (d) { return d.name; });
 

@@ -3,7 +3,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseForbidden
-from content.models import Restaurant, RestaurantDish, RestaurantDishReference
+from content.models import Restaurant, RestaurantDish, RestaurantDishReference, MenuItem
 from content.forms import RestaurantDishForm
 
 
@@ -20,7 +20,7 @@ class RestaurantDetailView(LoginRequiredMixin, DetailView):
         ).select_related('review')
         context['dishes_wishlist'] = restaurant.dishes.filter(
             status=RestaurantDish.STATUS_WISHLIST
-        ).prefetch_related('references')
+        ).select_related('encyclopedia_entry').prefetch_related('references')
         context['had_form'] = RestaurantDishForm(initial={'status': RestaurantDish.STATUS_HAD})
         context['wishlist_form'] = RestaurantDishForm(initial={'status': RestaurantDish.STATUS_WISHLIST})
         context['reviews'] = restaurant.reviews.filter(is_private=False).prefetch_related(
@@ -93,7 +93,23 @@ class RestaurantDishMarkTriedView(LoginRequiredMixin, View):
             except Review.DoesNotExist:
                 pass
         dish.save()
+        carry_classification_to_menu_item(dish)
         return redirect('content:restaurant_detail', pk=pk)
+
+
+def carry_classification_to_menu_item(dish):
+    """
+    Once an anticipated dish is tried, hand its encyclopedia classification to
+    the matching (same restaurant + name) MenuItem if that has none yet, so
+    the classification isn't lost when the dish gets reviewed.
+    """
+    if not dish.encyclopedia_entry_id:
+        return
+    MenuItem.objects.filter(
+        restaurant=dish.restaurant,
+        name_key=dish.dish_name.strip().lower(),
+        encyclopedia_entry__isnull=True,
+    ).update(encyclopedia_entry=dish.encyclopedia_entry_id)
 
 
 def _save_references(dish, post_data):

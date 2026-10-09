@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from .restaurant import Restaurant
 
@@ -32,6 +33,12 @@ class RestaurantDish(models.Model):
         related_name='restaurant_dishes'
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_WISHLIST)
+    excitement = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text='How excited you are to try this dish (1-10)',
+    )
     notes = models.TextField(blank=True)
     review = models.ForeignKey(
         'Review',
@@ -41,6 +48,20 @@ class RestaurantDish(models.Model):
         related_name='restaurant_dish_entries'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    EXCITEMENT_MIN = 1
+    EXCITEMENT_MAX = 10
+    EXCITEMENT_LEVELS = list(range(EXCITEMENT_MIN, EXCITEMENT_MAX + 1))
+
+    @classmethod
+    def is_valid_excitement(cls, value):
+        """True for None (unrated) or an int within EXCITEMENT_MIN..EXCITEMENT_MAX."""
+        if value is None:
+            return True
+        return (
+            isinstance(value, int) and not isinstance(value, bool)
+            and cls.EXCITEMENT_MIN <= value <= cls.EXCITEMENT_MAX
+        )
 
     class Meta:
         ordering = ['dish_name']

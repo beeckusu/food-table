@@ -125,6 +125,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Badges may point at a different link endpoint (e.g. anticipated
+    // RestaurantDishes) via data-link-url; default is the ReviewDish endpoint.
+    function linkUrlFor(badge, dishId) {
+        return badge.dataset.linkUrl || `/api/dishes/${dishId}/link/`;
+    }
+
     // Initial attachment
     attachUnlinkedHandlers();
     attachLinkedHandlers();
@@ -280,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
         badge.disabled = true;
         badge.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
 
-        fetch(`/api/dishes/${dishId}/link/`, {
+        fetch(linkUrlFor(badge, dishId), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -327,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
         badge.disabled = true;
         badge.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
 
-        fetch(`/api/dishes/${dishId}/link/`, {
+        fetch(linkUrlFor(badge, dishId), {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': csrfToken
@@ -339,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Get the dish name from the row
                 const row = badge.closest('tr');
                 const dishNameLink = row.querySelector('.review-link');
-                const dishName = dishNameLink ? dishNameLink.textContent.trim() : 'Unnamed Dish';
+                const dishName = dishNameLink ? dishNameLink.textContent.trim() : (badge.dataset.dishName || 'Unnamed Dish');
 
                 // Update badge to unlinked state
                 badge.className = 'badge bg-warning text-dark border-0 encyclopedia-badge-unlinked';
@@ -536,8 +542,14 @@ document.addEventListener('DOMContentLoaded', function() {
             cultural_significance: entryCulturalSignificanceInput.value.trim() || '',
             popular_examples: entryPopularExamplesInput.value.trim() || '',
             history: entryHistoryInput.value.trim() || '',
-            dish_id: currentDishId
         };
+
+        // The create API only knows how to link ReviewDishes; badges with a
+        // custom link endpoint are linked separately once the entry exists.
+        const usesCustomLinkUrl = Boolean(currentBadgeElement.dataset.linkUrl);
+        if (!usesCustomLinkUrl) {
+            data.dish_id = currentDishId;
+        }
 
         if (selectedParentId) {
             data.parent_id = selectedParentId;
@@ -561,7 +573,9 @@ document.addEventListener('DOMContentLoaded', function() {
             saveAndLinkBtn.disabled = false;
             saveAndLinkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save & Link';
 
-            if (data.success) {
+            if (data.success && usesCustomLinkUrl) {
+                linkDish(currentDishId, data.encyclopedia.id, data.encyclopedia.name);
+            } else if (data.success) {
                 // Update badge to linked state
                 const badge = currentBadgeElement;
                 const encyclopediaName = data.encyclopedia.name;

@@ -1,0 +1,44 @@
+{% comment %}
+Encyclopedia link badge for a dish, driven by static/js/review_dish_link.js.
+Expects: dish (anything with id, dish_name, encyclopedia_entry).
+Optional: link_url — the link/unlink API endpoint, when not the ReviewDish one.
+{% endcomment %}
+{% if dish.encyclopedia_entry %}
+    {% if user.is_staff %}
+        <button type="button"
+                class="badge bg-success border-0 encyclopedia-badge-linked"
+                style="cursor: pointer;"
+                title="Linked to: {{ dish.encyclopedia_entry.name }}. Click to unlink."
+                data-dish-id="{{ dish.id }}"
+                data-dish-name="{{ dish.dish_name|default:'Unnamed Dish' }}"
+                {% if link_url %}data-link-url="{{ link_url }}"{% endif %}
+                data-encyclopedia-id="{{ dish.encyclopedia_entry.id }}"
+                data-encyclopedia-name="{{ dish.encyclopedia_entry.name }}">
+            <i class="bi bi-check-circle-fill"></i>
+            <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
+        </button>
+    {% else %}
+        <span class="badge bg-success" title="Linked to: {{ dish.encyclopedia_entry.name }}">
+            <i class="bi bi-check-circle-fill"></i>
+            <span class="d-none d-xl-inline"> {{ dish.encyclopedia_entry.name|truncatechars:15 }}</span>
+        </span>
+    {% endif %}
+{% else %}
+    {% if user.is_staff %}
+        <button type="button"
+                class="badge bg-warning text-dark border-0 encyclopedia-badge-unlinked"
+                style="cursor: pointer;"
+                title="Click to link to encyclopedia"
+                data-dish-id="{{ dish.id }}"
+                {% if link_url %}data-link-url="{{ link_url }}"{% endif %}
+                data-dish-name="{{ dish.dish_name|default:'Unnamed Dish' }}">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span class="d-none d-xl-inline"> Unlinked</span>
+        </button>
+    {% else %}
+        <span class="badge bg-warning text-dark" title="Not Linked">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span class="d-none d-xl-inline"> Unlinked</span>
+        </span>
+    {% endif %}
+{% endif %}

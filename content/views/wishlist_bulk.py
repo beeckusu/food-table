@@ -25,7 +25,13 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
                 continue
             name = (d.get('name') or '').strip()
             if name:
-                dish_entries.append((name, (d.get('note') or '').strip()))
+                excitement = d.get('excitement')
+                if not RestaurantDish.is_valid_excitement(excitement):
+                    return JsonResponse({
+                        'error': f'Excitement for "{name}" must be from {RestaurantDish.EXCITEMENT_MIN} '
+                                 f'to {RestaurantDish.EXCITEMENT_MAX}.'
+                    }, status=400)
+                dish_entries.append((name, (d.get('note') or '').strip(), excitement))
 
         is_pop_up = bool(data.get('is_pop_up'))
         website = (data.get('website') or '').strip()
@@ -55,22 +61,30 @@ class WishlistBulkCreateApiView(LoginRequiredMixin, View):
             return JsonResponse({'error': 'Restaurant name is required'}, status=400)
 
         source_detail = url[:255] if url else ''
-        for dish_name, note in dish_entries:
+        for dish_name, note, excitement in dish_entries:
             dish = RestaurantDish.objects.filter(
                 restaurant=restaurant,
                 dish_name__iexact=dish_name,
                 status=RestaurantDish.STATUS_WISHLIST,
             ).first()
             if dish:
+                update_fields = []
                 if note and note not in dish.notes:
                     dish.notes = '\n'.join(filter(None, [dish.notes, note]))
-                    dish.save(update_fields=['notes'])
+                    update_fields.append('notes')
+                # A newly given excitement replaces the old one; leaving it unset keeps it
+                if excitement is not None and excitement != dish.excitement:
+                    dish.excitement = excitement
+                    update_fields.append('excitement')
+                if update_fields:
+                    dish.save(update_fields=update_fields)
             else:
                 dish = RestaurantDish.objects.create(
                     restaurant=restaurant,
                     dish_name=dish_name,
                     status=RestaurantDish.STATUS_WISHLIST,
                     notes=note,
+                    excitement=excitement,
                 )
             if source_detail and not dish.references.filter(source_detail=source_detail).exists():
                 RestaurantDishReference.objects.create(

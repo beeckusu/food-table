@@ -1,8 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 from django.http import QueryDict
-from django.db.models import Q, Case, When, Value, IntegerField
-from content.models import ReviewDish
+from django.db.models import F, Q, Case, When, Value, IntegerField
+from content.models import ReviewDish, RestaurantDish
 from content.forms import ReviewDishFilterForm
 
 
@@ -10,6 +10,8 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
     """
     List view for review dishes.
     Shows all dishes from public reviews with filtering, sorting, and search.
+    With dish_kind=anticipated, lists wishlist RestaurantDishes instead so they
+    can be classified (linked to the encyclopedia) and filtered the same way.
     Supports comprehensive filtering via URL parameters.
     """
     model = ReviewDish
@@ -39,7 +41,20 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
         if not hasattr(form, 'cleaned_data'):
             form.cleaned_data = {}
 
+        # Drop filters that don't apply to the selected dish kind so they
+        # neither filter nor show up as badges / carry over in query strings
+        if form.cleaned_data.get('dish_kind') == ReviewDishFilterForm.DISH_KIND_ANTICIPATED:
+            inapplicable = ReviewDishFilterForm.TRIED_ONLY_FIELDS
+        else:
+            inapplicable = ReviewDishFilterForm.ANTICIPATED_ONLY_FIELDS
+        for key in inapplicable:
+            form.cleaned_data.pop(key, None)
+
         return form
+
+    @property
+    def is_anticipated(self):
+        return self.filter_form.cleaned_data.get('dish_kind') == ReviewDishFilterForm.DISH_KIND_ANTICIPATED
 
     def _get_sort_order(self, sort_key, has_search=False):
         """
@@ -156,6 +171,18 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
                 'remove_url': f"?{remove_url}" if remove_url else "?"
             })
 
+        # Excitement status filter (anticipated only)
+        if cleaned_data.get('excitement_status') and cleaned_data['excitement_status'] != 'all':
+            remove_url = self._build_filter_query_string(
+                self.filter_form,
+                exclude_filters=['excitement_status']
+            )
+            active_filters.append({
+                'label': 'Excitement',
+                'value': dict(ReviewDishFilterForm.EXCITEMENT_STATUS_CHOICES)[cleaned_data['excitement_status']],
+                'remove_url': f"?{remove_url}" if remove_url else "?"
+            })
+
         # Rating range filter
         rating_min = cleaned_data.get('rating_min')
         rating_max = cleaned_data.get('rating_max')
@@ -230,13 +257,93 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         """
-        Return all dishes from public reviews with filtering, sorting, and search.
+        Return the dishes for the selected kind with filtering, sorting, and search.
         Applies filters based on validated form data.
-        Optimizes queries with select_related and prefetch_related.
         """
         # Get validated form (store for use in context)
         self.filter_form = self._get_filter_form()
+        cleaned_data = getattr(self.filter_form, 'cleaned_data', {})
 
+        if self.is_anticipated:
+            return self._anticipated_queryset(cleaned_data)
+        return self._tried_queryset(cleaned_data)
+
+    def _anticipated_queryset(self, cleaned_data):
+        """
+        Wishlist RestaurantDishes, filtered by search, restaurant, and link status.
+        """
+        queryset = RestaurantDish.objects.filter(
+            status=RestaurantDish.STATUS_WISHLIST
+        ).select_related(
+            'restaurant',
+            'encyclopedia_entry',
+            'food_festival'
+        ).prefetch_related(
+            'references'
+        )
+
+        if cleaned_data.get('search'):
+            search_term = cleaned_data['search']
+            queryset = queryset.filter(
+                Q(dish_name__icontains=search_term) |
+                Q(encyclopedia_entry__name__icontains=search_term)
+            )
+
+        if cleaned_data.get('restaurant_search'):
+            queryset = queryset.filter(
+                restaurant__name__icontains=cleaned_data['restaurant_search']
+            )
+
+        link_status = cleaned_data.get('link_status')
+        if link_status == 'linked':
+            queryset = queryset.filter(encyclopedia_entry__isnull=False)
+        elif link_status == 'unlinked':
+            queryset = queryset.filter(encyclopedia_entry__isnull=True)
+
+        excitement_status = cleaned_data.get('excitement_status')
+        if excitement_status == 'rated':
+            queryset = queryset.filter(excitement__isnull=False)
+        elif excitement_status == 'unrated':
+            queryset = queryset.filter(excitement__isnull=True)
+
+        sort_key = cleaned_data.get('sort')
+        if sort_key in ['link_asc', 'link_desc']:
+            # Unlinked dishes always at the bottom
+            queryset = queryset.annotate(
+                has_link=Case(
+                    When(encyclopedia_entry__isnull=True, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            )
+            name_order = 'encyclopedia_entry__name' if sort_key == 'link_asc' else '-encyclopedia_entry__name'
+            order_by_fields = ['has_link', name_order]
+        elif sort_key == 'excitement_desc':
+            # Unrated dishes always at the bottom
+            order_by_fields = [F('excitement').desc(nulls_last=True), '-created_at']
+        elif sort_key == 'excitement_asc':
+            order_by_fields = [F('excitement').asc(nulls_last=True), '-created_at']
+        else:
+            # Anticipated dishes have no rating/cost/visit date; "date" sorts
+            # by when the dish was added, and anything unsupported falls back
+            # to newest first.
+            sort_mapping = {
+                'date_desc': ['-created_at'],
+                'date_asc': ['created_at'],
+                'name_asc': ['dish_name'],
+                'name_desc': ['-dish_name'],
+                'restaurant_asc': ['restaurant__name'],
+                'restaurant_desc': ['-restaurant__name'],
+            }
+            order_by_fields = sort_mapping.get(sort_key, ['-created_at'])
+
+        return queryset.order_by(*order_by_fields)
+
+    def _tried_queryset(self, cleaned_data):
+        """
+        Dishes from public reviews, with all filters applied.
+        Optimizes queries with select_related and prefetch_related.
+        """
         # Base queryset
         queryset = ReviewDish.objects.filter(
             review__is_private=False
@@ -247,9 +354,6 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
         ).prefetch_related(
             'images'  # Dish images
         )
-
-        # Apply filters from cleaned_data (automatically validated)
-        cleaned_data = getattr(self.filter_form, 'cleaned_data', {})
 
         # Dish search filter - searches dish names and encyclopedia entries
         if cleaned_data.get('search'):
@@ -355,6 +459,31 @@ class ReviewDishListView(LoginRequiredMixin, ListView):
         context['active_filters'] = self._get_active_filters()
 
         # Add total count for "Showing X of Y" indicator
-        context['total_dishes'] = ReviewDish.objects.filter(review__is_private=False).count()
+        tried_total = ReviewDish.objects.filter(review__is_private=False).count()
+        anticipated_total = RestaurantDish.objects.filter(status=RestaurantDish.STATUS_WISHLIST).count()
+        context['is_anticipated'] = self.is_anticipated
+        context['tried_total'] = tried_total
+        context['anticipated_total'] = anticipated_total
+        context['total_dishes'] = anticipated_total if self.is_anticipated else tried_total
+
+        # Links for the Tried / Anticipated toggle, keeping the shared filters
+        shared_query = self._build_filter_query_string(
+            self.filter_form,
+            exclude_filters=(
+                ['dish_kind', 'sort']
+                + ReviewDishFilterForm.TRIED_ONLY_FIELDS
+                + ReviewDishFilterForm.ANTICIPATED_ONLY_FIELDS
+            )
+        )
+        anticipated_query = f"dish_kind={ReviewDishFilterForm.DISH_KIND_ANTICIPATED}"
+        context['tried_url'] = f"?{shared_query}" if shared_query else "?"
+        context['anticipated_url'] = f"?{shared_query}&{anticipated_query}" if shared_query else f"?{anticipated_query}"
+
+        # Shortcut to the anticipated dishes still waiting for an excitement score
+        if self.is_anticipated:
+            context['unrated_total'] = RestaurantDish.objects.filter(
+                status=RestaurantDish.STATUS_WISHLIST, excitement__isnull=True
+            ).count()
+            context['unrated_url'] = f"?{anticipated_query}&excitement_status=unrated"
 
         return context

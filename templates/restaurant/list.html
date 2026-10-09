@@ -68,7 +68,9 @@
 </ul>
 <div class="d-flex gap-1 ms-3 pb-1">
     <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}sort=name{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if sort == 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">A–Z</a>
-    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if query %}q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if sort != 'name' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Recently Added</a>
+    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}{% if query %}q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if not sort %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Recently Added</a>
+    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}sort=excitement_max{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if sort == 'excitement_max' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" title="Restaurants with the most exciting anticipated dish first"><i class="bi bi-fire"></i> Most Exciting Dish</a>
+    <a href="?{% if visited_filter %}visited={{ visited_filter }}&{% endif %}sort=excitement_avg{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-sm {% if sort == 'excitement_avg' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" title="Restaurants by average excitement across anticipated dishes"><i class="bi bi-fire"></i> Avg Excitement</a>
 </div>
 </div>
 
@@ -137,6 +139,11 @@
                 <div class="d-flex gap-3 text-muted small">
                     <span><i class="bi bi-egg-fried"></i> {{ restaurant.dishes.count }} dish{{ restaurant.dishes.count|pluralize:"es" }}</span>
                     <span><i class="bi bi-journal-text"></i> {{ restaurant.reviews.count }} review{{ restaurant.reviews.count|pluralize }}</span>
+                    {% if restaurant.max_excitement %}
+                    <span title="Anticipated dishes: top excitement {{ restaurant.max_excitement }}/10, average {{ restaurant.avg_excitement|floatformat:1 }}/10">
+                        <i class="bi bi-fire text-danger"></i> {{ restaurant.max_excitement }} top &middot; {{ restaurant.avg_excitement|floatformat:1 }} avg
+                    </span>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -1,4 +1,6 @@
 <form method="get" id="filterForm">
+    {% if is_anticipated %}<input type="hidden" name="dish_kind" value="anticipated">{% endif %}
+
     <!-- Dish Search Section -->
     <div class="border-bottom p-3">
         <h6 class="mb-3"><i class="bi bi-search"></i> Search Dishes</h6>
@@ -45,6 +47,19 @@
         </select>
     </div>
 
+    {% if is_anticipated %}
+    <!-- Excitement Status Section -->
+    <div class="border-bottom p-3">
+        <h6 class="mb-3"><i class="bi bi-fire text-danger"></i> Excitement</h6>
+        <select class="form-select form-select-sm" id="excitement_status" name="excitement_status">
+            <option value="all" {% if filter_params.excitement_status == 'all' or not filter_params.excitement_status %}selected{% endif %}>All Dishes</option>
+            <option value="rated" {% if filter_params.excitement_status == 'rated' %}selected{% endif %}>Rated</option>
+            <option value="unrated" {% if filter_params.excitement_status == 'unrated' %}selected{% endif %}>Not Rated Yet</option>
+        </select>
+    </div>
+    {% endif %}
+
+    {% if not is_anticipated %}
     <!-- Rating Section -->
     <div class="border-bottom p-3">
         <h6 class="mb-3"><i class="bi bi-star-fill text-warning"></i> Dish Rating Range</h6>
@@ -95,16 +110,23 @@
         </div>
     </div>
 
+    {% endif %}
+
     <!-- Sort Section -->
     <div class="border-bottom p-3">
         <h6 class="mb-3"><i class="bi bi-sort-down"></i> Sort By</h6>
         <select class="form-select form-select-sm" id="sort" name="sort">
-            <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>Date: Newest First</option>
-            <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>Date: Oldest First</option>
+            <option value="date_desc" {% if filter_params.sort == 'date_desc' or not filter_params.sort %}selected{% endif %}>{% if is_anticipated %}Date Added{% else %}Date{% endif %}: Newest First</option>
+            <option value="date_asc" {% if filter_params.sort == 'date_asc' %}selected{% endif %}>{% if is_anticipated %}Date Added{% else %}Date{% endif %}: Oldest First</option>
+            {% if is_anticipated %}
+            <option value="excitement_desc" {% if filter_params.sort == 'excitement_desc' %}selected{% endif %}>Excitement: High to Low</option>
+            <option value="excitement_asc" {% if filter_params.sort == 'excitement_asc' %}selected{% endif %}>Excitement: Low to High</option>
+            {% else %}
             <option value="rating_desc" {% if filter_params.sort == 'rating_desc' %}selected{% endif %}>Dish Rating: High to Low</option>
             <option value="rating_asc" {% if filter_params.sort == 'rating_asc' %}selected{% endif %}>Dish Rating: Low to High</option>
             <option value="cost_desc" {% if filter_params.sort == 'cost_desc' %}selected{% endif %}>Cost: High to Low</option>
             <option value="cost_asc" {% if filter_params.sort == 'cost_asc' %}selected{% endif %}>Cost: Low to High</option>
+            {% endif %}
             <option value="name_asc" {% if filter_params.sort == 'name_asc' %}selected{% endif %}>Dish Name: A-Z</option>
             <option value="name_desc" {% if filter_params.sort == 'name_desc' %}selected{% endif %}>Dish Name: Z-A</option>
             <option value="restaurant_asc" {% if filter_params.sort == 'restaurant_asc' %}selected{% endif %}>Restaurant: A-Z</option>
@@ -115,10 +137,9 @@
     <!-- Action Buttons -->
     <div class="p-3">
         <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-funnel-fill"></i> Apply Filters
-            </button>
-            <a href="{% url 'content:review_dish_list' %}" class="btn btn-outline-secondary">
+            <!-- Filters apply instantly; kept for keyboard/no-JS submits -->
+            <button type="submit" class="visually-hidden" tabindex="-1">Apply Filters</button>
+            <a href="{% url 'content:review_dish_list' %}{% if is_anticipated %}?dish_kind=anticipated{% endif %}" class="btn btn-outline-secondary">
                 <i class="bi bi-x-circle"></i> Clear All
             </a>
         </div>

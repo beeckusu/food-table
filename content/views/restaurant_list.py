@@ -3,8 +3,8 @@ from django.views.generic import ListView
 from django.conf import settings
 from django.urls import reverse
 from django.db.utils import ProgrammingError
-from django.db.models import Q
-from content.models import Restaurant
+from django.db.models import Avg, F, Max, Q
+from content.models import Restaurant, RestaurantDish
 from content.utils.search import build_prefix_search_query
 
 
@@ -34,7 +34,12 @@ class RestaurantListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        qs = Restaurant.objects.prefetch_related('dishes')
+        # Excitement only counts dishes still on the wishlist (anticipated)
+        anticipated = Q(dishes__status=RestaurantDish.STATUS_WISHLIST)
+        qs = Restaurant.objects.prefetch_related('dishes').annotate(
+            max_excitement=Max('dishes__excitement', filter=anticipated),
+            avg_excitement=Avg('dishes__excitement', filter=anticipated),
+        )
         visited_param = self.request.GET.get('visited')
         if visited_param == '1':
             qs = qs.filter(visited=True)
@@ -43,8 +48,22 @@ class RestaurantListView(LoginRequiredMixin, ListView):
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = _filter_by_search(qs, query)
-        if self.request.GET.get('sort') == 'name':
+        sort = self.request.GET.get('sort')
+        if sort == 'name':
             qs = qs.order_by('name')
+        elif sort == 'excitement_max':
+            # Ties broken by average, then newest; unrated restaurants last
+            qs = qs.order_by(
+                F('max_excitement').desc(nulls_last=True),
+                F('avg_excitement').desc(nulls_last=True),
+                '-created_at',
+            )
+        elif sort == 'excitement_avg':
+            qs = qs.order_by(
+                F('avg_excitement').desc(nulls_last=True),
+                F('max_excitement').desc(nulls_last=True),
+                '-created_at',
+            )
         else:
             qs = qs.order_by('-created_at')
         return qs
