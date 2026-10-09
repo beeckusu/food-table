@@ -1,9 +1,29 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
-from content.models import Restaurant
+from content.models import MenuItem, Restaurant
+
+
+def _merge_menu_items(source, target):
+    """
+    Move source's MenuItems onto target. Where target already has an item with
+    the same name_key (unique per restaurant), fold the source item's review
+    dishes into it and drop the duplicate instead of violating the constraint.
+    """
+    target_items = {item.name_key: item for item in target.menu_items.all()}
+    for item in source.menu_items.all():
+        existing = target_items.get(item.name_key)
+        if existing is None:
+            MenuItem.objects.filter(pk=item.pk).update(restaurant=target)
+            continue
+        item.review_dishes.all().update(menu_item=existing)
+        if existing.encyclopedia_entry_id is None and item.encyclopedia_entry_id:
+            existing.encyclopedia_entry_id = item.encyclopedia_entry_id
+            existing.save(update_fields=['encyclopedia_entry'])
+        item.delete()
 
 
 class RestaurantUpdateView(LoginRequiredMixin, View):
@@ -41,11 +61,13 @@ class RestaurantUpdateView(LoginRequiredMixin, View):
 
         if target:
             # Merge: re-point all related objects from this restaurant onto target
-            restaurant.reviews.all().update(restaurant=target)
-            restaurant.dishes.all().update(restaurant=target)
-            if restaurant.visited and not target.visited:
-                Restaurant.objects.filter(pk=target.pk).update(visited=True)
-            restaurant.delete()
+            with transaction.atomic():
+                restaurant.reviews.all().update(restaurant=target)
+                restaurant.dishes.all().update(restaurant=target)
+                _merge_menu_items(restaurant, target)
+                if restaurant.visited and not target.visited:
+                    Restaurant.objects.filter(pk=target.pk).update(visited=True)
+                restaurant.delete()
         else:
             restaurant.name = name
             restaurant.street_address = street_address

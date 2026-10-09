@@ -2,7 +2,7 @@ import json
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
-from content.models import Restaurant, RestaurantDish, RestaurantDishReference
+from content.models import MenuItem, Restaurant, RestaurantDish, RestaurantDishReference, Review, ReviewDish
 from content.forms import RestaurantForm
 
 
@@ -509,6 +509,45 @@ class RestaurantUpdateViewPopUpTest(TestCase):
         self.restaurant.refresh_from_db()
         self.assertFalse(self.restaurant.is_pop_up)
         self.assertEqual(self.restaurant.website, '')
+
+
+class RestaurantUpdateMergeMenuItemTest(TestCase):
+    """Merging a restaurant must carry its MenuItems over (ReviewDish.menu_item is PROTECT)."""
+
+    def setUp(self):
+        from datetime import date, time
+        self.staff = User.objects.create_user('staff', password='pw', is_staff=True)
+        self.client = Client()
+        self.client.login(username='staff', password='pw')
+        self.target = make_restaurant(name='Bank Bao', street_address='1 Main St')
+        self.source = make_restaurant(name='Bank Bao Typo', street_address='')
+        self.review = Review.objects.create(
+            restaurant=self.source, visit_date=date(2026, 7, 3), entry_time=time(18, 30),
+            party_size=2, rating=80, created_by=self.staff,
+        )
+        self.url = reverse('content:restaurant_edit', kwargs={'pk': self.source.pk})
+
+    def _merge(self):
+        self.client.post(self.url, {
+            'name': 'Bank Bao', 'street_address': '1 Main St', 'city': '', 'province': '', 'country': '', 'postal_code': '',
+        })
+
+    def test_merge_moves_menu_items(self):
+        item = MenuItem.objects.create(restaurant=self.source, name='5 Spice')
+        ReviewDish.objects.create(review=self.review, menu_item=item)
+        self._merge()
+        self.assertFalse(Restaurant.objects.filter(pk=self.source.pk).exists())
+        item.refresh_from_db()
+        self.assertEqual(item.restaurant, self.target)
+
+    def test_merge_folds_duplicate_menu_items(self):
+        existing = MenuItem.objects.create(restaurant=self.target, name='BB Fried Chicken')
+        dup = MenuItem.objects.create(restaurant=self.source, name='bb fried chicken')
+        dish = ReviewDish.objects.create(review=self.review, menu_item=dup)
+        self._merge()
+        self.assertFalse(MenuItem.objects.filter(pk=dup.pk).exists())
+        dish.refresh_from_db()
+        self.assertEqual(dish.menu_item, existing)
 
 
 class RestaurantChainModelTest(TestCase):
